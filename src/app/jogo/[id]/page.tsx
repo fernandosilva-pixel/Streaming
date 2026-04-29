@@ -21,13 +21,13 @@ type Stream = {
 
 export default function JogoPage({ params }: Props) {
   const { id } = use(params)
-  const { user, showModal } = useAuth()
+  const { user, initialized, showModal } = useAuth()
   const [stream, setStream] = useState<Stream | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user) showModal()
-  }, [user])
+    if (initialized && !user) showModal()
+  }, [initialized, user])
 
   useEffect(() => {
     supabase.from('streams').select('*').eq('id', id).single().then(({ data }) => {
@@ -57,10 +57,10 @@ export default function JogoPage({ params }: Props) {
 
   const cropStyle: React.CSSProperties = stream.crop_enabled ? {
     position: 'absolute',
-    top: -52,
+    top: -65,
     left: 0,
     width: '100%',
-    height: 'calc(100% + 104px)',
+    height: 'calc(100% + 130px)',
     border: 'none',
   } : {
     position: 'absolute',

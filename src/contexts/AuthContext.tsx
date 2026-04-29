@@ -10,6 +10,7 @@ type SiteUser = {
 
 type AuthContextType = {
   user: SiteUser | null
+  initialized: boolean
   showModal: () => void
   hideModal: () => void
   modalVisible: boolean
@@ -22,11 +23,13 @@ const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SiteUser | null>(null)
+  const [initialized, setInitialized] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('futzone_user')
     if (stored) setUser(JSON.parse(stored))
+    setInitialized(true)
   }, [])
 
   function showModal() { setModalVisible(true) }
@@ -80,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, showModal, hideModal, modalVisible, login, register, logout }}>
+    <AuthContext.Provider value={{ user, initialized, showModal, hideModal, modalVisible, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )
