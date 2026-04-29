@@ -119,6 +119,7 @@ export default function JogoPage({ params }: Props) {
             <div className="flex items-center gap-2 mt-1">
               <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse">AO VIVO</span>
               <span className="text-gray-500 text-sm">kick.com/{stream.kick_channel}</span>
+              <span className="text-yellow-400 text-xs font-mono">crop_enabled={String(stream.crop_enabled)}</span>
             </div>
           </div>
         </div>
