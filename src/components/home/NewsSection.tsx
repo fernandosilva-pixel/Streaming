@@ -33,13 +33,6 @@ export default function NewsSection() {
           </div>
           <h2 className="text-lg font-bold text-white">Notícias</h2>
         </div>
-        <Link
-          href="/noticias"
-          className="flex items-center gap-1.5 text-orange-500 text-sm font-medium hover:text-orange-400 transition-colors"
-        >
-          Ver todas
-          <ArrowRight className="w-4 h-4" />
-        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
