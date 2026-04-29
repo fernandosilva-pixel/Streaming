@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 type Fixture = {
@@ -24,6 +25,7 @@ type Banner = {
 }
 
 export default function AdminPage() {
+  const router = useRouter()
   const [banner, setBanner] = useState<Banner | null>(null)
   const [fixtures, setFixtures] = useState<Fixture[]>([])
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
@@ -34,9 +36,20 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [loadingFixtures, setLoadingFixtures] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
 
-  useEffect(() => { loadBanner() }, [])
-  useEffect(() => { loadFixtures() }, [date])
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        router.replace('/admin/login')
+      } else {
+        setAuthChecked(true)
+      }
+    })
+  }, [])
+
+  useEffect(() => { if (authChecked) loadBanner() }, [authChecked])
+  useEffect(() => { if (authChecked) loadFixtures() }, [date, authChecked])
 
   async function loadBanner() {
     const { data } = await supabase.from('banner').select('*').single()
@@ -95,6 +108,19 @@ export default function AdminPage() {
     alert('Banner publicado com sucesso!')
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.replace('/admin/login')
+  }
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500 text-sm">Verificando acesso...</p>
+      </div>
+    )
+  }
+
   const filtered = fixtures.filter(f =>
     f.teams.home.name.toLowerCase().includes(search.toLowerCase()) ||
     f.teams.away.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -103,9 +129,17 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-10">
-      <div>
-        <h1 className="text-3xl font-black text-white">Painel Admin</h1>
-        <p className="text-gray-500 text-sm mt-1">Gerencie o banner principal do site</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-black text-white">Painel Admin</h1>
+          <p className="text-gray-500 text-sm mt-1">Gerencie o banner principal do site</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="text-gray-500 hover:text-white text-sm border border-[#2A2A3A] hover:border-orange-500/50 px-4 py-2 rounded-xl transition-all"
+        >
+          Sair
+        </button>
       </div>
 
       {/* Upload */}

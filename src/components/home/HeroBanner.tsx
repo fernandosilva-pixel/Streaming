@@ -18,6 +18,7 @@ type GameData = {
 export default function HeroBanner() {
   const [banner, setBanner] = useState<Banner | null>(null)
   const [game, setGame] = useState<GameData | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadBanner()
@@ -25,9 +26,9 @@ export default function HeroBanner() {
 
   async function loadBanner() {
     const { data } = await supabase.from('banner').select('*').single()
-    if (!data) return
     setBanner(data)
-    if (data.game_id) loadGame(data.game_id)
+    setLoading(false)
+    if (data?.game_id) loadGame(data.game_id)
   }
 
   async function loadGame(id: number) {
@@ -36,11 +37,23 @@ export default function HeroBanner() {
     if (data.response?.[0]) setGame(data.response[0])
   }
 
-  if (!banner?.image_url) return null
-
   const isLive = game?.fixture.status.short === '1H' ||
     game?.fixture.status.short === '2H' ||
     game?.fixture.status.short === 'HT'
+
+  if (loading) {
+    return (
+      <section className="w-full rounded-2xl border border-[#2A2A3A] bg-[#12121A] animate-pulse" style={{ height: 480 }} />
+    )
+  }
+
+  if (!banner?.image_url) {
+    return (
+      <section className="w-full rounded-2xl border border-dashed border-[#2A2A3A] bg-[#12121A] flex items-center justify-center" style={{ height: 480 }}>
+        <p className="text-gray-600 text-sm">Nenhum banner configurado</p>
+      </section>
+    )
+  }
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-[#2A2A3A]">
@@ -48,26 +61,24 @@ export default function HeroBanner() {
         src={banner.image_url}
         alt="Banner do jogo em destaque"
         className="w-full object-cover rounded-2xl"
-        style={{ maxHeight: 480, minHeight: 200 }}
+        style={{ height: 480, objectPosition: 'center' }}
       />
 
       {game && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-6 py-4 rounded-b-2xl">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-6 py-5 rounded-b-2xl">
           <div className="flex items-center justify-center gap-4">
             {isLive && (
-              <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded">
+              <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse">
                 AO VIVO
               </span>
             )}
-            <span className="text-white font-bold text-sm">{game.teams.home.name}</span>
-            <span className="bg-[#2A2A3A] text-white font-black px-4 py-1 rounded-xl">
+            <span className="text-white font-bold">{game.teams.home.name}</span>
+            <span className="bg-[#2A2A3A] text-white font-black px-4 py-1.5 rounded-xl text-lg tabular-nums">
               {game.goals.home ?? 0} — {game.goals.away ?? 0}
             </span>
-            <span className="text-white font-bold text-sm">{game.teams.away.name}</span>
+            <span className="text-white font-bold">{game.teams.away.name}</span>
             {game.fixture.status.elapsed && (
-              <span className="text-orange-500 text-sm font-bold">
-                {game.fixture.status.elapsed}'
-              </span>
+              <span className="text-orange-500 font-bold">{game.fixture.status.elapsed}'</span>
             )}
           </div>
         </div>
