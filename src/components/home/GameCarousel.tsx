@@ -46,13 +46,13 @@ export default function GameCarousel() {
   }
 
   if (loading) {
-    return <div className="w-full rounded-2xl bg-[#12121A] animate-pulse" style={{ height: 200 }} />
+    return <div className="w-full rounded-2xl bg-[#12121A] animate-pulse" style={{ height: 130 }} />
   }
 
   if (banners.length === 0) return null
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-[#2A2A3A]" style={{ height: 200 }}>
+    <section className="relative overflow-hidden rounded-2xl border border-[#2A2A3A] bg-[#0B0B0F]" style={{ height: 130 }}>
       {banners.map((b, i) => (
         <div
           key={b.id}
@@ -61,7 +61,7 @@ export default function GameCarousel() {
           <img
             src={b.image_url}
             alt="Jogo em destaque"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
           />
         </div>
       ))}
