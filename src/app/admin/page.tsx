@@ -47,6 +47,10 @@ export default function AdminPage() {
   const [carouselBanners, setCarouselBanners] = useState<CarouselBanner[]>([])
   const [carouselUploading, setCarouselUploading] = useState(false)
   const [isCarouselDragging, setIsCarouselDragging] = useState(false)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [isLogoDragging, setIsLogoDragging] = useState(false)
+  const [settingsId, setSettingsId] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -58,7 +62,7 @@ export default function AdminPage() {
     })
   }, [])
 
-  useEffect(() => { if (authChecked) { loadBanner(); loadCarouselBanners() } }, [authChecked])
+  useEffect(() => { if (authChecked) { loadBanner(); loadCarouselBanners(); loadLogo() } }, [authChecked])
   useEffect(() => { if (authChecked) loadFixtures() }, [date, authChecked])
 
   async function loadBanner() {
@@ -116,6 +120,32 @@ export default function AdminPage() {
     }).eq('id', banner.id)
     setSaving(false)
     alert('Banner publicado com sucesso!')
+  }
+
+  async function loadLogo() {
+    const { data } = await supabase.from('site_settings').select('*').single()
+    if (data) {
+      setSettingsId(data.id)
+      if (data.logo_url) setLogoUrl(data.logo_url)
+    }
+  }
+
+  async function handleLogoFile(file: File) {
+    if (!file.type.startsWith('image/')) return
+    setLogoUploading(true)
+    const ext = file.name.split('.').pop()
+    const fileName = `logo-${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true })
+    if (error) { alert('Erro no upload: ' + error.message); setLogoUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
+    if (settingsId) {
+      await supabase.from('site_settings').update({ logo_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', settingsId)
+    } else {
+      await supabase.from('site_settings').insert({ logo_url: publicUrl })
+    }
+    setLogoUrl(publicUrl)
+    setLogoUploading(false)
+    alert('Logo atualizada com sucesso!')
   }
 
   async function loadCarouselBanners() {
@@ -178,6 +208,36 @@ export default function AdminPage() {
         >
           Sair
         </button>
+      </div>
+
+      {/* Logo */}
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-lg font-bold text-white">Logo do Site</h2>
+          <p className="text-gray-500 text-sm mt-0.5">PNG com fundo transparente recomendado · altura ideal: 40px</p>
+        </div>
+        <div className="flex items-center gap-5">
+          {logoUrl && (
+            <div className="flex-shrink-0 h-14 w-32 bg-[#12121A] border border-[#2A2A3A] rounded-xl flex items-center justify-center overflow-hidden">
+              <img src={logoUrl} alt="Logo atual" className="h-10 w-auto object-contain" />
+            </div>
+          )}
+          <div
+            onDragOver={e => { e.preventDefault(); setIsLogoDragging(true) }}
+            onDragLeave={() => setIsLogoDragging(false)}
+            onDrop={e => { e.preventDefault(); setIsLogoDragging(false); const f = e.dataTransfer.files[0]; if (f) handleLogoFile(f) }}
+            onClick={() => document.getElementById('logoInput')?.click()}
+            className={`flex-1 border-2 border-dashed rounded-2xl cursor-pointer transition-all flex items-center justify-center h-14 ${
+              isLogoDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'
+            }`}
+          >
+            <input id="logoInput" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleLogoFile(e.target.files[0])} />
+            {logoUploading
+              ? <p className="text-white text-sm font-semibold">Enviando...</p>
+              : <p className="text-gray-500 text-sm">{logoUrl ? 'Arraste para substituir a logo' : 'Arraste a logo aqui ou clique'}</p>
+            }
+          </div>
+        </div>
       </div>
 
       {/* Upload */}

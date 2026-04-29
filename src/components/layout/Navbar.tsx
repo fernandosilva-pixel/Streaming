@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X, Zap, Search, Bell } from 'lucide-react';
-import { liveGames } from '@/data/mock';
+import { supabase } from '@/lib/supabase';
 
 const navLinks = [
   { href: '/', label: 'Início' },
@@ -17,6 +17,13 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.from('site_settings').select('logo_url').single().then(({ data }) => {
+      if (data?.logo_url) setLogoUrl(data.logo_url)
+    })
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -36,12 +43,18 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-orange-500/40 transition-shadow">
-              <Zap className="w-5 h-5 text-white fill-white" />
-            </div>
-            <span className="text-xl font-black tracking-tight">
-              FUT<span className="text-orange-500">ZONE</span>
-            </span>
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain" />
+            ) : (
+              <>
+                <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-orange-500/40 transition-shadow">
+                  <Zap className="w-5 h-5 text-white fill-white" />
+                </div>
+                <span className="text-xl font-black tracking-tight">
+                  FUT<span className="text-orange-500">ZONE</span>
+                </span>
+              </>
+            )}
           </Link>
 
           {/* Desktop Nav */}
@@ -63,12 +76,6 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
-            {/* Live count badge */}
-            <div className="hidden sm:flex items-center gap-1.5 bg-red-600/10 border border-red-600/30 rounded-full px-3 py-1">
-              <span className="live-dot" />
-              <span className="text-red-500 text-xs font-bold">{liveGames.length} AO VIVO</span>
-            </div>
-
             <button className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors">
               <Search className="w-4 h-4" />
             </button>
