@@ -16,6 +16,7 @@ type Stream = {
   id: string
   title: string
   kick_channel: string
+  crop_enabled: boolean
 }
 
 export default function JogoPage({ params }: Props) {
@@ -73,12 +74,19 @@ export default function JogoPage({ params }: Props) {
               src={`https://player.kick.com/${stream.kick_channel}?autoplay=true`}
               allowFullScreen
               allow="autoplay; fullscreen; picture-in-picture"
-              style={{
+              style={stream.crop_enabled ? {
                 position: 'absolute',
-                top: '-11%',
+                top: '-13%',
                 left: 0,
                 width: '100%',
-                height: '122%',
+                height: '126%',
+                border: 'none',
+              } : {
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
                 border: 'none',
               }}
             />

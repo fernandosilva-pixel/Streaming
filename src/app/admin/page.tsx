@@ -37,6 +37,7 @@ type Stream = {
   title: string
   kick_channel: string
   is_active: boolean
+  crop_enabled: boolean
 }
 
 export default function AdminPage() {
@@ -127,6 +128,11 @@ export default function AdminPage() {
     setNewChannel('')
     await loadStreams()
     setAddingStream(false)
+  }
+
+  async function toggleCrop(id: string, value: boolean) {
+    await supabase.from('streams').update({ crop_enabled: value }).eq('id', id)
+    setStreams(prev => prev.map(s => s.id === id ? { ...s, crop_enabled: value } : s))
   }
 
   async function saveChannel(id: string) {
@@ -388,6 +394,17 @@ export default function AdminPage() {
                         {savingChannel === s.id ? '...' : 'Salvar'}
                       </button>
                     )}
+                    <button
+                      onClick={() => toggleCrop(s.id, !s.crop_enabled)}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
+                        s.crop_enabled
+                          ? 'bg-green-600/20 text-green-400 hover:bg-red-600/20 hover:text-red-400'
+                          : 'bg-[#2A2A3A] text-gray-400 hover:bg-green-600/20 hover:text-green-400'
+                      }`}
+                      title={s.crop_enabled ? 'Crop ativado — clique para remover' : 'Ativar crop (esconde marcas d\'água)'}
+                    >
+                      {s.crop_enabled ? 'Crop ON' : 'Crop OFF'}
+                    </button>
                     <button
                       onClick={() => highlightStream(s.id)}
                       disabled={isHighlighted || highlightingSave}
