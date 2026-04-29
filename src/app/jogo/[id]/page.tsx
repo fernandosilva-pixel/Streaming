@@ -62,6 +62,7 @@ export default function JogoPage({ params }: Props) {
     width: '100%',
     height: 'calc(100% + 130px)',
     border: 'none',
+    clipPath: 'inset(65px 0px 65px 0px)',
   } : {
     position: 'absolute',
     top: 0,
@@ -87,7 +88,7 @@ export default function JogoPage({ params }: Props) {
         <div className="xl:col-span-2 space-y-3">
           <div
             className="rounded-xl border border-[#2A2A3A] bg-black w-full"
-            style={{ position: 'relative', paddingTop: '56.25%', overflow: 'hidden', clipPath: 'inset(0 round 12px)' }}
+            style={{ position: 'relative', paddingTop: '56.25%', overflow: 'hidden' }}
           >
             {user ? (
               <iframe
