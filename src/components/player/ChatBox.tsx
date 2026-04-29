@@ -17,7 +17,7 @@ export default function ChatBox({ streamId }: { streamId: string }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     supabase
@@ -41,7 +41,8 @@ export default function ChatBox({ streamId }: { streamId: string }) {
   }, [streamId])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = messagesRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [messages])
 
   async function send(e: React.FormEvent) {
@@ -68,7 +69,7 @@ export default function ChatBox({ streamId }: { streamId: string }) {
         <p className="text-white text-sm font-bold">Chat ao vivo</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
+      <div ref={messagesRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
         {messages.length === 0 && (
           <p className="text-gray-600 text-xs text-center mt-4">Nenhuma mensagem ainda. Seja o primeiro!</p>
         )}
@@ -79,7 +80,6 @@ export default function ChatBox({ streamId }: { streamId: string }) {
             <p className="text-gray-200 mt-0.5 break-words">{m.message}</p>
           </div>
         ))}
-        <div ref={bottomRef} />
       </div>
 
       <form onSubmit={send} className="shrink-0 border-t border-[#2A2A3A] p-3 flex gap-2">
