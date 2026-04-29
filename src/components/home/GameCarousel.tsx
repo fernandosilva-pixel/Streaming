@@ -46,13 +46,13 @@ export default function GameCarousel() {
   }
 
   if (loading) {
-    return <div className="w-full rounded-2xl bg-[#12121A] animate-pulse" style={{ height: 130 }} />
+    return <div className="w-full rounded-xl bg-[#12121A] animate-pulse" style={{ height: 80 }} />
   }
 
   if (banners.length === 0) return null
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-[#2A2A3A] bg-[#0B0B0F]" style={{ height: 130 }}>
+    <section className="relative overflow-hidden rounded-xl border border-[#2A2A3A] bg-[#0B0B0F]" style={{ height: 80 }}>
       {banners.map((b, i) => (
         <div
           key={b.id}
