@@ -6,6 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { use } from 'react'
+import ChatBox from '@/components/player/ChatBox'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -86,15 +87,8 @@ export default function JogoPage({ params }: Props) {
 
         {/* Chat */}
         <div className="xl:col-span-1">
-          <div className="sticky top-20 rounded-xl overflow-hidden border border-[#2A2A3A]" style={{ height: 560 }}>
-            <div className="bg-[#1A1A26] px-4 py-2.5 border-b border-[#2A2A3A]">
-              <p className="text-white text-sm font-bold">Chat ao vivo</p>
-            </div>
-            <iframe
-              src={`https://kick.com/${stream.kick_channel}/chatroom`}
-              className="w-full"
-              style={{ height: 'calc(100% - 41px)' }}
-            />
+          <div className="sticky top-20 rounded-xl overflow-hidden border border-[#2A2A3A] bg-[#0B0B0F]" style={{ height: 560 }}>
+            <ChatBox streamId={stream.id} />
           </div>
         </div>
       </div>
