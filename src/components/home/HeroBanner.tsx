@@ -53,8 +53,14 @@ export default function HeroBanner() {
 
   if (!banner?.image_url) {
     return (
-      <section className="w-full rounded-2xl border border-dashed border-[#2A2A3A] bg-[#12121A] flex items-center justify-center" style={{ height: 480 }}>
+      <section className="w-full rounded-2xl border border-dashed border-[#2A2A3A] bg-[#12121A] flex flex-col items-center justify-center gap-6" style={{ height: 480 }}>
         <p className="text-gray-600 text-sm">Nenhum banner configurado</p>
+        <button
+          onClick={() => { if (user) { /* sem jogo configurado */ } else { showModal() } }}
+          className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(255,106,0,0.4)]"
+        >
+          ▶ Assistir Agora
+        </button>
       </section>
     )
   }
