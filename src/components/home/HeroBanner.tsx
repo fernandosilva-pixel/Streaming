@@ -9,6 +9,7 @@ type Banner = {
   id: string
   image_url: string
   game_id: number | null
+  stream_id: string | null
 }
 
 type GameData = {
@@ -96,7 +97,7 @@ export default function HeroBanner() {
           <button
             onClick={() => {
               if (user) {
-                if (banner.game_id) router.push(`/jogo/${banner.game_id}`)
+                if (banner.stream_id) router.push(`/jogo/${banner.stream_id}`)
               } else {
                 showModal()
               }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Radio, Plus, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 type Fixture = {
@@ -23,12 +23,20 @@ type Banner = {
   id: string
   image_url: string
   game_id: number | null
+  stream_id: string | null
 }
 
 type CarouselBanner = {
   id: string
   image_url: string
   display_order: number
+}
+
+type Stream = {
+  id: string
+  title: string
+  kick_channel: string
+  is_active: boolean
 }
 
 export default function AdminPage() {
@@ -53,6 +61,16 @@ export default function AdminPage() {
   const [settingsId, setSettingsId] = useState<string | null>(null)
   const [logoSaved, setLogoSaved] = useState(false)
 
+  // Streams
+  const [streams, setStreams] = useState<Stream[]>([])
+  const [highlightedStreamId, setHighlightedStreamId] = useState<string | null>(null)
+  const [newTitle, setNewTitle] = useState('')
+  const [newChannel, setNewChannel] = useState('')
+  const [addingStream, setAddingStream] = useState(false)
+  const [editChannels, setEditChannels] = useState<Record<string, string>>({})
+  const [savingChannel, setSavingChannel] = useState<string | null>(null)
+  const [highlightingSave, setHighlightingSave] = useState(false)
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) {
@@ -63,7 +81,15 @@ export default function AdminPage() {
     })
   }, [])
 
-  useEffect(() => { if (authChecked) { loadBanner(); loadCarouselBanners(); loadLogo() } }, [authChecked])
+  useEffect(() => {
+    if (authChecked) {
+      loadBanner()
+      loadCarouselBanners()
+      loadLogo()
+      loadStreams()
+    }
+  }, [authChecked])
+
   useEffect(() => { if (authChecked) loadFixtures() }, [date, authChecked])
 
   async function loadBanner() {
@@ -71,8 +97,54 @@ export default function AdminPage() {
     if (data) {
       setBanner(data)
       setSelectedGameId(data.game_id)
+      setHighlightedStreamId(data.stream_id ?? null)
       if (data.image_url) setPreviewUrl(data.image_url)
     }
+  }
+
+  async function loadStreams() {
+    const { data } = await supabase.from('streams').select('*').order('created_at', { ascending: false })
+    const list = data ?? []
+    setStreams(list)
+    const initial: Record<string, string> = {}
+    list.forEach((s: Stream) => { initial[s.id] = s.kick_channel })
+    setEditChannels(initial)
+  }
+
+  async function addStream() {
+    if (!newTitle.trim() || !newChannel.trim()) return
+    setAddingStream(true)
+    await supabase.from('streams').insert({ title: newTitle.trim(), kick_channel: newChannel.trim().replace(/\s/g, '') })
+    setNewTitle('')
+    setNewChannel('')
+    await loadStreams()
+    setAddingStream(false)
+  }
+
+  async function saveChannel(id: string) {
+    const channel = editChannels[id]?.trim().replace(/\s/g, '')
+    if (!channel) return
+    setSavingChannel(id)
+    await supabase.from('streams').update({ kick_channel: channel }).eq('id', id)
+    setStreams(prev => prev.map(s => s.id === id ? { ...s, kick_channel: channel } : s))
+    setSavingChannel(null)
+  }
+
+  async function deleteStream(id: string) {
+    await supabase.from('streams').delete().eq('id', id)
+    setStreams(prev => prev.filter(s => s.id !== id))
+    if (highlightedStreamId === id) {
+      setHighlightedStreamId(null)
+      if (banner) await supabase.from('banner').update({ stream_id: null }).eq('id', banner.id)
+    }
+  }
+
+  async function highlightStream(streamId: string) {
+    if (!banner) return
+    setHighlightingSave(true)
+    await supabase.from('banner').update({ stream_id: streamId }).eq('id', banner.id)
+    setHighlightedStreamId(streamId)
+    setHighlightingSave(false)
   }
 
   async function loadFixtures() {
@@ -91,14 +163,8 @@ export default function AdminPage() {
     setUploading(true)
     const ext = file.name.split('.').pop()
     const fileName = `banner-${Date.now()}.${ext}`
-
     const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true })
-    if (error) {
-      alert('Erro no upload: ' + error.message)
-      setUploading(false)
-      return
-    }
-
+    if (error) { alert('Erro no upload: ' + error.message); setUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
     setPreviewUrl(publicUrl)
     setUploading(false)
@@ -160,11 +226,7 @@ export default function AdminPage() {
     const ext = file.name.split('.').pop()
     const fileName = `carousel-${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true })
-    if (error) {
-      alert('Erro no upload: ' + error.message)
-      setCarouselUploading(false)
-      return
-    }
+    if (error) { alert('Erro no upload: ' + error.message); setCarouselUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
     const nextOrder = carouselBanners.length
     await supabase.from('carousel_banners').insert({ image_url: publicUrl, display_order: nextOrder })
@@ -244,7 +306,106 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* Upload */}
+      {/* Transmissões */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Radio className="w-5 h-5 text-orange-500" />
+            Transmissões
+          </h2>
+          <p className="text-gray-500 text-sm mt-0.5">Gerencie os canais da Kick. "Destacar" define qual aparece no banner principal.</p>
+        </div>
+
+        {/* Adicionar nova */}
+        <div className="flex gap-2 flex-wrap">
+          <input
+            type="text"
+            placeholder="Nome do jogo (ex: Flamengo x Corinthians)"
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
+          />
+          <input
+            type="text"
+            placeholder="Canal da Kick (ex: futzone_fla)"
+            value={newChannel}
+            onChange={e => setNewChannel(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addStream()}
+            className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
+          />
+          <button
+            onClick={addStream}
+            disabled={addingStream || !newTitle.trim() || !newChannel.trim()}
+            className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            {addingStream ? 'Adicionando...' : 'Adicionar'}
+          </button>
+        </div>
+
+        {/* Lista de streams */}
+        {streams.length === 0 ? (
+          <div className="border border-dashed border-[#2A2A3A] rounded-xl py-8 text-center">
+            <p className="text-gray-600 text-sm">Nenhuma transmissão cadastrada</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {streams.map(s => {
+              const isHighlighted = highlightedStreamId === s.id
+              const channelChanged = editChannels[s.id] !== s.kick_channel
+              return (
+                <div
+                  key={s.id}
+                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                    isHighlighted ? 'border-orange-500 bg-orange-500/5' : 'border-[#2A2A3A] bg-[#12121A]'
+                  }`}
+                >
+                  {isHighlighted && (
+                    <span className="text-[10px] bg-orange-500 text-white font-bold px-1.5 py-0.5 rounded shrink-0">LIVE</span>
+                  )}
+                  <p className="text-white text-sm font-semibold truncate flex-1 min-w-0">{s.title}</p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <input
+                      type="text"
+                      value={editChannels[s.id] ?? s.kick_channel}
+                      onChange={e => setEditChannels(prev => ({ ...prev, [s.id]: e.target.value }))}
+                      className="bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm w-44 focus:outline-none focus:border-orange-500"
+                    />
+                    {channelChanged && (
+                      <button
+                        onClick={() => saveChannel(s.id)}
+                        disabled={savingChannel === s.id}
+                        className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        {savingChannel === s.id ? '...' : 'Salvar'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => highlightStream(s.id)}
+                      disabled={isHighlighted || highlightingSave}
+                      className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
+                        isHighlighted
+                          ? 'bg-orange-500/20 text-orange-400 cursor-default'
+                          : 'bg-[#2A2A3A] hover:bg-orange-500 text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      {isHighlighted ? <><Check className="w-3 h-3" /> Destacado</> : 'Destacar'}
+                    </button>
+                    <button
+                      onClick={() => deleteStream(s.id)}
+                      className="text-gray-600 hover:text-red-500 transition-colors p-1.5"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Upload banner */}
       <div className="space-y-3">
         <h2 className="text-lg font-bold text-white">Banner</h2>
         <div
@@ -253,19 +414,11 @@ export default function AdminPage() {
           onDrop={onDrop}
           onClick={() => document.getElementById('fileInput')?.click()}
           className={`relative border-2 border-dashed rounded-2xl overflow-hidden cursor-pointer transition-all ${
-            isDragging
-              ? 'border-orange-500 bg-orange-500/10'
-              : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'
+            isDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'
           }`}
           style={{ minHeight: 220 }}
         >
-          <input
-            id="fileInput"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])}
-          />
+          <input id="fileInput" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
           {previewUrl ? (
             <img src={previewUrl} alt="Preview" className="w-full object-cover rounded-2xl" style={{ maxHeight: 400 }} />
           ) : (
@@ -303,20 +456,15 @@ export default function AdminPage() {
             className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
           />
         </div>
-
         <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-          {/* Opção nenhum jogo */}
           <button
             onClick={() => setSelectedGameId(null)}
             className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
-              selectedGameId === null
-                ? 'border-orange-500 bg-orange-500/10'
-                : 'border-[#2A2A3A] bg-[#12121A] hover:border-orange-500/30'
+              selectedGameId === null ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#12121A] hover:border-orange-500/30'
             }`}
           >
             <span className="text-gray-400 text-sm">Sem jogo selecionado</span>
           </button>
-
           {loadingFixtures ? (
             <div className="py-8 text-center text-gray-500 text-sm">Carregando jogos...</div>
           ) : filtered.length === 0 ? (
@@ -330,36 +478,25 @@ export default function AdminPage() {
                   key={f.fixture.id}
                   onClick={() => setSelectedGameId(f.fixture.id)}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
-                    isSelected
-                      ? 'border-orange-500 bg-orange-500/10'
-                      : 'border-[#2A2A3A] bg-[#12121A] hover:border-orange-500/30'
+                    isSelected ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#12121A] hover:border-orange-500/30'
                   }`}
                 >
                   <img src={f.league.logo} alt="" className="w-6 h-6 object-contain shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-semibold truncate">
-                      {f.teams.home.name} vs {f.teams.away.name}
-                    </p>
+                    <p className="text-white text-sm font-semibold truncate">{f.teams.home.name} vs {f.teams.away.name}</p>
                     <p className="text-gray-500 text-xs truncate">{f.league.name} · {f.league.country}</p>
                   </div>
                   <div className="text-right shrink-0 space-y-0.5">
                     {isLive ? (
                       <>
-                        <p className="text-white text-xs font-bold tabular-nums">
-                          {f.goals.home ?? 0} - {f.goals.away ?? 0}
-                        </p>
-                        <p className="text-orange-500 text-[10px] font-bold">
-                          {f.fixture.status.elapsed}' AO VIVO
-                        </p>
+                        <p className="text-white text-xs font-bold tabular-nums">{f.goals.home ?? 0} - {f.goals.away ?? 0}</p>
+                        <p className="text-orange-500 text-[10px] font-bold">{f.fixture.status.elapsed}' AO VIVO</p>
                       </>
                     ) : f.fixture.status.short === 'FT' ? (
                       <p className="text-gray-500 text-xs">Encerrado</p>
                     ) : (
                       <p className="text-gray-400 text-xs">
-                        {new Date(f.fixture.date).toLocaleTimeString('pt-BR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {new Date(f.fixture.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     )}
                   </div>
@@ -374,10 +511,8 @@ export default function AdminPage() {
       <div className="space-y-4">
         <div>
           <h2 className="text-lg font-bold text-white">Carrossel de Jogos</h2>
-          <p className="text-gray-500 text-sm mt-0.5">Resolução recomendada: 1200 × 400px</p>
+          <p className="text-gray-500 text-sm mt-0.5">Resolução recomendada: 1200 × 80px</p>
         </div>
-
-        {/* Drop zone carrossel */}
         <div
           onDragOver={e => { e.preventDefault(); setIsCarouselDragging(true) }}
           onDragLeave={() => setIsCarouselDragging(false)}
@@ -389,18 +524,10 @@ export default function AdminPage() {
           }}
           onClick={() => document.getElementById('carouselInput')?.click()}
           className={`relative border-2 border-dashed rounded-2xl cursor-pointer transition-all flex items-center justify-center h-28 ${
-            isCarouselDragging
-              ? 'border-orange-500 bg-orange-500/10'
-              : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'
+            isCarouselDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'
           }`}
         >
-          <input
-            id="carouselInput"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={e => e.target.files?.[0] && handleCarouselFile(e.target.files[0])}
-          />
+          <input id="carouselInput" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCarouselFile(e.target.files[0])} />
           {carouselUploading ? (
             <p className="text-white font-semibold text-sm">Enviando...</p>
           ) : (
@@ -410,8 +537,6 @@ export default function AdminPage() {
             </div>
           )}
         </div>
-
-        {/* Lista do carrossel */}
         {carouselBanners.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {carouselBanners.map((b, i) => (
@@ -425,9 +550,7 @@ export default function AdminPage() {
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                <span className="absolute top-1.5 left-1.5 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
-                  #{i + 1}
-                </span>
+                <span className="absolute top-1.5 left-1.5 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">#{i + 1}</span>
               </div>
             ))}
           </div>
