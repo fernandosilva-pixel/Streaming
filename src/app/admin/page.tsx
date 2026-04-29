@@ -51,6 +51,7 @@ export default function AdminPage() {
   const [logoUploading, setLogoUploading] = useState(false)
   const [isLogoDragging, setIsLogoDragging] = useState(false)
   const [settingsId, setSettingsId] = useState<string | null>(null)
+  const [logoSaved, setLogoSaved] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -133,19 +134,19 @@ export default function AdminPage() {
   async function handleLogoFile(file: File) {
     if (!file.type.startsWith('image/')) return
     setLogoUploading(true)
+    setLogoSaved(false)
     const ext = file.name.split('.').pop()
     const fileName = `logo-${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true })
-    if (error) { alert('Erro no upload: ' + error.message); setLogoUploading(false); return }
+    const { error: storageError } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true })
+    if (storageError) { alert('Erro no upload: ' + storageError.message); setLogoUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
-    if (settingsId) {
-      await supabase.from('site_settings').update({ logo_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', settingsId)
-    } else {
-      await supabase.from('site_settings').insert({ logo_url: publicUrl })
-    }
+    const { error: dbError } = settingsId
+      ? await supabase.from('site_settings').update({ logo_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', settingsId)
+      : await supabase.from('site_settings').insert({ logo_url: publicUrl })
+    if (dbError) { alert('Erro ao salvar: ' + dbError.message); setLogoUploading(false); return }
     setLogoUrl(publicUrl)
     setLogoUploading(false)
-    alert('Logo atualizada com sucesso!')
+    setLogoSaved(true)
   }
 
   async function loadCarouselBanners() {
@@ -238,6 +239,9 @@ export default function AdminPage() {
             }
           </div>
         </div>
+        {logoSaved && (
+          <p className="text-green-500 text-xs">Logo salva! Recarregue a página para ver no navbar.</p>
+        )}
       </div>
 
       {/* Upload */}
