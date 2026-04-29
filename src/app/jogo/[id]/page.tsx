@@ -87,7 +87,7 @@ export default function JogoPage({ params }: Props) {
         <div className="xl:col-span-2 space-y-3">
           <div
             className="rounded-xl border border-[#2A2A3A] bg-black w-full"
-            style={{ position: 'relative', paddingTop: '56.25%', overflow: 'hidden' }}
+            style={{ position: 'relative', paddingTop: '56.25%', overflow: 'hidden', clipPath: 'inset(0 round 12px)' }}
           >
             {user ? (
               <iframe
@@ -119,7 +119,6 @@ export default function JogoPage({ params }: Props) {
             <div className="flex items-center gap-2 mt-1">
               <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse">AO VIVO</span>
               <span className="text-gray-500 text-sm">kick.com/{stream.kick_channel}</span>
-              <span className="text-yellow-400 text-xs font-mono">crop_enabled={String(stream.crop_enabled)}</span>
             </div>
           </div>
         </div>
