@@ -2,20 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Menu, X, Zap, Search, Bell } from 'lucide-react';
+import { Zap, Search, Bell } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-const navLinks = [
-  { href: '/', label: 'Início' },
-  { href: '/agenda', label: 'Agenda' },
-  { href: '/campeonatos', label: 'Campeonatos' },
-  { href: '/noticias', label: 'Notícias' },
-];
-
 export default function Navbar() {
-  const pathname = usePathname();
-  const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
@@ -41,7 +31,6 @@ export default function Navbar() {
     >
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain" />
@@ -57,69 +46,18 @@ export default function Navbar() {
             )}
           </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
-            {navLinks.map(link => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  pathname === link.href
-                    ? 'text-orange-500 bg-orange-500/10'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-
-          {/* Right side */}
           <div className="flex items-center gap-3">
             <button className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors">
               <Search className="w-4 h-4" />
             </button>
-
             <button className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors">
               <Bell className="w-4 h-4" />
             </button>
-
-            <button className="hidden md:flex btn-primary text-sm py-2 px-4">
+            <button className="btn-primary text-sm py-2 px-4">
               Entrar
-            </button>
-
-            {/* Mobile hamburger */}
-            <button
-              className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-              onClick={() => setIsOpen(!isOpen)}
-            >
-              {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {isOpen && (
-          <div className="md:hidden border-t border-[#2A2A3A] py-3 space-y-1 animate-fade-in-up">
-            {navLinks.map(link => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsOpen(false)}
-                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                  pathname === link.href
-                    ? 'text-orange-500 bg-orange-500/10'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <div className="pt-2 pb-1 px-4">
-              <button className="w-full btn-primary text-sm">Entrar</button>
-            </div>
-          </div>
-        )}
       </nav>
     </header>
   );
