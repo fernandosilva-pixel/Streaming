@@ -13,7 +13,8 @@ type AuthContextType = {
   showModal: () => void
   hideModal: () => void
   modalVisible: boolean
-  register: (name: string, phone: string) => Promise<void>
+  login: (phone: string, password: string) => Promise<boolean>
+  register: (name: string, phone: string, password: string) => Promise<void>
   logout: () => void
 }
 
@@ -31,9 +32,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function showModal() { setModalVisible(true) }
   function hideModal() { setModalVisible(false) }
 
-  async function register(name: string, phone: string) {
-    await supabase.from('registrations').upsert({ name, phone }, { onConflict: 'phone' })
-    const newUser = { name, phone }
+  async function login(phone: string, password: string): Promise<boolean> {
+    const digits = phone.replace(/\D/g, '')
+    const { data } = await supabase
+      .from('registrations')
+      .select('name, phone')
+      .eq('phone', digits)
+      .eq('password', password)
+      .single()
+
+    if (data) {
+      const userObj = { name: data.name, phone: data.phone }
+      localStorage.setItem('futzone_user', JSON.stringify(userObj))
+      setUser(userObj)
+      setModalVisible(false)
+      return true
+    }
+    return false
+  }
+
+  async function register(name: string, phone: string, password: string) {
+    const digits = phone.replace(/\D/g, '')
+    await supabase.from('registrations').upsert(
+      { name, phone: digits, password },
+      { onConflict: 'phone' }
+    )
+    const newUser = { name, phone: digits }
     localStorage.setItem('futzone_user', JSON.stringify(newUser))
     setUser(newUser)
     setModalVisible(false)
@@ -45,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, showModal, hideModal, modalVisible, register, logout }}>
+    <AuthContext.Provider value={{ user, showModal, hideModal, modalVisible, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )

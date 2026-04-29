@@ -52,6 +52,8 @@ export default function GameCarousel() {
   if (banners.length === 0) return null
 
   return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-bold text-white">Próximos Jogos</h2>
     <section className="relative overflow-hidden rounded-xl border border-[#2A2A3A] bg-[#0B0B0F]" style={{ height: 80 }}>
       {banners.map((b, i) => (
         <div
@@ -95,5 +97,6 @@ export default function GameCarousel() {
         </>
       )}
     </section>
+    </div>
   )
 }
