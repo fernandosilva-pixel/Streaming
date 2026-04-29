@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Eye, Flame, TrendingUp } from 'lucide-react';
 import { getGameById, liveGames, allGames, formatViewers } from '@/data/mock';
@@ -9,6 +9,7 @@ import ServerList from '@/components/player/ServerList';
 import ChatPanel from '@/components/player/ChatPanel';
 import GameCard from '@/components/common/GameCard';
 import LiveBadge from '@/components/common/LiveBadge';
+import { useAuth } from '@/contexts/AuthContext';
 import { use } from 'react';
 
 interface Props {
@@ -18,9 +19,14 @@ interface Props {
 export default function JogoPage({ params }: Props) {
   const { id } = use(params);
   const game = getGameById(id);
+  const { user, showModal } = useAuth();
 
   const defaultServer = game?.servers?.[0]?.id ?? '';
   const [activeServer, setActiveServer] = useState(defaultServer);
+
+  useEffect(() => {
+    if (!user) showModal()
+  }, [user]);
 
   if (!game) {
     return (

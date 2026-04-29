@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 type Banner = {
   id: string
@@ -16,6 +18,8 @@ type GameData = {
 }
 
 export default function HeroBanner() {
+  const router = useRouter()
+  const { user, showModal } = useAuth()
   const [banner, setBanner] = useState<Banner | null>(null)
   const [game, setGame] = useState<GameData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -64,9 +68,9 @@ export default function HeroBanner() {
         style={{ height: 480, objectPosition: 'center' }}
       />
 
-      {game && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-6 py-5 rounded-b-2xl">
-          <div className="flex items-center justify-center gap-4">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-6 py-5 rounded-b-2xl">
+        {game && (
+          <div className="flex items-center justify-center gap-4 mb-4">
             {isLive && (
               <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse">
                 AO VIVO
@@ -81,8 +85,22 @@ export default function HeroBanner() {
               <span className="text-orange-500 font-bold">{game.fixture.status.elapsed}'</span>
             )}
           </div>
+        )}
+        <div className="flex justify-center">
+          <button
+            onClick={() => {
+              if (user) {
+                if (banner.game_id) router.push(`/jogo/${banner.game_id}`)
+              } else {
+                showModal()
+              }
+            }}
+            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-8 py-3 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(255,106,0,0.4)]"
+          >
+            ▶ Assistir Agora
+          </button>
         </div>
-      )}
+      </div>
     </section>
   )
 }
