@@ -48,8 +48,8 @@ export default function AuthModal() {
     setError('')
     try {
       await register(name.trim(), phone, password)
-    } catch {
-      setError('Erro ao criar conta. Tente novamente.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar conta. Tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -138,14 +138,14 @@ export default function AuthModal() {
 
             <form onSubmit={handleRegister} className="space-y-4">
               <div>
-                <label className="text-gray-400 text-sm block mb-1.5">Nome completo</label>
+                <label className="text-gray-400 text-sm block mb-1.5">Usuário (Apelido)</label>
                 <input
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
                   required
                   autoFocus
-                  placeholder="Seu nome"
+                  placeholder="Como quer ser chamado"
                   className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 placeholder-gray-600"
                 />
               </div>

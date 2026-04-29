@@ -53,10 +53,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function register(name: string, phone: string, password: string) {
     const digits = phone.replace(/\D/g, '')
-    await supabase.from('registrations').upsert(
-      { name, phone: digits, password },
-      { onConflict: 'phone' }
-    )
+
+    const { data: existing } = await supabase
+      .from('registrations')
+      .select('id')
+      .eq('phone', digits)
+      .maybeSingle()
+
+    if (existing) throw new Error('Telefone já cadastrado. Faça login.')
+
+    const { error } = await supabase
+      .from('registrations')
+      .insert({ name, phone: digits, password })
+
+    if (error) throw new Error(error.message)
+
     const newUser = { name, phone: digits }
     localStorage.setItem('futzone_user', JSON.stringify(newUser))
     setUser(newUser)
