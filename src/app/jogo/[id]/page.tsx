@@ -86,8 +86,8 @@ export default function JogoPage({ params }: Props) {
         {/* Player */}
         <div className="xl:col-span-2 space-y-3">
           <div
-            className="rounded-xl border border-[#2A2A3A] bg-black w-full relative"
-            style={{ aspectRatio: '16/9', overflow: 'hidden' }}
+            className="rounded-xl border border-[#2A2A3A] bg-black w-full"
+            style={{ position: 'relative', paddingTop: '56.25%', overflow: 'hidden' }}
           >
             {user ? (
               <iframe
