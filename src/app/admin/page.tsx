@@ -114,7 +114,15 @@ export default function AdminPage() {
   async function addStream() {
     if (!newTitle.trim() || !newChannel.trim()) return
     setAddingStream(true)
-    await supabase.from('streams').insert({ title: newTitle.trim(), kick_channel: newChannel.trim().replace(/\s/g, '') })
+    const { error } = await supabase.from('streams').insert({
+      title: newTitle.trim(),
+      kick_channel: newChannel.trim().replace(/\s/g, ''),
+    })
+    if (error) {
+      alert('Erro ao adicionar transmissão: ' + error.message)
+      setAddingStream(false)
+      return
+    }
     setNewTitle('')
     setNewChannel('')
     await loadStreams()
