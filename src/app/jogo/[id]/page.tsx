@@ -68,12 +68,19 @@ export default function JogoPage({ params }: Props) {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         {/* Player */}
         <div className="xl:col-span-2 space-y-3">
-          <div className="rounded-xl overflow-hidden border border-[#2A2A3A] bg-black w-full" style={{ aspectRatio: '16/9' }}>
+          <div className="rounded-xl overflow-hidden border border-[#2A2A3A] bg-black w-full relative" style={{ aspectRatio: '16/9' }}>
             <iframe
               src={`https://player.kick.com/${stream.kick_channel}?autoplay=true`}
-              className="w-full h-full"
               allowFullScreen
               allow="autoplay; fullscreen; picture-in-picture"
+              style={{
+                position: 'absolute',
+                top: '-11%',
+                left: 0,
+                width: '100%',
+                height: '122%',
+                border: 'none',
+              }}
             />
           </div>
           <div>
