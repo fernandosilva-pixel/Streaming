@@ -131,7 +131,8 @@ export default function AdminPage() {
   }
 
   async function toggleCrop(id: string, value: boolean) {
-    await supabase.from('streams').update({ crop_enabled: value }).eq('id', id)
+    const { error } = await supabase.from('streams').update({ crop_enabled: value }).eq('id', id)
+    if (error) { alert('Erro ao salvar crop: ' + error.message); return }
     setStreams(prev => prev.map(s => s.id === id ? { ...s, crop_enabled: value } : s))
   }
 
