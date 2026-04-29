@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Zap, Search, Bell } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Navbar() {
+  const { user, showModal, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
@@ -53,9 +55,15 @@ export default function Navbar() {
             <button className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors">
               <Bell className="w-4 h-4" />
             </button>
-            <button className="btn-primary text-sm py-2 px-4">
-              Entrar
-            </button>
+            {user ? (
+              <button onClick={logout} className="btn-primary text-sm py-2 px-4">
+                Sair
+              </button>
+            ) : (
+              <button onClick={showModal} className="btn-primary text-sm py-2 px-4">
+                Entrar
+              </button>
+            )}
           </div>
         </div>
       </nav>
