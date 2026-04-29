@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { X, Eye, EyeOff } from 'lucide-react'
 
@@ -15,6 +15,17 @@ export default function AuthModal() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (modalVisible) {
+      setView('login')
+      setPhone('')
+      setPassword('')
+      setName('')
+      setError('')
+      setShowPass(false)
+    }
+  }, [modalVisible])
 
   if (!modalVisible) return null
 
