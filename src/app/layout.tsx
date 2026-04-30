@@ -3,7 +3,8 @@ import './globals.css';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { AuthProvider } from '@/contexts/AuthContext';
-import AuthModal from '@/components/auth/AuthModal';
+import AuthModal from '@/components/auth/AuthModal'
+import PresenceTracker from '@/components/analytics/PresenceTracker';
 
 export const metadata: Metadata = {
   title: 'FutZone — Futebol Ao Vivo',
@@ -14,12 +15,18 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body className="min-h-screen flex flex-col bg-[#0B0B0F] text-white antialiased">
+      <body className="min-h-screen flex flex-col text-white antialiased">
+        {/* Background fixo */}
+        <div
+          className="fixed inset-0 -z-10 bg-[#0B0B0F] bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/bg.jpg')" }}
+        />
         <AuthProvider>
           <Navbar />
-          <main className="flex-1 pt-16">{children}</main>
+          <main className="flex-1 pt-20">{children}</main>
           <Footer />
           <AuthModal />
+          <PresenceTracker />
         </AuthProvider>
       </body>
     </html>

@@ -127,6 +127,19 @@ body {
   }
 }
 
+@keyframes orangePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(249, 115, 22, 0);
+  }
+}
+
+.animate-orange-pulse {
+  animation: orangePulse 1.8s ease-in-out infinite;
+}
+
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }

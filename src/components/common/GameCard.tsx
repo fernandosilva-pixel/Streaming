@@ -138,8 +138,8 @@ export default function GameCard({ game, variant = 'default', className }: GameC
               </div>
 
               {isLive && (
-                <span className="text-xs text-orange-500 font-semibold group-hover:text-orange-400 transition-colors">
-                  Assistir agora →
+                <span className="animate-orange-pulse inline-block text-xs font-bold text-orange-500 border border-orange-500 rounded-full px-4 py-1.5 transition-colors group-hover:bg-orange-500/10">
+                  Assistir agora
                 </span>
               )}
             </div>

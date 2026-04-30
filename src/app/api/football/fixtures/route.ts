@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
 
   const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${date}`, {
     headers: { 'x-apisports-key': process.env.FOOTBALL_API_KEY! },
-    next: { revalidate: 300 },
+    next: { revalidate: 60 },
   })
 
   const data = await res.json()

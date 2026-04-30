@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Lock } from 'lucide-react'
+import { ChevronLeft, Lock, DollarSign } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { use } from 'react'
 import ChatBox from '@/components/player/ChatBox'
+import PaymentModal from '@/components/player/PaymentModal'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -15,19 +16,30 @@ interface Props {
 type Stream = {
   id: string
   title: string
-  kick_channel: string
+  stream_source: 'kick' | 'soop'
+  kick_channel: string | null
+  soop_channel: string | null
+  soop_broad_no: string | null
   crop_enabled: boolean
+  charge_enabled: boolean
+  charge_amount: number
 }
 
 export default function JogoPage({ params }: Props) {
   const { id } = use(params)
-  const { user, initialized, showModal } = useAuth()
+  const { user, showModal } = useAuth()
   const [stream, setStream] = useState<Stream | null>(null)
   const [loading, setLoading] = useState(true)
+  const [hasPaid, setHasPaid] = useState(false)
+  const [checkingPayment, setCheckingPayment] = useState(false)
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
 
-  useEffect(() => {
-    if (initialized && !user) showModal()
-  }, [initialized, user])
+  const [soopBroadNo, setSoopBroadNo] = useState<string | null>(null)
+  const [soopLoading, setSoopLoading] = useState(false)
+  const [soopOffline, setSoopOffline] = useState(false)
+
+  const [previewActive, setPreviewActive] = useState(true)
+  const [previewSeconds, setPreviewSeconds] = useState(60)
 
   useEffect(() => {
     supabase.from('streams').select('*').eq('id', id).single().then(({ data }) => {
@@ -35,6 +47,78 @@ export default function JogoPage({ params }: Props) {
       setLoading(false)
     })
   }, [id])
+
+  // Auto-detect Sooplive broadcast number when not stored
+  useEffect(() => {
+    if (!stream || (stream.stream_source ?? 'kick') !== 'soop' || !stream.soop_channel) return
+
+    if (stream.soop_broad_no) {
+      setSoopBroadNo(stream.soop_broad_no)
+      return
+    }
+
+    setSoopLoading(true)
+    fetch(`/api/soop/broadcast?bjid=${stream.soop_channel}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.broad_no) setSoopBroadNo(String(data.broad_no))
+        else setSoopOffline(true)
+      })
+      .catch(() => setSoopOffline(true))
+      .finally(() => setSoopLoading(false))
+  }, [stream])
+
+  useEffect(() => {
+    if (!user || !stream || !stream.charge_enabled) return
+    setCheckingPayment(true)
+    supabase.from('payments')
+      .select('id')
+      .eq('stream_id', stream.id)
+      .eq('user_phone', user.phone)
+      .eq('status', 'PAID')
+      .maybeSingle()
+      .then(({ data }) => {
+        setHasPaid(!!data)
+        setCheckingPayment(false)
+      })
+  }, [user, stream])
+
+  // 1-minute preview, separate timer for not-logged-in and logged-in-but-unpaid
+  const previewKey = user ? `preview_payment_${id}_${user.phone}` : `preview_login_${id}`
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem(previewKey)
+    const now = Date.now()
+    let endsAt: number
+
+    if (stored) {
+      endsAt = parseInt(stored)
+      if (endsAt <= now) {
+        setPreviewActive(false)
+        setPreviewSeconds(0)
+        return
+      }
+    } else {
+      endsAt = now + 60_000
+      sessionStorage.setItem(previewKey, String(endsAt))
+    }
+
+    setPreviewActive(true)
+    setPreviewSeconds(Math.ceil((endsAt - now) / 1000))
+
+    const interval = setInterval(() => {
+      const left = Math.ceil((endsAt - Date.now()) / 1000)
+      if (left <= 0) {
+        clearInterval(interval)
+        setPreviewActive(false)
+        setPreviewSeconds(0)
+      } else {
+        setPreviewSeconds(left)
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [previewKey])
 
   if (loading) {
     return (
@@ -55,6 +139,8 @@ export default function JogoPage({ params }: Props) {
     )
   }
 
+  const source = stream.stream_source ?? 'kick'
+
   const cropStyle: React.CSSProperties = stream.crop_enabled ? {
     position: 'absolute',
     top: -65,
@@ -71,6 +157,56 @@ export default function JogoPage({ params }: Props) {
     height: '100%',
     border: 'none',
   }
+
+  function renderPlayer(s: NonNullable<typeof stream>, blurred = false) {
+    const blurExtra: React.CSSProperties = blurred
+      ? { filter: 'blur(18px)', transform: 'scale(1.08)' }
+      : {}
+
+    if (source === 'soop') {
+      if (soopLoading) {
+        return (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#0B0B0F]">
+            <p className="text-gray-500 text-sm">Buscando transmissão ao vivo...</p>
+          </div>
+        )
+      }
+      if (soopOffline || !soopBroadNo) {
+        return (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0B0B0F]">
+            <p className="text-white font-bold">Canal offline</p>
+            <p className="text-gray-500 text-sm">A transmissão ainda não começou ou foi encerrada.</p>
+          </div>
+        )
+      }
+      return (
+        <iframe
+          src={`https://play.sooplive.com/${s.soop_channel}/${soopBroadNo}/embed`}
+          allowFullScreen
+          allow="autoplay; fullscreen"
+          style={{ ...cropStyle, ...blurExtra }}
+        />
+      )
+    }
+
+    // Kick
+    return (
+      <iframe
+        src={`https://player.kick.com/${s.kick_channel}?autoplay=true`}
+        allowFullScreen
+        allow="autoplay; fullscreen; picture-in-picture"
+        style={{ ...cropStyle, ...blurExtra }}
+      />
+    )
+  }
+
+  const wouldNeedLogin = !user
+  const wouldNeedPayment = !!user && stream.charge_enabled && !hasPaid && !checkingPayment
+
+  const needsLogin = wouldNeedLogin && !previewActive
+  const needsPayment = wouldNeedPayment && !previewActive
+  const isBlurred = needsLogin || needsPayment
+  const showCountdown = previewActive && (wouldNeedLogin || wouldNeedPayment)
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -90,37 +226,82 @@ export default function JogoPage({ params }: Props) {
             className="rounded-xl border border-[#2A2A3A] bg-black w-full"
             style={{ position: 'relative', paddingTop: '56.25%', overflow: 'hidden' }}
           >
-            {user ? (
-              <iframe
-                src={`https://player.kick.com/${stream.kick_channel}?autoplay=true`}
-                allowFullScreen
-                allow="autoplay; fullscreen; picture-in-picture"
-                style={cropStyle}
-              />
-            ) : (
-              <div
-                className="absolute inset-0 flex flex-col items-center justify-center gap-4 cursor-pointer bg-[#0B0B0F]"
-                onClick={showModal}
-              >
+            {/* Player always renders — blurred when login/payment required */}
+            {renderPlayer(stream, isBlurred)}
+
+            {/* Preview countdown badge */}
+            {showCountdown && (
+              <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1.5 rounded-lg pointer-events-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                Preview: {previewSeconds}s
+              </div>
+            )}
+
+            {/* Login overlay */}
+            {needsLogin && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/50">
                 <div className="w-14 h-14 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
                   <Lock className="w-6 h-6 text-orange-500" />
                 </div>
                 <div className="text-center">
                   <p className="text-white font-bold text-lg">Conteúdo restrito</p>
-                  <p className="text-gray-500 text-sm mt-1">Entre para assistir ao vivo</p>
+                  <p className="text-gray-400 text-sm mt-1">Já tem conta na Futzone? Faça o login e assista agora.</p>
+                  <p className="text-gray-400 text-sm mt-0.5">Ainda não tem conta? Crie sua conta e assista agora.</p>
                 </div>
-                <button className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-6 py-2.5 rounded-xl transition-all">
-                  Entrar / Criar conta
+                <button
+                  className="animate-orange-pulse text-orange-500 font-bold border border-orange-500 rounded-full px-8 py-3 transition-all hover:bg-orange-500/10"
+                  onClick={showModal}
+                >
+                  Criar Conta
                 </button>
               </div>
             )}
+
+            {/* Payment overlay — pointer-events-none allows iframe audio to play on desktop */}
+            {needsPayment && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/50 pointer-events-none">
+                {/* Block Kick/Soop branding corners so user can't accidentally navigate away */}
+                <div className="absolute top-0 left-0 w-32 h-10 pointer-events-auto" />
+                <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-auto" />
+                <div className="w-14 h-14 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-orange-500" />
+                </div>
+                <div className="text-center">
+                  <p className="text-white font-bold text-lg">Conteúdo pago</p>
+                  <p className="text-white text-sm mt-1">
+                    R$ {stream.charge_amount.toFixed(2).replace('.', ',')} via PIX para assistir
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPaymentModalOpen(true)}
+                  className="animate-orange-pulse text-orange-500 font-bold border border-orange-500 rounded-full px-8 py-3 transition-all hover:bg-orange-500/10 pointer-events-auto"
+                >
+                  Pagar e assistir
+                </button>
+              </div>
+            )}
+
+            {/* Checking payment */}
+            {user && stream.charge_enabled && checkingPayment && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                <p className="text-gray-400 text-sm">Verificando acesso...</p>
+              </div>
+            )}
+
+            {paymentModalOpen && user && stream.charge_enabled && !hasPaid && (
+              <PaymentModal
+                streamId={stream.id}
+                userPhone={user.phone}
+                userName={user.name}
+                amount={stream.charge_amount}
+                onPaid={() => { setHasPaid(true); setPaymentModalOpen(false) }}
+                onClose={() => setPaymentModalOpen(false)}
+              />
+            )}
           </div>
-          <div>
+          <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-white font-black text-xl">{stream.title}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse">AO VIVO</span>
-              <span className="text-gray-500 text-sm">kick.com/{stream.kick_channel}</span>
-            </div>
+            <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse shrink-0">AO VIVO</span>
           </div>
         </div>
 
