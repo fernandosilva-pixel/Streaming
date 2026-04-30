@@ -39,7 +39,7 @@ export default function JogoPage({ params }: Props) {
   const [soopOffline, setSoopOffline] = useState(false)
 
   const [previewActive, setPreviewActive] = useState(true)
-  const [previewSeconds, setPreviewSeconds] = useState(60)
+  const [previewSeconds, setPreviewSeconds] = useState(150)
 
   const playerRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -114,7 +114,7 @@ export default function JogoPage({ params }: Props) {
         return
       }
     } else {
-      endsAt = now + 60_000
+      endsAt = now + 150_000
       sessionStorage.setItem(previewKey, String(endsAt))
     }
 
