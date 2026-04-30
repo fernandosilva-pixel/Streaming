@@ -81,10 +81,15 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
 
-  // Carrossel extra (imagens adicionais)
+  // Carrossel extra (imagens adicionais do hero)
   const [extraBanners, setExtraBanners] = useState<Banner[]>([])
   const [extraUploading, setExtraUploading] = useState(false)
   const [isExtraDragging, setIsExtraDragging] = useState(false)
+
+  // Próximos Jogos (carousel_banners)
+  const [carouselBanners, setCarouselBanners] = useState<{ id: string; image_url: string; display_order: number }[]>([])
+  const [carouselUploading, setCarouselUploading] = useState(false)
+  const [isCarouselDragging, setIsCarouselDragging] = useState(false)
 
   // Fixtures / jogo em destaque
   const [fixtures, setFixtures] = useState<Fixture[]>([])
@@ -134,6 +139,7 @@ export default function AdminPage() {
     if (authChecked) {
       loadBanner()
       loadExtraBanners()
+      loadCarouselBanners()
       loadLogo()
       loadStreams()
     }
@@ -323,6 +329,37 @@ export default function AdminPage() {
   async function deleteExtraBanner(id: string) {
     await supabase.from('banner').delete().eq('id', id)
     setExtraBanners(prev => prev.filter(b => b.id !== id))
+  }
+
+  async function deleteMainBanner() {
+    if (!banner) return
+    if (!confirm('Remover o banner principal? A página inicial ficará sem banner.')) return
+    await supabase.from('banner').delete().eq('id', banner.id)
+    setBanner(null)
+    setPreviewUrl(null)
+  }
+
+  async function loadCarouselBanners() {
+    const { data } = await supabase.from('carousel_banners').select('*').order('display_order')
+    setCarouselBanners(data ?? [])
+  }
+
+  async function handleCarouselFile(file: File) {
+    if (!file.type.startsWith('image/')) return
+    setCarouselUploading(true)
+    const ext = file.name.split('.').pop()
+    const fileName = `carousel-${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true })
+    if (error) { alert('Erro no upload: ' + error.message); setCarouselUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
+    await supabase.from('carousel_banners').insert({ image_url: publicUrl, display_order: carouselBanners.length })
+    await loadCarouselBanners()
+    setCarouselUploading(false)
+  }
+
+  async function deleteCarouselBanner(id: string) {
+    await supabase.from('carousel_banners').delete().eq('id', id)
+    setCarouselBanners(prev => prev.filter(b => b.id !== id))
   }
 
   async function loadLogo() {
@@ -576,8 +613,13 @@ export default function AdminPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {/* Banner principal como #1 */}
           {banner?.image_url && (
-            <div className="relative rounded-xl overflow-hidden border border-orange-500/40 bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
+            <div className="relative group rounded-xl overflow-hidden border border-orange-500/40 bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
               <img src={banner.image_url} alt="" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
+                <button onClick={deleteMainBanner} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
               <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">#1 principal</span>
             </div>
           )}
@@ -654,6 +696,42 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Próximos Jogos (carousel_banners) */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-white">Próximos Jogos</h2>
+          <p className="text-gray-500 text-sm mt-0.5">Resolução recomendada: 1200 × 80px</p>
+        </div>
+        <div
+          onDragOver={e => { e.preventDefault(); setIsCarouselDragging(true) }}
+          onDragLeave={() => setIsCarouselDragging(false)}
+          onDrop={e => { e.preventDefault(); setIsCarouselDragging(false); const f = e.dataTransfer.files[0]; if (f) handleCarouselFile(f) }}
+          onClick={() => document.getElementById('carouselInput')?.click()}
+          className={`relative border-2 border-dashed rounded-2xl cursor-pointer transition-all flex items-center justify-center h-28 ${isCarouselDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+        >
+          <input id="carouselInput" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCarouselFile(e.target.files[0])} />
+          {carouselUploading
+            ? <p className="text-white font-semibold text-sm">Enviando...</p>
+            : <div className="text-center"><p className="text-white font-semibold text-sm">Arraste o banner aqui</p><p className="text-gray-600 text-xs mt-1">ou clique para selecionar · adiciona ao carrossel</p></div>
+          }
+        </div>
+        {carouselBanners.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {carouselBanners.map((b, i) => (
+              <div key={b.id} className="relative group rounded-xl overflow-hidden border border-[#2A2A3A]" style={{ aspectRatio: '3/1' }}>
+                <img src={b.image_url} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center">
+                  <button onClick={() => deleteCarouselBanner(b.id)} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <span className="absolute top-1.5 left-1.5 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">#{i + 1}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
