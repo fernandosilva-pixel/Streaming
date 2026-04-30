@@ -587,85 +587,84 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* Upload banner principal — igual ao original */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold text-white">Banner</h2>
-        <div
-          onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={onDrop}
-          onClick={() => document.getElementById('fileInput')?.click()}
-          className={`relative border-2 border-dashed rounded-2xl overflow-hidden cursor-pointer transition-all ${isDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
-          style={{ minHeight: 220 }}
-        >
-          <input id="fileInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
-          {previewUrl ? (
-            <img src={previewUrl} alt="Preview" className="w-full object-cover rounded-2xl" style={{ maxHeight: 400 }} />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-56 gap-2">
-              <p className="text-white font-semibold">Arraste a imagem aqui</p>
-              <p className="text-gray-600 text-sm">ou clique para selecionar</p>
-            </div>
-          )}
-          {uploading && (
-            <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded-2xl">
-              <p className="text-white font-bold text-lg">Enviando...</p>
-            </div>
-          )}
-        </div>
-        {previewUrl && <p className="text-green-500 text-xs">Imagem carregada — clique em "Publicar" para salvar</p>}
-      </div>
-
-      {/* Imagens extras do carrossel */}
+      {/* Banners (unificado) */}
       <div className="space-y-3">
         <div>
-          <h2 className="text-lg font-bold text-white">Carrossel de banners</h2>
-          <p className="text-gray-500 text-sm mt-0.5">Adicione mais imagens para o banner rodar na página inicial. Arraste para adicionar.</p>
+          <h2 className="text-lg font-bold text-white">Banners</h2>
+          <p className="text-gray-500 text-sm mt-0.5">Adicione uma ou mais imagens — quando houver mais de uma, o sistema rotaciona automaticamente.</p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {/* Banner principal como #1 */}
-          {banner?.image_url && (
-            <div className="relative group rounded-xl overflow-hidden border border-orange-500/40 bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
-              <img src={banner.image_url} alt="" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
-                <button onClick={deleteMainBanner} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+        <div className="flex gap-3 items-stretch">
+          {/* Drop zone principal */}
+          <div
+            onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={onDrop}
+            onClick={() => document.getElementById('fileInput')?.click()}
+            className={`relative flex-1 border-2 border-dashed rounded-2xl overflow-hidden cursor-pointer transition-all ${isDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+            style={{ minHeight: 200 }}
+          >
+            <input id="fileInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+            {previewUrl ? (
+              <img src={previewUrl} alt="Preview" className="w-full h-full object-cover absolute inset-0" />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 p-6 h-full min-h-[200px]">
+                <p className="text-white font-semibold">Arraste o banner aqui</p>
+                <p className="text-gray-600 text-sm">ou clique para selecionar</p>
               </div>
-              <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">#1 principal</span>
-            </div>
-          )}
-
-          {/* Extras */}
-          {extraBanners.map((b, i) => (
-            <div key={b.id} className="relative group rounded-xl overflow-hidden border border-[#2A2A3A] bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
-              <img src={b.image_url} alt="" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
-                <button onClick={() => deleteExtraBanner(b.id)} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+            )}
+            {uploading && (
+              <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                <p className="text-white font-bold text-lg">Enviando...</p>
               </div>
-              <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded">#{i + 2}</span>
-            </div>
-          ))}
+            )}
+          </div>
 
-          {/* Zona de upload extra */}
+          {/* Botão adicionar mais */}
           <div
             onDragOver={e => { e.preventDefault(); setIsExtraDragging(true) }}
             onDragLeave={() => setIsExtraDragging(false)}
             onDrop={e => { e.preventDefault(); setIsExtraDragging(false); const f = e.dataTransfer.files[0]; if (f) handleExtraFile(f) }}
             onClick={() => document.getElementById('extraInput')?.click()}
-            className={`rounded-xl border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center gap-1 ${isExtraDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
-            style={{ aspectRatio: '16/9' }}
+            className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl cursor-pointer transition-all w-28 shrink-0 ${isExtraDragging ? 'border-orange-500 bg-orange-500/10 text-orange-400' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A] text-gray-500'}`}
           >
             <input id="extraInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleExtraFile(e.target.files[0])} />
             {extraUploading
-              ? <p className="text-white text-xs font-semibold">Enviando...</p>
-              : <><Plus className="w-5 h-5 text-gray-500" /><p className="text-gray-500 text-xs">Adicionar imagem</p></>
+              ? <p className="text-white text-xs font-semibold text-center px-2">Enviando...</p>
+              : <><Plus className="w-6 h-6" /><p className="text-xs text-center px-2">Adicionar mais imagens</p></>
             }
           </div>
         </div>
+
+        {/* Grid de todas as imagens salvas */}
+        {(banner?.image_url || extraBanners.length > 0) && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {banner?.image_url && (
+              <div className="relative group rounded-xl overflow-hidden border border-orange-500/40 bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
+                <img src={banner.image_url} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
+                  <button onClick={deleteMainBanner} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">#1 principal</span>
+              </div>
+            )}
+            {extraBanners.map((b, i) => (
+              <div key={b.id} className="relative group rounded-xl overflow-hidden border border-[#2A2A3A] bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
+                <img src={b.image_url} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
+                  <button onClick={() => deleteExtraBanner(b.id)} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded">#{i + 2}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {previewUrl && <p className="text-green-500 text-xs">Imagem carregada — clique em "Publicar" para salvar</p>}
       </div>
 
       {/* Jogo em destaque */}
