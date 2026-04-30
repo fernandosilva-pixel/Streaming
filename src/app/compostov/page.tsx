@@ -282,6 +282,30 @@ export default function AdminPage() {
     if (file) handleFile(file)
   }, [])
 
+  async function save() {
+    if (!previewUrl) return
+    setSaving(true)
+    if (banners.length === 0) {
+      await supabase.from('banner').insert({
+        image_url: previewUrl,
+        game_id: selectedGameId,
+        stream_id: selectedStreamId,
+      })
+    } else {
+      await supabase.from('banner').update({
+        image_url: previewUrl,
+        game_id: selectedGameId,
+        stream_id: selectedStreamId,
+      }).eq('id', banners[0].id)
+    }
+    setPreviewUrl(null)
+    setSelectedGameId(null)
+    setSelectedStreamId(null)
+    await loadBanners()
+    setSaving(false)
+    alert('Banner publicado com sucesso!')
+  }
+
   async function addBanner() {
     if (!previewUrl) return
     setSaving(true)
@@ -626,14 +650,71 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* Banners do carrossel */}
-      <div className="space-y-4">
+      {/* Upload banner */}
+      <div className="space-y-3">
+        <h2 className="text-lg font-bold text-white">Banner</h2>
+        <div
+          onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={onDrop}
+          onClick={() => document.getElementById('fileInput')?.click()}
+          className={`relative border-2 border-dashed rounded-2xl overflow-hidden cursor-pointer transition-all ${
+            isDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'
+          }`}
+          style={{ minHeight: 220 }}
+        >
+          <input id="fileInput" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+          {previewUrl ? (
+            <img src={previewUrl} alt="Preview" className="w-full object-cover rounded-2xl" style={{ maxHeight: 400 }} />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-56 gap-2">
+              <p className="text-white font-semibold">Arraste a imagem aqui</p>
+              <p className="text-gray-600 text-sm">ou clique para selecionar</p>
+            </div>
+          )}
+          {uploading && (
+            <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded-2xl">
+              <p className="text-white font-bold text-lg">Enviando...</p>
+            </div>
+          )}
+        </div>
+        {previewUrl && (
+          <p className="text-green-500 text-xs">Imagem carregada — clique em "Publicar" para salvar</p>
+        )}
+
+        {/* Stream vinculada */}
         <div>
-          <h2 className="text-lg font-bold text-white">Banners do Carrossel</h2>
-          <p className="text-gray-500 text-sm mt-0.5">Cada banner aparece no carrossel da página inicial, rotacionando a cada 5 segundos.</p>
+          <label className="text-gray-400 text-xs block mb-1.5">Transmissão vinculada (botão "Assistir Agora")</label>
+          <select
+            value={selectedStreamId ?? ''}
+            onChange={e => setSelectedStreamId(e.target.value || null)}
+            className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
+          >
+            <option value="">Nenhuma</option>
+            {streams.map(s => (
+              <option key={s.id} value={s.id}>{s.title}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Carrossel — banners existentes + adicionar */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-white">Carrossel</h2>
+            <p className="text-gray-500 text-sm mt-0.5">Banners que aparecem na rotação da página inicial (5 em 5 segundos).</p>
+          </div>
+          <button
+            onClick={addBanner}
+            disabled={saving || uploading || !previewUrl}
+            className="flex items-center gap-1.5 bg-[#1A1A26] hover:bg-[#2A2A3A] disabled:opacity-40 disabled:cursor-not-allowed border border-[#2A2A3A] text-gray-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Adicionar ao carrossel
+          </button>
         </div>
 
-        {/* Banners existentes */}
         {banners.length === 0 ? (
           <div className="border border-dashed border-[#2A2A3A] rounded-xl py-8 text-center">
             <p className="text-gray-600 text-sm">Nenhum banner no carrossel ainda</p>
@@ -664,61 +745,6 @@ export default function AdminPage() {
             })}
           </div>
         )}
-
-        {/* Adicionar novo banner */}
-        <div className="space-y-3 border border-[#2A2A3A] rounded-2xl p-4 bg-[#0B0B0F]">
-          <p className="text-white text-sm font-semibold">Adicionar banner ao carrossel</p>
-
-          {/* Upload */}
-          <div
-            onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={onDrop}
-            onClick={() => document.getElementById('fileInput')?.click()}
-            className={`relative border-2 border-dashed rounded-2xl overflow-hidden cursor-pointer transition-all ${
-              isDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'
-            }`}
-            style={{ minHeight: 180 }}
-          >
-            <input id="fileInput" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
-            {previewUrl ? (
-              <img src={previewUrl} alt="Preview" className="w-full object-cover rounded-2xl" style={{ maxHeight: 300 }} />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-44 gap-2">
-                <p className="text-white font-semibold">Arraste a imagem aqui</p>
-                <p className="text-gray-600 text-sm">ou clique para selecionar</p>
-              </div>
-            )}
-            {uploading && (
-              <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded-2xl">
-                <p className="text-white font-bold text-lg">Enviando...</p>
-              </div>
-            )}
-          </div>
-
-          {/* Stream vinculada */}
-          <div>
-            <label className="text-gray-400 text-xs block mb-1.5">Transmissão vinculada (botão "Assistir Agora")</label>
-            <select
-              value={selectedStreamId ?? ''}
-              onChange={e => setSelectedStreamId(e.target.value || null)}
-              className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
-            >
-              <option value="">Nenhuma</option>
-              {streams.map(s => (
-                <option key={s.id} value={s.id}>{s.title}</option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            onClick={addBanner}
-            disabled={saving || uploading || !previewUrl}
-            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all text-sm"
-          >
-            {saving ? 'Publicando...' : 'Adicionar ao carrossel'}
-          </button>
-        </div>
       </div>
 
       {/* Jogo em destaque */}
@@ -783,6 +809,14 @@ export default function AdminPage() {
         )}
       </div>
 
+      {/* Publicar */}
+      <button
+        onClick={save}
+        disabled={saving || uploading || !previewUrl}
+        className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl transition-all text-lg"
+      >
+        {saving ? 'Publicando...' : 'Confirmar e publicar banner'}
+      </button>
     </div>
   )
 }
