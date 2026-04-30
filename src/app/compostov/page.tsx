@@ -283,12 +283,22 @@ export default function AdminPage() {
     }
   }
 
+  function isImageFile(file: File) {
+    return file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.svg')
+  }
+
+  function getContentType(file: File) {
+    return file.type || (file.name.toLowerCase().endsWith('.svg') ? 'image/svg+xml' : 'application/octet-stream')
+  }
+
   async function handleFile(file: File) {
-    if (!file.type.startsWith('image/')) return
+    if (!isImageFile(file)) return
     setUploading(true)
     const ext = file.name.split('.').pop()
+    const fileName = `banner-${Date.now()}.${ext}`
+    const contentType = getContentType(file)
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(
-      (await supabase.storage.from('banners').upload(`banner-${Date.now()}.${ext}`, file, { upsert: true })).data!.path
+      (await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })).data!.path
     )
     setPreviewUrl(publicUrl)
     setUploading(false)
@@ -314,11 +324,12 @@ export default function AdminPage() {
 
   // Carrossel extra: upload direto, salva como nova linha
   async function handleExtraFile(file: File) {
-    if (!file.type.startsWith('image/')) return
+    if (!isImageFile(file)) return
     setExtraUploading(true)
     const ext = file.name.split('.').pop()
     const fileName = `banner-extra-${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true })
+    const contentType = getContentType(file)
+    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
     if (error) { alert('Erro no upload: ' + error.message); setExtraUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
     await supabase.from('banner').insert({ image_url: publicUrl, game_id: null, stream_id: banner?.stream_id ?? null })
@@ -345,11 +356,12 @@ export default function AdminPage() {
   }
 
   async function handleCarouselFile(file: File) {
-    if (!file.type.startsWith('image/')) return
+    if (!isImageFile(file)) return
     setCarouselUploading(true)
     const ext = file.name.split('.').pop()
     const fileName = `carousel-${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true })
+    const contentType = getContentType(file)
+    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
     if (error) { alert('Erro no upload: ' + error.message); setCarouselUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
     await supabase.from('carousel_banners').insert({ image_url: publicUrl, display_order: carouselBanners.length })
@@ -368,11 +380,12 @@ export default function AdminPage() {
   }
 
   async function handleLogoFile(file: File) {
-    if (!file.type.startsWith('image/')) return
+    if (!isImageFile(file)) return
     setLogoUploading(true); setLogoSaved(false)
     const ext = file.name.split('.').pop()
     const fileName = `logo-${Date.now()}.${ext}`
-    const { error: storageError } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true })
+    const contentType = getContentType(file)
+    const { error: storageError } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
     if (storageError) { alert('Erro no upload: ' + storageError.message); setLogoUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
     const { error: dbError } = settingsId
@@ -443,7 +456,7 @@ export default function AdminPage() {
             onClick={() => document.getElementById('logoInput')?.click()}
             className={`flex-1 border-2 border-dashed rounded-2xl cursor-pointer transition-all flex items-center justify-center h-14 ${isLogoDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
           >
-            <input id="logoInput" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleLogoFile(e.target.files[0])} />
+            <input id="logoInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleLogoFile(e.target.files[0])} />
             {logoUploading ? <p className="text-white text-sm font-semibold">Enviando...</p> : <p className="text-gray-500 text-sm">{logoUrl ? 'Arraste para substituir a logo' : 'Arraste a logo aqui ou clique'}</p>}
           </div>
         </div>
@@ -585,7 +598,7 @@ export default function AdminPage() {
           className={`relative border-2 border-dashed rounded-2xl overflow-hidden cursor-pointer transition-all ${isDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
           style={{ minHeight: 220 }}
         >
-          <input id="fileInput" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+          <input id="fileInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
           {previewUrl ? (
             <img src={previewUrl} alt="Preview" className="w-full object-cover rounded-2xl" style={{ maxHeight: 400 }} />
           ) : (
@@ -646,7 +659,7 @@ export default function AdminPage() {
             className={`rounded-xl border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center gap-1 ${isExtraDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
             style={{ aspectRatio: '16/9' }}
           >
-            <input id="extraInput" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleExtraFile(e.target.files[0])} />
+            <input id="extraInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleExtraFile(e.target.files[0])} />
             {extraUploading
               ? <p className="text-white text-xs font-semibold">Enviando...</p>
               : <><Plus className="w-5 h-5 text-gray-500" /><p className="text-gray-500 text-xs">Adicionar imagem</p></>
@@ -713,7 +726,7 @@ export default function AdminPage() {
           onClick={() => document.getElementById('carouselInput')?.click()}
           className={`relative border-2 border-dashed rounded-2xl cursor-pointer transition-all flex items-center justify-center h-28 ${isCarouselDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
         >
-          <input id="carouselInput" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCarouselFile(e.target.files[0])} />
+          <input id="carouselInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleCarouselFile(e.target.files[0])} />
           {carouselUploading
             ? <p className="text-white font-semibold text-sm">Enviando...</p>
             : <div className="text-center"><p className="text-white font-semibold text-sm">Arraste o banner aqui</p><p className="text-gray-600 text-xs mt-1">ou clique para selecionar · adiciona ao carrossel</p></div>
