@@ -54,7 +54,10 @@ export default function GameCarousel() {
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-bold text-white">Próximos Jogos</h2>
-    <section className="relative overflow-hidden rounded-xl border border-[#2A2A3A] bg-[#0B0B0F]" style={{ height: 80 }}>
+    <section className="relative overflow-hidden rounded-xl border border-[#2A2A3A] mx-auto max-w-full" style={{ width: 'fit-content' }}>
+      {/* Spacer invisível: define as dimensões naturais da imagem para o container */}
+      <img src={banners[0].image_url} alt="" aria-hidden className="invisible block h-20 w-auto max-w-full" />
+
       {banners.map((b, i) => (
         <div
           key={b.id}
@@ -63,7 +66,7 @@ export default function GameCarousel() {
           <img
             src={b.image_url}
             alt="Jogo em destaque"
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
           />
         </div>
       ))}
