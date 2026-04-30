@@ -246,8 +246,11 @@ export default function JogoPage({ params }: Props) {
               : { position: 'relative', paddingTop: '56.25%', overflow: 'hidden' }
             }
           >
-            {/* Player always renders — blurred when login/payment required */}
-            {renderPlayer(stream, isBlurred)}
+            {/* Player — hidden when payment required (stops video and audio completely) */}
+            {needsPayment
+              ? <div className="absolute inset-0 bg-black" />
+              : renderPlayer(stream, isBlurred)
+            }
 
             {/* Click shield — always active, blocks all interaction with the iframe */}
             <div className="absolute inset-0 z-10" />
