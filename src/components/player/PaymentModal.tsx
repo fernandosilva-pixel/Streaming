@@ -3,20 +3,23 @@
 import { useEffect, useState, useRef } from 'react'
 import QRCode from 'react-qr-code'
 import { Copy, Check, X } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 interface Props {
   streamId: string
   userPhone: string
   userName: string
   amount: number
+  paymentMethod: 'bspay' | 'fixed_qr'
+  fixedQrUrl?: string | null
   onPaid: () => void
   onClose: () => void
 }
 
-export default function PaymentModal({ streamId, userPhone, userName, amount, onPaid, onClose }: Props) {
+export default function PaymentModal({ streamId, userPhone, userName, amount, paymentMethod, fixedQrUrl, onPaid, onClose }: Props) {
   const [qrcode, setQrcode] = useState<string | null>(null)
   const [transactionId, setTransactionId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(paymentMethod === 'bspay')
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
   const [paid, setPaid] = useState(false)
@@ -25,6 +28,7 @@ export default function PaymentModal({ streamId, userPhone, userName, amount, on
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
+    if (paymentMethod !== 'bspay') return
     async function createPayment() {
       try {
         const res = await fetch('/api/pix/create', {
@@ -75,6 +79,19 @@ export default function PaymentModal({ streamId, userPhone, userName, amount, on
     setVerifying(false)
   }
 
+  async function handleFixedQrPaid() {
+    setVerifying(true)
+    setVerifyMsg('')
+    const { error } = await supabase.from('payments').insert({
+      stream_id: streamId,
+      user_phone: userPhone,
+      status: 'PAID',
+    })
+    if (error) { setVerifyMsg('Erro ao registrar. Tente novamente.'); setVerifying(false); return }
+    setPaid(true)
+    setTimeout(onPaid, 1500)
+  }
+
   function copy() {
     if (!qrcode) return
     navigator.clipboard.writeText(qrcode)
@@ -107,44 +124,68 @@ export default function PaymentModal({ streamId, userPhone, userName, amount, on
               </p>
             </div>
 
-            {loading && (
-              <div className="py-10 text-center">
-                <p className="text-gray-500 text-sm">Gerando QR Code...</p>
-              </div>
-            )}
-
-            {error && (
-              <div className="py-6 text-center">
-                <p className="text-red-500 text-sm">{error}</p>
-              </div>
-            )}
-
-            {qrcode && !error && (
+            {paymentMethod === 'fixed_qr' ? (
               <div className="space-y-4">
-                <div className="bg-white rounded-xl p-4 flex items-center justify-center">
-                  <QRCode value={qrcode} size={200} />
-                </div>
+                {fixedQrUrl ? (
+                  <div className="bg-white rounded-xl p-4 flex items-center justify-center">
+                    <img src={fixedQrUrl} alt="QR Code PIX" className="w-48 h-48 object-contain" />
+                  </div>
+                ) : (
+                  <div className="py-6 text-center">
+                    <p className="text-red-500 text-sm">QR Code não configurado.</p>
+                  </div>
+                )}
                 <button
-                  onClick={copy}
-                  className="w-full flex items-center justify-center gap-2 bg-[#1A1A26] hover:bg-[#2A2A3A] border border-[#2A2A3A] text-white rounded-xl px-4 py-3 text-sm transition-all"
-                >
-                  {copied
-                    ? <><Check className="w-4 h-4 text-green-500" /> Copiado!</>
-                    : <><Copy className="w-4 h-4" /> Copiar código PIX</>
-                  }
-                </button>
-                <button
-                  onClick={checkManually}
+                  onClick={handleFixedQrPaid}
                   disabled={verifying}
                   className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold rounded-xl px-4 py-3 text-sm transition-all"
                 >
-                  {verifying ? 'Verificando...' : 'Já paguei'}
+                  {verifying ? 'Registrando...' : 'Já paguei'}
                 </button>
-                {verifyMsg && <p className="text-yellow-500 text-xs text-center">{verifyMsg}</p>}
-                <p className="text-gray-600 text-xs text-center">
-                  Aguardando confirmação automática do pagamento...
-                </p>
+                {verifyMsg && <p className="text-red-500 text-xs text-center">{verifyMsg}</p>}
               </div>
+            ) : (
+              <>
+                {loading && (
+                  <div className="py-10 text-center">
+                    <p className="text-gray-500 text-sm">Gerando QR Code...</p>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="py-6 text-center">
+                    <p className="text-red-500 text-sm">{error}</p>
+                  </div>
+                )}
+
+                {qrcode && !error && (
+                  <div className="space-y-4">
+                    <div className="bg-white rounded-xl p-4 flex items-center justify-center">
+                      <QRCode value={qrcode} size={200} />
+                    </div>
+                    <button
+                      onClick={copy}
+                      className="w-full flex items-center justify-center gap-2 bg-[#1A1A26] hover:bg-[#2A2A3A] border border-[#2A2A3A] text-white rounded-xl px-4 py-3 text-sm transition-all"
+                    >
+                      {copied
+                        ? <><Check className="w-4 h-4 text-green-500" /> Copiado!</>
+                        : <><Copy className="w-4 h-4" /> Copiar código PIX</>
+                      }
+                    </button>
+                    <button
+                      onClick={checkManually}
+                      disabled={verifying}
+                      className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold rounded-xl px-4 py-3 text-sm transition-all"
+                    >
+                      {verifying ? 'Verificando...' : 'Já paguei'}
+                    </button>
+                    {verifyMsg && <p className="text-yellow-500 text-xs text-center">{verifyMsg}</p>}
+                    <p className="text-gray-600 text-xs text-center">
+                      Aguardando confirmação automática do pagamento...
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

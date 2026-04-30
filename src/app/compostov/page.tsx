@@ -37,6 +37,8 @@ type Stream = {
   crop_enabled: boolean
   charge_enabled: boolean
   charge_amount: number
+  payment_method: 'bspay' | 'fixed_qr' | null
+  fixed_qr_url: string | null
 }
 
 function FixtureRow({ f, selected, onSelect }: { f: Fixture; selected: boolean; onSelect: () => void }) {
@@ -127,6 +129,14 @@ export default function AdminPage() {
   const [savingChannel, setSavingChannel] = useState<string | null>(null)
   const [detectingBroad, setDetectingBroad] = useState<string | null>(null)
   const [editingStreamId, setEditingStreamId] = useState<string | null>(null)
+
+  // Modal de método de pagamento
+  const [chargeModal, setChargeModal] = useState<{ id: string } | null>(null)
+  const [chargeModalMethod, setChargeModalMethod] = useState<'bspay' | 'fixed_qr'>('bspay')
+  const [chargeModalQrUrl, setChargeModalQrUrl] = useState<string | null>(null)
+  const [chargeModalUploading, setChargeModalUploading] = useState(false)
+  const [chargeModalSaving, setChargeModalSaving] = useState(false)
+  const [chargeModalDragging, setChargeModalDragging] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -395,6 +405,38 @@ export default function AdminPage() {
     setLogoUrl(publicUrl); setLogoUploading(false); setLogoSaved(true)
   }
 
+  async function handleChargeModalQrFile(file: File) {
+    if (!isImageFile(file)) return
+    setChargeModalUploading(true)
+    const ext = file.name.split('.').pop()
+    const fileName = `qr-fixo-${Date.now()}.${ext}`
+    const contentType = getContentType(file)
+    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
+    if (error) { alert('Erro no upload: ' + error.message); setChargeModalUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
+    setChargeModalQrUrl(publicUrl)
+    setChargeModalUploading(false)
+  }
+
+  async function confirmChargeModal() {
+    if (!chargeModal) return
+    if (chargeModalMethod === 'fixed_qr' && !chargeModalQrUrl) { alert('Faça upload do QR Code primeiro'); return }
+    setChargeModalSaving(true)
+    const { error } = await supabase.from('streams').update({
+      charge_enabled: true,
+      payment_method: chargeModalMethod,
+      fixed_qr_url: chargeModalMethod === 'fixed_qr' ? chargeModalQrUrl : null,
+    }).eq('id', chargeModal.id)
+    if (error) { alert('Erro: ' + error.message); setChargeModalSaving(false); return }
+    setStreams(prev => prev.map(s => s.id === chargeModal.id
+      ? { ...s, charge_enabled: true, payment_method: chargeModalMethod, fixed_qr_url: chargeModalMethod === 'fixed_qr' ? chargeModalQrUrl : null }
+      : s
+    ))
+    setChargeModal(null)
+    setChargeModalQrUrl(null)
+    setChargeModalSaving(false)
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.replace('/compostov/login')
@@ -526,7 +568,16 @@ export default function AdminPage() {
                     {isHighlighted && <span className="text-[10px] bg-orange-500 text-white font-bold px-1.5 py-0.5 rounded shrink-0">LIVE</span>}
                     <p className="text-white text-sm font-semibold truncate flex-1 min-w-0">{s.title}</p>
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      <button onClick={() => toggleCharge(s.id, !s.charge_enabled)}
+                      <button
+                        onClick={() => {
+                          if (s.charge_enabled) {
+                            toggleCharge(s.id, false)
+                          } else {
+                            setChargeModalMethod('bspay')
+                            setChargeModalQrUrl(null)
+                            setChargeModal({ id: s.id })
+                          }
+                        }}
                         className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.charge_enabled ? 'bg-green-600/20 text-green-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-green-600/20 hover:text-green-400'}`}
                         title={s.charge_enabled ? 'Cobrança ativa — clique para desativar' : 'Ativar cobrança'}>
                         {s.charge_enabled ? 'Cobrança ON' : 'Cobrança OFF'}
@@ -756,6 +807,66 @@ export default function AdminPage() {
       >
         {saving ? 'Publicando...' : 'Confirmar e publicar banner'}
       </button>
+
+      {/* Modal — método de pagamento */}
+      {chargeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setChargeModal(null)} />
+          <div className="relative w-full max-w-md bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-6 space-y-5 shadow-2xl">
+            <button onClick={() => setChargeModal(null)} className="absolute top-4 right-4 text-gray-600 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-black text-white">Ativar cobrança</h2>
+              <p className="text-gray-500 text-sm mt-1">Escolha o método de pagamento</p>
+            </div>
+
+            <div className="space-y-2">
+              {(['bspay', 'fixed_qr'] as const).map(method => (
+                <button
+                  key={method}
+                  onClick={() => setChargeModalMethod(method)}
+                  className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${chargeModalMethod === method ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#0B0B0F] hover:border-orange-500/30'}`}
+                >
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${chargeModalMethod === method ? 'border-orange-500' : 'border-gray-600'}`}>
+                    {chargeModalMethod === method && <div className="w-2 h-2 rounded-full bg-orange-500" />}
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">{method === 'bspay' ? 'API BSPay' : 'QR Code Fixo'}</p>
+                    <p className="text-gray-500 text-xs">{method === 'bspay' ? 'QR Code dinâmico com verificação automática' : 'Imagem fixa do seu PIX'}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {chargeModalMethod === 'fixed_qr' && (
+              <div
+                onDragOver={e => { e.preventDefault(); setChargeModalDragging(true) }}
+                onDragLeave={() => setChargeModalDragging(false)}
+                onDrop={e => { e.preventDefault(); setChargeModalDragging(false); const f = e.dataTransfer.files[0]; if (f) handleChargeModalQrFile(f) }}
+                onClick={() => document.getElementById('chargeModalQrInput')?.click()}
+                className={`border-2 border-dashed rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center gap-2 h-36 ${chargeModalDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#0B0B0F]'}`}
+              >
+                <input id="chargeModalQrInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleChargeModalQrFile(e.target.files[0])} />
+                {chargeModalUploading
+                  ? <p className="text-white text-sm">Enviando...</p>
+                  : chargeModalQrUrl
+                    ? <img src={chargeModalQrUrl} alt="QR Code" className="h-28 object-contain" />
+                    : <><Plus className="w-5 h-5 text-gray-500" /><p className="text-gray-500 text-sm">Arraste a imagem do QR Code</p></>
+                }
+              </div>
+            )}
+
+            <button
+              onClick={confirmChargeModal}
+              disabled={chargeModalSaving || (chargeModalMethod === 'fixed_qr' && !chargeModalQrUrl)}
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
+            >
+              {chargeModalSaving ? 'Salvando...' : 'Confirmar'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

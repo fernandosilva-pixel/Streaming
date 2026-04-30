@@ -23,6 +23,8 @@ type Stream = {
   crop_enabled: boolean
   charge_enabled: boolean
   charge_amount: number
+  payment_method: 'bspay' | 'fixed_qr' | null
+  fixed_qr_url: string | null
 }
 
 export default function JogoPage({ params }: Props) {
@@ -325,6 +327,8 @@ export default function JogoPage({ params }: Props) {
                 userPhone={user.phone}
                 userName={user.name}
                 amount={stream.charge_amount}
+                paymentMethod={stream.payment_method ?? 'bspay'}
+                fixedQrUrl={stream.fixed_qr_url}
                 onPaid={() => { setHasPaid(true); setPaymentModalOpen(false) }}
                 onClose={() => setPaymentModalOpen(false)}
               />
