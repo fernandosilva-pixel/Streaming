@@ -190,9 +190,10 @@ export default function JogoPage({ params }: Props) {
     }
 
     // Kick
+    const parent = typeof window !== 'undefined' ? window.location.hostname : ''
     return (
       <iframe
-        src={`https://player.kick.com/${s.kick_channel}?autoplay=true`}
+        src={`https://player.kick.com/${s.kick_channel}?autoplay=true&parent=${parent}`}
         allowFullScreen
         allow="autoplay; fullscreen; picture-in-picture"
         style={{ ...cropStyle, ...blurExtra }}
