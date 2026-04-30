@@ -230,9 +230,14 @@ export default function JogoPage({ params }: Props) {
             {/* Player always renders — blurred when login/payment required */}
             {renderPlayer(stream, isBlurred)}
 
+            {/* Click shield — blocks all interaction with the iframe during preview and overlays */}
+            {(showCountdown || isBlurred) && (
+              <div className="absolute inset-0 z-10" />
+            )}
+
             {/* Preview countdown badge */}
             {showCountdown && (
-              <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1.5 rounded-lg pointer-events-none">
+              <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1.5 rounded-lg pointer-events-none">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
                 Preview: {previewSeconds}s
               </div>
@@ -240,7 +245,7 @@ export default function JogoPage({ params }: Props) {
 
             {/* Login overlay */}
             {needsLogin && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/50">
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/50">
                 <div className="w-14 h-14 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
                   <Lock className="w-6 h-6 text-orange-500" />
                 </div>
@@ -258,12 +263,9 @@ export default function JogoPage({ params }: Props) {
               </div>
             )}
 
-            {/* Payment overlay — pointer-events-none allows iframe audio to play on desktop */}
+            {/* Payment overlay */}
             {needsPayment && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/50 pointer-events-none">
-                {/* Block Kick/Soop branding corners so user can't accidentally navigate away */}
-                <div className="absolute top-0 left-0 w-32 h-10 pointer-events-auto" />
-                <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-auto" />
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/50">
                 <div className="w-14 h-14 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
                   <DollarSign className="w-6 h-6 text-orange-500" />
                 </div>
@@ -275,7 +277,7 @@ export default function JogoPage({ params }: Props) {
                 </div>
                 <button
                   onClick={() => setPaymentModalOpen(true)}
-                  className="animate-orange-pulse text-orange-500 font-bold border border-orange-500 rounded-full px-8 py-3 transition-all hover:bg-orange-500/10 pointer-events-auto"
+                  className="animate-orange-pulse text-orange-500 font-bold border border-orange-500 rounded-full px-8 py-3 transition-all hover:bg-orange-500/10"
                 >
                   Pagar e assistir
                 </button>
