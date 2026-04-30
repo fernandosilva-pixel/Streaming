@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Lock, DollarSign } from 'lucide-react'
+import { ChevronLeft, Lock, DollarSign, Maximize, Minimize } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { use } from 'react'
@@ -40,6 +40,21 @@ export default function JogoPage({ params }: Props) {
 
   const [previewActive, setPreviewActive] = useState(true)
   const [previewSeconds, setPreviewSeconds] = useState(60)
+
+  const playerRef = useRef<HTMLDivElement>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  function toggleFullscreen() {
+    if (!playerRef.current) return
+    if (document.fullscreenElement) document.exitFullscreen()
+    else playerRef.current.requestFullscreen()
+  }
 
   useEffect(() => {
     supabase.from('streams').select('*').eq('id', id).single().then(({ data }) => {
@@ -224,16 +239,26 @@ export default function JogoPage({ params }: Props) {
         {/* Player */}
         <div className="xl:col-span-2 space-y-3">
           <div
+            ref={playerRef}
             className="rounded-xl border border-[#2A2A3A] bg-black w-full"
-            style={{ position: 'relative', paddingTop: '56.25%', overflow: 'hidden' }}
+            style={isFullscreen
+              ? { position: 'relative', height: '100%', overflow: 'hidden' }
+              : { position: 'relative', paddingTop: '56.25%', overflow: 'hidden' }
+            }
           >
             {/* Player always renders — blurred when login/payment required */}
             {renderPlayer(stream, isBlurred)}
 
-            {/* Click shield — blocks all interaction with the iframe during preview and overlays */}
-            {(showCountdown || isBlurred) && (
-              <div className="absolute inset-0 z-10" />
-            )}
+            {/* Click shield — always active, blocks all interaction with the iframe */}
+            <div className="absolute inset-0 z-10" />
+
+            {/* Fullscreen button */}
+            <button
+              onClick={toggleFullscreen}
+              className="absolute bottom-3 right-3 z-30 bg-black/60 hover:bg-black/90 text-white rounded-lg p-2 transition-all"
+            >
+              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            </button>
 
             {/* Preview countdown badge */}
             {showCountdown && (
