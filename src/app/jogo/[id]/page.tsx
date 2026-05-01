@@ -246,8 +246,8 @@ export default function JogoPage({ params }: Props) {
         <div className="xl:col-span-2 space-y-3">
           {/* Wrapper fullscreen — ref aqui fora do iframe */}
           <div ref={playerRef} className="relative">
-          <div style={!isFullscreen ? { transform: 'skewX(-3deg)', border: '1px solid #2A2A3A', borderRadius: 16, overflow: 'hidden' } : {}}>
-          <div style={!isFullscreen ? { transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' } : {}}>
+          <div className={!isFullscreen ? 'skew-frame' : ''}>
+          <div className={!isFullscreen ? 'skew-frame-inner' : ''}>
           <div
             className="bg-black w-full"
             style={isFullscreen
@@ -363,8 +363,8 @@ export default function JogoPage({ params }: Props) {
         {/* Chat */}
         <div className="xl:col-span-1">
           <div className="sticky top-20" style={{ height: 560 }}>
-            <div style={{ transform: 'skewX(-3deg)', border: '1px solid #2A2A3A', borderRadius: 16, overflow: 'hidden', height: '100%' }}>
-              <div style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%', height: '100%', background: '#0B0B0F' }}>
+            <div className="skew-frame" style={{ height: '100%' }}>
+              <div className="skew-frame-inner" style={{ height: '100%', background: '#0B0B0F' }}>
                 <ChatBox streamId={stream.id} />
               </div>
             </div>

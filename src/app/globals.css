@@ -177,3 +177,23 @@ body {
 .animate-fade-in-up {
   animation: fadeInUp 0.5s ease-out forwards;
 }
+
+/* Skew frame — only activates on xl+ (≥1280px) */
+.skew-frame {
+  border: 1px solid #2A2A3A;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.skew-frame-inner {
+  /* no transform on mobile */
+}
+@media (min-width: 1280px) {
+  .skew-frame {
+    transform: skewX(-3deg);
+  }
+  .skew-frame-inner {
+    transform: skewX(3deg);
+    width: 107%;
+    margin-left: -3.5%;
+  }
+}
