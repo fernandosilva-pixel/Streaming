@@ -629,13 +629,14 @@ export default function AdminPage() {
     setActivePopup(data ?? null)
   }
 
-  async function sendPopup() {
-    if (!popupMessage.trim()) return
+  async function sendPopup(overrideText?: string) {
+    const text = overrideText ?? popupMessage
+    if (!text.trim()) return
     setSendingPopup(true)
     await supabase.from('popup_messages').update({ active: false }).eq('active', true)
     const { data } = await supabase
       .from('popup_messages')
-      .insert({ message: popupMessage.trim(), active: true })
+      .insert({ message: text.trim(), active: true })
       .select()
       .single()
     if (data) setActivePopup(data)
@@ -1306,16 +1307,35 @@ export default function AdminPage() {
               </button>
             </div>
           )}
+          {/* Templates rápidos */}
+          <div>
+            <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-2">Templates rápidos</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: '⚡ Instabilidade', text: 'Instabilidade na transmissão, voltamos em alguns segundos.' },
+              ].map(tpl => (
+                <button
+                  key={tpl.label}
+                  onClick={() => sendPopup(tpl.text)}
+                  disabled={sendingPopup}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-orange-500/40 text-orange-400 hover:bg-orange-500/10 disabled:opacity-40 transition-all"
+                >
+                  {tpl.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex gap-2 items-start">
             <textarea
-              placeholder="Digite o texto do aviso para todos os usuários..."
+              placeholder="Ou escreva um aviso personalizado..."
               value={popupMessage}
               onChange={e => setPopupMessage(e.target.value)}
               rows={3}
               className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 resize-none"
             />
             <button
-              onClick={sendPopup}
+              onClick={() => sendPopup()}
               disabled={sendingPopup || !popupMessage.trim()}
               className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-5 py-2.5 rounded-xl transition-all text-sm"
             >

@@ -105,7 +105,7 @@ export default function PopupBanner() {
           </div>
 
           {/* Message */}
-          <p className="text-white/90 text-sm leading-relaxed text-center">{popup.message}</p>
+          <p className="text-white/90 text-sm leading-relaxed text-center whitespace-pre-wrap">{popup.message}</p>
 
           {/* Skewed "Entendi" button */}
           <div className="pt-1 pb-1">
