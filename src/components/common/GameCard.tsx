@@ -56,15 +56,24 @@ export default function GameCard({ game, variant = 'default', className }: GameC
 
   if (variant === 'featured') {
     return (
-      <Link href={`/jogo/${game.id}`}>
+      <div
+        className="overflow-hidden"
+        style={{
+          transform: 'skewX(-3deg)',
+          border: `1px solid ${isLive ? 'rgba(255,106,0,0.4)' : '#2A2A3A'}`,
+          borderRadius: '16px',
+          boxShadow: isLive ? '0 0 30px rgba(255,106,0,0.15)' : undefined,
+        }}
+      >
+      <Link href={`/jogo/${game.id}`} className="block">
         <div
           className={cn(
-            'group relative overflow-hidden rounded-2xl border cursor-pointer',
+            'group relative overflow-hidden cursor-pointer',
             'bg-gradient-to-br from-[#1A1A26] to-[#12121A]',
-            isLive ? 'border-orange-500/40 shadow-[0_0_30px_rgba(255,106,0,0.15)]' : 'border-[#2A2A3A]',
-            'hover:border-orange-500/60 hover:shadow-[0_0_40px_rgba(255,106,0,0.25)] transition-all duration-300',
+            'hover:shadow-[0_0_40px_rgba(255,106,0,0.25)] transition-all duration-300',
             className
           )}
+          style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' }}
         >
           {/* Top glow for live */}
           {isLive && (
@@ -146,22 +155,29 @@ export default function GameCard({ game, variant = 'default', className }: GameC
           </div>
         </div>
       </Link>
+      </div>
     );
   }
 
   // Default card
   return (
-    <Link href={`/jogo/${game.id}`}>
+    <div
+      className="overflow-hidden"
+      style={{
+        transform: 'skewX(-3deg)',
+        border: `1px solid ${isLive ? 'rgba(255,106,0,0.3)' : '#2A2A3A'}`,
+        borderRadius: '12px',
+      }}
+    >
+    <Link href={`/jogo/${game.id}`} className="block">
       <div
         className={cn(
-          'group relative overflow-hidden rounded-xl border cursor-pointer',
+          'group relative overflow-hidden cursor-pointer',
           'bg-[#1A1A26] transition-all duration-200',
-          isLive
-            ? 'border-orange-500/30 hover:border-orange-500/60 hover:shadow-[0_4px_20px_rgba(255,106,0,0.2)]'
-            : 'border-[#2A2A3A] hover:border-[#3A3A4A] hover:shadow-card',
-          'hover:-translate-y-0.5',
+          isLive ? 'hover:bg-[#1e1b2e]' : 'hover:bg-[#212132]',
           className
         )}
+        style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' }}
       >
         {isLive && (
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent" />
@@ -230,5 +246,6 @@ export default function GameCard({ game, variant = 'default', className }: GameC
         </div>
       </div>
     </Link>
+    </div>
   );
 }

@@ -96,9 +96,9 @@ function SkewButton({
                 boxShadow: '0 0 18px rgba(255,106,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)',
               }
             : {
-                background: 'rgba(255,255,255,0.04)',
-                border: '1.5px solid rgba(255,106,0,0.65)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+                background: 'linear-gradient(160deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.07) 40%, rgba(0,0,0,0.08) 100%)',
+                border: '1.5px solid rgba(255,106,0,0.5)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.12)',
               }
         }
         aria-hidden

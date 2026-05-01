@@ -14,24 +14,35 @@ export default function NewsSection() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Featured card */}
-        <div className="lg:col-span-1 h-full rounded-2xl border border-[#2A2A3A] bg-[#1A1A26] overflow-hidden">
-          <div className="h-52 bg-gradient-to-br from-orange-500/30 via-[#2A1A0A] to-[#12121A] flex items-center justify-center text-6xl">
-            ⚽
-          </div>
-          <div className="p-5 flex items-center justify-center" style={{ minHeight: 120 }}>
-            <p className="text-gray-600 font-bold tracking-widest text-sm">EM BREVE</p>
+        <div
+          className="lg:col-span-1 h-full overflow-hidden"
+          style={{ transform: 'skewX(-3deg)', border: '1px solid #2A2A3A', borderRadius: '16px' }}
+        >
+          <div className="h-full bg-[#1A1A26]" style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' }}>
+            <div className="h-52 bg-gradient-to-br from-orange-500/30 via-[#2A1A0A] to-[#12121A] flex items-center justify-center text-6xl">
+              ⚽
+            </div>
+            <div className="p-5 flex items-center justify-center" style={{ minHeight: 120 }}>
+              <p className="text-gray-600 font-bold tracking-widest text-sm">EM BREVE</p>
+            </div>
           </div>
         </div>
 
         {/* Smaller cards */}
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[0, 1, 2, 3].map(i => (
-            <div key={i} className="h-full flex gap-3 p-4 rounded-xl border border-[#2A2A3A] bg-[#1A1A26]">
-              <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-orange-500/20 to-[#2A1A0A] flex items-center justify-center text-2xl shrink-0">
-                ⚽
-              </div>
-              <div className="flex-1 flex items-center">
-                <p className="text-gray-600 font-bold tracking-widest text-xs">EM BREVE</p>
+            <div
+              key={i}
+              className="overflow-hidden"
+              style={{ transform: 'skewX(-3deg)', border: '1px solid #2A2A3A', borderRadius: '12px' }}
+            >
+              <div className="flex gap-3 p-4 bg-[#1A1A26]" style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' }}>
+                <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-orange-500/20 to-[#2A1A0A] flex items-center justify-center text-2xl shrink-0">
+                  ⚽
+                </div>
+                <div className="flex-1 flex items-center">
+                  <p className="text-gray-600 font-bold tracking-widest text-xs">EM BREVE</p>
+                </div>
               </div>
             </div>
           ))}
