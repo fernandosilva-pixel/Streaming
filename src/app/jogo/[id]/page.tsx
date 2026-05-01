@@ -244,10 +244,10 @@ export default function JogoPage({ params }: Props) {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         {/* Player */}
         <div className="xl:col-span-2 space-y-3">
-          {/* AO VIVO badge above iframe */}
+          {/* Hint badge above iframe */}
           <div className="flex items-center justify-center">
-            <div style={{ transform: 'skewX(-12deg)', background: '#DC2626', borderRadius: 6, padding: '3px 14px' }}>
-              <span style={{ transform: 'skewX(12deg)', display: 'inline-block' }} className="text-white text-xs font-black tracking-widest animate-pulse">AO VIVO</span>
+            <div style={{ transform: 'skewX(-12deg)', background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,106,0,0.3)', borderRadius: 6, padding: '3px 14px' }}>
+              <span style={{ transform: 'skewX(12deg)', display: 'inline-block' }} className="text-orange-400 text-xs font-semibold">Som desativado? Coloque em tela cheia e aumente o volume.</span>
             </div>
           </div>
 
@@ -369,8 +369,12 @@ export default function JogoPage({ params }: Props) {
 
         {/* Chat */}
         <div className="xl:col-span-1">
-          <div className="sticky top-20 rounded-xl overflow-hidden border border-[#2A2A3A] bg-[#0B0B0F]" style={{ height: 560 }}>
-            <ChatBox streamId={stream.id} />
+          <div className="sticky top-20" style={{ height: 560 }}>
+            <div className="skew-frame" style={{ height: '100%' }}>
+              <div className="skew-frame-inner" style={{ height: '100%', background: '#0B0B0F' }}>
+                <ChatBox streamId={stream.id} />
+              </div>
+            </div>
           </div>
         </div>
       </div>

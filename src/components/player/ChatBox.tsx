@@ -113,9 +113,9 @@ export default function ChatBox({ streamId }: { streamId: string }) {
         ))}
       </div>
 
-      <form onSubmit={send} className="shrink-0 border-t border-[#2A2A3A] p-3 flex gap-2">
+      <div className="shrink-0 border-t border-[#2A2A3A] p-3">
         {user ? (
-          <>
+          <form onSubmit={send} className="flex gap-2">
             <input
               type="text"
               value={text}
@@ -131,17 +131,17 @@ export default function ChatBox({ streamId }: { streamId: string }) {
             >
               <Send className="w-4 h-4" />
             </button>
-          </>
+          </form>
         ) : (
           <button
             type="button"
             onClick={() => showModal('login')}
-            className="w-full text-center text-gray-500 hover:text-orange-500 text-sm transition-colors py-2"
+            className="block mx-auto text-gray-500 hover:text-orange-500 text-sm transition-colors py-2"
           >
             Entre para participar do chat
           </button>
         )}
-      </form>
+      </div>
     </div>
   )
 }
