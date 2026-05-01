@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Lock, DollarSign, Maximize } from 'lucide-react'
+import { ChevronLeft, Lock, DollarSign } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { use } from 'react'
@@ -46,9 +46,6 @@ export default function JogoPage({ params }: Props) {
 
   const playerRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [soundUnlocked, setSoundUnlocked] = useState(false)
-  const [soundCountdown, setSoundCountdown] = useState(0)
-  const soundTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement)
@@ -64,27 +61,7 @@ export default function JogoPage({ params }: Props) {
     }
     if (playerRef.current.requestFullscreen) {
       playerRef.current.requestFullscreen()
-    } else {
-      // iOS Safari não suporta requestFullscreen em divs — desbloqueia o iframe
-      // para o usuário tocar no botão nativo de fullscreen da Kick/Soop
-      activateSound()
     }
-  }
-
-  function activateSound() {
-    if (soundTimerRef.current) clearInterval(soundTimerRef.current)
-    setSoundUnlocked(true)
-    setSoundCountdown(5)
-    soundTimerRef.current = setInterval(() => {
-      setSoundCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(soundTimerRef.current!)
-          setSoundUnlocked(false)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
   }
 
   useEffect(() => {
@@ -185,8 +162,6 @@ export default function JogoPage({ params }: Props) {
 
   const source = stream.stream_source ?? 'kick'
 
-  const iframePointerEvents = soundUnlocked ? 'auto' : 'none'
-
   const cropStyle: React.CSSProperties = stream.crop_enabled ? {
     position: 'absolute',
     top: -65,
@@ -195,7 +170,6 @@ export default function JogoPage({ params }: Props) {
     height: 'calc(100% + 130px)',
     border: 'none',
     clipPath: 'inset(65px 0px 65px 0px)',
-    pointerEvents: iframePointerEvents,
   } : {
     position: 'absolute',
     top: 0,
@@ -203,7 +177,6 @@ export default function JogoPage({ params }: Props) {
     width: '100%',
     height: '100%',
     border: 'none',
-    pointerEvents: iframePointerEvents,
   }
 
   function renderPlayer(s: NonNullable<typeof stream>, blurred = false) {
@@ -286,19 +259,12 @@ export default function JogoPage({ params }: Props) {
               : renderPlayer(stream, isBlurred)
             }
 
-            {/* Overlay de instrução durante unlock */}
-            {soundUnlocked && !isBlurred && (
-              <div className="absolute inset-0 z-20 pointer-events-none">
-                <div className="absolute bottom-10 right-3 flex flex-col items-end gap-1">
-                  <div className="bg-orange-500 text-white font-black text-sm px-4 py-2.5 rounded-xl shadow-2xl whitespace-nowrap">
-                    TOQUE AQUI AGORA
-                  </div>
-                  <div className="flex items-center gap-2 pr-1">
-                    <span className="text-orange-300 text-xs font-bold">{soundCountdown}s</span>
-                    <span className="text-orange-500 text-4xl leading-none">↘</span>
-                  </div>
-                </div>
-              </div>
+            {/* Partial overlays: block Kick channel link (top) and logo (bottom-left) without covering native controls */}
+            {!isBlurred && !needsPayment && (
+              <>
+                <div className="absolute top-0 left-0 right-0 z-10" style={{ height: 48 }} />
+                <div className="absolute bottom-0 left-0 z-10" style={{ height: 48, width: '55%' }} />
+              </>
             )}
 
             {/* Preview countdown badge */}
@@ -377,19 +343,6 @@ export default function JogoPage({ params }: Props) {
             <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse shrink-0">AO VIVO</span>
           </div>
 
-          {/* Botão unificado: som + tela cheia */}
-          <button
-            onClick={activateSound}
-            disabled={soundUnlocked}
-            className={`w-full flex items-center justify-center gap-2 font-black py-3 rounded-xl transition-all text-sm tracking-wide ${
-              soundUnlocked
-                ? 'bg-orange-500 text-white cursor-default'
-                : 'bg-[#12121A] hover:bg-orange-500/10 border border-orange-500/50 hover:border-orange-500 text-orange-400 hover:text-orange-300'
-            }`}
-          >
-            <Maximize className="w-4 h-4" />
-            {soundUnlocked ? `TOQUE NO CANTO INFERIOR DIREITO DO PLAYER (${soundCountdown}s)` : 'TOQUE AQUI PARA ATIVAR SOM E TELA CHEIA'}
-          </button>
         </div>
 
         {/* Chat */}
