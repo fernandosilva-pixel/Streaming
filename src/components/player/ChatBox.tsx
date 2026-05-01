@@ -86,7 +86,7 @@ export default function ChatBox({ streamId }: { streamId: string }) {
   return (
     <div className="flex flex-col h-full">
       <div className="bg-[#1A1A26] px-4 py-2.5 border-b border-[#2A2A3A] shrink-0">
-        <p className="text-white text-sm font-bold">Chat ao vivo</p>
+        <p className="text-white text-sm font-bold text-center">Chat ao vivo</p>
       </div>
 
       <div ref={messagesRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
