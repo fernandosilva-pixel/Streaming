@@ -198,14 +198,13 @@ body {
   }
 }
 
-/* Chat border: visível no mobile, substituída pelo overlay inclinado no desktop */
+/* Chat border: visível no mobile, transparente no desktop (overlay inclinado cuida do visual) */
 .chat-border {
   border: 1px solid #2A2A3A;
   border-radius: 12px;
 }
 @media (min-width: 1280px) {
   .chat-border {
-    border: none;
-    border-radius: 12px;
+    border-color: transparent;
   }
 }
