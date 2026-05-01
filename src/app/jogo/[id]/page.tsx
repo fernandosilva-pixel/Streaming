@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Lock, DollarSign, Maximize, Minimize } from 'lucide-react'
+import { ChevronLeft, Lock, DollarSign, Maximize, Minimize, Volume2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { use } from 'react'
@@ -46,6 +46,9 @@ export default function JogoPage({ params }: Props) {
 
   const playerRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [soundUnlocked, setSoundUnlocked] = useState(false)
+  const [soundCountdown, setSoundCountdown] = useState(0)
+  const soundTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement)
@@ -57,6 +60,22 @@ export default function JogoPage({ params }: Props) {
     if (!playerRef.current) return
     if (document.fullscreenElement) document.exitFullscreen()
     else playerRef.current.requestFullscreen()
+  }
+
+  function activateSound() {
+    if (soundTimerRef.current) clearInterval(soundTimerRef.current)
+    setSoundUnlocked(true)
+    setSoundCountdown(3)
+    soundTimerRef.current = setInterval(() => {
+      setSoundCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(soundTimerRef.current!)
+          setSoundUnlocked(false)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
   }
 
   useEffect(() => {
@@ -157,6 +176,8 @@ export default function JogoPage({ params }: Props) {
 
   const source = stream.stream_source ?? 'kick'
 
+  const iframePointerEvents = soundUnlocked ? 'auto' : 'none'
+
   const cropStyle: React.CSSProperties = stream.crop_enabled ? {
     position: 'absolute',
     top: -65,
@@ -165,7 +186,7 @@ export default function JogoPage({ params }: Props) {
     height: 'calc(100% + 130px)',
     border: 'none',
     clipPath: 'inset(65px 0px 65px 0px)',
-    pointerEvents: 'none',
+    pointerEvents: iframePointerEvents,
   } : {
     position: 'absolute',
     top: 0,
@@ -173,7 +194,7 @@ export default function JogoPage({ params }: Props) {
     width: '100%',
     height: '100%',
     border: 'none',
-    pointerEvents: 'none',
+    pointerEvents: iframePointerEvents,
   }
 
   function renderPlayer(s: NonNullable<typeof stream>, blurred = false) {
@@ -256,14 +277,6 @@ export default function JogoPage({ params }: Props) {
               : renderPlayer(stream, isBlurred)
             }
 
-            {/* Fullscreen button */}
-            <button
-              onClick={toggleFullscreen}
-              className="absolute bottom-3 right-3 z-30 bg-black/60 hover:bg-black/90 text-white rounded-lg p-2.5 transition-all"
-            >
-              {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-            </button>
-
             {/* Preview countdown badge */}
             {showCountdown && (
               <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1.5 rounded-lg pointer-events-none">
@@ -338,6 +351,22 @@ export default function JogoPage({ params }: Props) {
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-white font-black text-xl">{stream.title}</h1>
             <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse shrink-0">AO VIVO</span>
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                onClick={activateSound}
+                disabled={soundUnlocked}
+                className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg transition-all ${soundUnlocked ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] border border-[#2A2A3A] text-gray-400 hover:text-white hover:border-orange-500/50'}`}
+              >
+                <Volume2 className="w-4 h-4" />
+                {soundUnlocked ? `Toque no player (${soundCountdown}s)` : 'Ativar Som'}
+              </button>
+              <button
+                onClick={toggleFullscreen}
+                className="bg-[#1A1A26] border border-[#2A2A3A] text-gray-400 hover:text-white hover:border-orange-500/50 rounded-lg p-2 transition-all"
+              >
+                {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         </div>
 
