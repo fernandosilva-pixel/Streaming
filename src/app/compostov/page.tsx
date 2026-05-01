@@ -113,6 +113,11 @@ export default function AdminPage() {
   const [settingsId, setSettingsId] = useState<string | null>(null)
   const [logoSaved, setLogoSaved] = useState(false)
 
+  // Acesso gratuito
+  const [freeUsers, setFreeUsers] = useState<{ id: string; user_phone: string }[]>([])
+  const [newFreePhone, setNewFreePhone] = useState('')
+  const [addingFreeUser, setAddingFreeUser] = useState(false)
+
   // Streams
   const [streams, setStreams] = useState<Stream[]>([])
   const [newTitle, setNewTitle] = useState('')
@@ -152,6 +157,7 @@ export default function AdminPage() {
       loadCarouselBanners()
       loadLogo()
       loadStreams()
+      loadFreeAccess()
     }
   }, [authChecked])
 
@@ -410,6 +416,27 @@ export default function AdminPage() {
       : await supabase.from('site_settings').insert({ logo_url: publicUrl })
     if (dbError) { alert('Erro ao salvar: ' + dbError.message); setLogoUploading(false); return }
     setLogoUrl(publicUrl); setLogoUploading(false); setLogoSaved(true)
+  }
+
+  async function loadFreeAccess() {
+    const { data } = await supabase.from('free_access').select('*').order('created_at')
+    setFreeUsers(data ?? [])
+  }
+
+  async function addFreeAccess() {
+    const phone = newFreePhone.trim().replace(/\s/g, '')
+    if (!phone) return
+    setAddingFreeUser(true)
+    const { error } = await supabase.from('free_access').insert({ user_phone: phone })
+    if (error) { alert('Erro: ' + (error.message.includes('unique') ? 'Esse número já tem acesso gratuito.' : error.message)); setAddingFreeUser(false); return }
+    setNewFreePhone('')
+    await loadFreeAccess()
+    setAddingFreeUser(false)
+  }
+
+  async function deleteFreeAccess(id: string) {
+    await supabase.from('free_access').delete().eq('id', id)
+    setFreeUsers(prev => prev.filter(u => u.id !== id))
   }
 
   async function handleChargeModalQrFile(file: File) {
@@ -800,6 +827,47 @@ export default function AdminPage() {
                   </button>
                 </div>
                 <span className="absolute top-1.5 left-1.5 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">#{i + 1}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Acesso gratuito */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-white">Acesso gratuito</h2>
+          <p className="text-gray-500 text-sm mt-0.5">Usuários desta lista assistem de graça mesmo em transmissões pagas.</p>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="tel"
+            placeholder="Número de telefone (ex: 11999999999)"
+            value={newFreePhone}
+            onChange={e => setNewFreePhone(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addFreeAccess()}
+            className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
+          />
+          <button
+            onClick={addFreeAccess}
+            disabled={addingFreeUser || !newFreePhone.trim()}
+            className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm"
+          >
+            <Plus className="w-4 h-4" />{addingFreeUser ? 'Adicionando...' : 'Adicionar'}
+          </button>
+        </div>
+        {freeUsers.length === 0 ? (
+          <div className="border border-dashed border-[#2A2A3A] rounded-xl py-6 text-center">
+            <p className="text-gray-600 text-sm">Nenhum usuário com acesso gratuito</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {freeUsers.map(u => (
+              <div key={u.id} className="flex items-center justify-between bg-[#12121A] border border-[#2A2A3A] rounded-xl px-4 py-3">
+                <span className="text-white text-sm font-mono">{u.user_phone}</span>
+                <button onClick={() => deleteFreeAccess(u.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1">
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             ))}
           </div>

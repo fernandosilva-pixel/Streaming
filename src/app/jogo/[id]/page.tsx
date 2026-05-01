@@ -35,6 +35,7 @@ export default function JogoPage({ params }: Props) {
   const [hasPaid, setHasPaid] = useState(false)
   const [checkingPayment, setCheckingPayment] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [isFreeAccess, setIsFreeAccess] = useState(false)
 
   const [soopBroadNo, setSoopBroadNo] = useState<string | null>(null)
   const [soopLoading, setSoopLoading] = useState(false)
@@ -88,16 +89,14 @@ export default function JogoPage({ params }: Props) {
   useEffect(() => {
     if (!user || !stream || !stream.charge_enabled) return
     setCheckingPayment(true)
-    supabase.from('payments')
-      .select('id')
-      .eq('stream_id', stream.id)
-      .eq('user_phone', user.phone)
-      .eq('status', 'PAID')
-      .maybeSingle()
-      .then(({ data }) => {
-        setHasPaid(!!data)
-        setCheckingPayment(false)
-      })
+    Promise.all([
+      supabase.from('payments').select('id').eq('stream_id', stream.id).eq('user_phone', user.phone).eq('status', 'PAID').maybeSingle(),
+      supabase.from('free_access').select('id').eq('user_phone', user.phone).maybeSingle(),
+    ]).then(([payment, free]) => {
+      setHasPaid(!!payment.data)
+      setIsFreeAccess(!!free.data)
+      setCheckingPayment(false)
+    })
   }, [user, stream])
 
   // 1-minute preview, separate timer for not-logged-in and logged-in-but-unpaid
@@ -219,7 +218,7 @@ export default function JogoPage({ params }: Props) {
   }
 
   const wouldNeedLogin = !user
-  const wouldNeedPayment = !!user && stream.charge_enabled && !hasPaid && !checkingPayment
+  const wouldNeedPayment = !!user && stream.charge_enabled && !hasPaid && !checkingPayment && !isFreeAccess
 
   const needsLogin = wouldNeedLogin && !previewActive
   const needsPayment = wouldNeedPayment && !previewActive
