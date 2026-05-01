@@ -165,6 +165,7 @@ export default function JogoPage({ params }: Props) {
     height: 'calc(100% + 130px)',
     border: 'none',
     clipPath: 'inset(65px 0px 65px 0px)',
+    pointerEvents: 'none',
   } : {
     position: 'absolute',
     top: 0,
@@ -172,6 +173,7 @@ export default function JogoPage({ params }: Props) {
     width: '100%',
     height: '100%',
     border: 'none',
+    pointerEvents: 'none',
   }
 
   function renderPlayer(s: NonNullable<typeof stream>, blurred = false) {
@@ -254,8 +256,13 @@ export default function JogoPage({ params }: Props) {
               : renderPlayer(stream, isBlurred)
             }
 
-            {/* Click shield — always active, blocks all interaction with the iframe */}
-            <div className="absolute inset-0 z-10" />
+            {/* Fullscreen button */}
+            <button
+              onClick={toggleFullscreen}
+              className="absolute bottom-3 right-3 z-30 bg-black/60 hover:bg-black/90 text-white rounded-lg p-2.5 transition-all"
+            >
+              {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+            </button>
 
             {/* Preview countdown badge */}
             {showCountdown && (
@@ -327,13 +334,6 @@ export default function JogoPage({ params }: Props) {
             )}
           </div>
 
-          {/* Botão fullscreen fora do iframe — clicável no mobile */}
-          <button
-            onClick={toggleFullscreen}
-            className="absolute bottom-3 right-3 z-30 bg-black/60 hover:bg-black/90 text-white rounded-lg p-2.5 transition-all"
-          >
-            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-          </button>
           </div>
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-white font-black text-xl">{stream.title}</h1>
