@@ -106,6 +106,10 @@ export default function AdminPage() {
   const [highlightingSave, setHighlightingSave] = useState(false)
   const [onlineUsers, setOnlineUsers] = useState(0)
 
+  // Notificações de novos cadastros
+  const [toasts, setToasts] = useState<{ id: string; name: string; phone: string }[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+
   // Logo
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [logoUploading, setLogoUploading] = useState(false)
@@ -170,6 +174,64 @@ export default function AdminPage() {
     }).subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
+
+  // Realtime: novos cadastros
+  useEffect(() => {
+    if (!authChecked) return
+    const channel = supabase
+      .channel('new-registrations')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'registrations' }, payload => {
+        const reg = payload.new as { id: string; name?: string; phone?: string }
+        const id = reg.id ?? String(Date.now())
+        const name = reg.name ?? 'Novo usuário'
+        const phone = reg.phone ?? ''
+        setToasts(prev => [...prev, { id, name, phone }])
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000)
+        setUnreadCount(prev => prev + 1)
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [authChecked])
+
+  // Favicon badge + título quando há notificações não lidas
+  useEffect(() => {
+    const base = 'Painel Admin'
+    document.title = unreadCount > 0 ? `(${unreadCount}) ${base}` : base
+    updateFaviconBadge(unreadCount)
+  }, [unreadCount])
+
+  // Limpa ao focar na aba
+  useEffect(() => {
+    const onFocus = () => { setUnreadCount(0) }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
+  function updateFaviconBadge(count: number) {
+    const canvas = document.createElement('canvas')
+    canvas.width = 32; canvas.height = 32
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const draw = (base?: HTMLImageElement) => {
+      ctx.clearRect(0, 0, 32, 32)
+      if (base) ctx.drawImage(base, 0, 0, 32, 32)
+      if (count > 0) {
+        ctx.fillStyle = '#ef4444'
+        ctx.beginPath(); ctx.arc(24, 8, 9, 0, 2 * Math.PI); ctx.fill()
+        ctx.fillStyle = 'white'
+        ctx.font = 'bold 11px Arial'
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText(count > 9 ? '9+' : String(count), 24, 8)
+      }
+      const link: HTMLLinkElement = document.querySelector("link[rel*='icon']") ?? Object.assign(document.createElement('link'), { rel: 'icon' })
+      link.href = canvas.toDataURL()
+      document.head.appendChild(link)
+    }
+    const img = new Image()
+    img.onload = () => draw(img)
+    img.onerror = () => draw()
+    img.src = '/favicon.ico'
+  }
 
   // Carrega o banner principal (primeira linha da tabela)
   async function loadBanner() {
@@ -942,6 +1004,24 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* Toasts de novos cadastros */}
+      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
+        {toasts.map(t => (
+          <div key={t.id} className="pointer-events-auto flex items-center gap-3 bg-[#1A1A26] border border-orange-500/40 text-white rounded-xl px-4 py-3 shadow-2xl animate-slide-in min-w-64">
+            <div className="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center shrink-0">
+              <span className="text-orange-400 text-sm font-bold">+1</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-sm font-bold truncate">{t.name}</p>
+              <p className="text-gray-400 text-xs truncate">{t.phone} — novo cadastro</p>
+            </div>
+            <button onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))} className="text-gray-600 hover:text-white shrink-0">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
