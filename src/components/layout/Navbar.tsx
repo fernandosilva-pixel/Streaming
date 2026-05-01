@@ -20,9 +20,7 @@ export default function Navbar() {
     <header
       className="fixed top-0 left-0 right-0 z-50"
       style={{
-        background: 'rgba(0,0,0,0.72)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
+        background: 'rgba(0,0,0,0.38)',
         borderBottom: '1px solid rgba(255, 106, 0, 0.15)',
         boxShadow: '0 2px 24px rgba(0,0,0,0.6)',
       }}
