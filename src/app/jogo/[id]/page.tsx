@@ -259,13 +259,13 @@ export default function JogoPage({ params }: Props) {
               : renderPlayer(stream, isBlurred)
             }
 
-            {/* Partial overlays: position differs — mobile link is at top, desktop link is at bottom */}
+            {/* Overlays: desktop blocks entire iframe, mobile blocks only top strip */}
             {!isBlurred && !needsPayment && (
               <>
-                {/* Mobile: channel name link appears at the top strip */}
+                {/* Mobile: only top strip (channel name link) */}
                 <div className="absolute top-0 left-0 right-0 z-10 md:hidden" style={{ height: 48 }} />
-                {/* Desktop: "Visit KICK for HD quality" banner appears at the bottom strip */}
-                <div className="absolute bottom-0 left-0 right-0 z-10 hidden md:block" style={{ height: 52 }} />
+                {/* Desktop: full overlay — all Kick links/branding blocked */}
+                <div className="absolute inset-0 z-10 hidden md:block" />
               </>
             )}
 
@@ -345,14 +345,15 @@ export default function JogoPage({ params }: Props) {
             <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse shrink-0">AO VIVO</span>
           </div>
 
-          {/* Fullscreen button — desktop only (mobile uses native Kick controls) */}
-          <button
-            onClick={toggleFullscreen}
-            className="hidden md:flex w-full items-center justify-center gap-2 font-bold py-3 rounded-xl transition-all text-sm bg-[#12121A] hover:bg-[#1A1A26] border border-[#2A2A3A] text-gray-400 hover:text-white"
-          >
-            <Maximize className="w-4 h-4" />
-            Tela cheia
-          </button>
+          {/* Fullscreen button — desktop only, small square icon */}
+          <div className="hidden md:flex justify-end">
+            <button
+              onClick={toggleFullscreen}
+              className="p-2 rounded-lg bg-[#12121A] hover:bg-[#1A1A26] border border-[#2A2A3A] text-gray-400 hover:text-white transition-all"
+            >
+              <Maximize className="w-4 h-4" />
+            </button>
+          </div>
 
         </div>
 
