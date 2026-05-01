@@ -246,7 +246,7 @@ export default function JogoPage({ params }: Props) {
         <div className="xl:col-span-2 space-y-3">
           {/* Hint badge above iframe */}
           <div className="flex items-center justify-center">
-            <div style={{ transform: 'skewX(-12deg)', background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,106,0,0.3)', borderRadius: 6, padding: '3px 14px' }}>
+            <div className="animate-pulse" style={{ transform: 'skewX(-12deg)', background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,106,0,0.3)', borderRadius: 6, padding: '3px 14px' }}>
               <span style={{ transform: 'skewX(12deg)', display: 'inline-block' }} className="text-orange-400 text-xs font-semibold">Som desativado? Coloque em tela cheia e aumente o volume.</span>
             </div>
           </div>
@@ -369,11 +369,17 @@ export default function JogoPage({ params }: Props) {
 
         {/* Chat */}
         <div className="xl:col-span-1">
-          <div className="sticky top-20" style={{ height: 560 }}>
-            <div className="skew-frame" style={{ height: '100%' }}>
-              <div className="skew-frame-inner" style={{ height: '100%', background: '#0B0B0F' }}>
-                <ChatBox streamId={stream.id} />
-              </div>
+          <div className="sticky top-20" style={{ height: 560, position: 'relative' }}>
+            {/* Borda paralelo­grama — desktop only, puramente visual */}
+            <div className="hidden xl:block pointer-events-none" style={{
+              position: 'absolute', inset: 0, zIndex: 2,
+              transform: 'skewX(-3deg)',
+              border: '1px solid #2A2A3A',
+              borderRadius: 16,
+            }} />
+            {/* Conteúdo — sem skew, perfeitamente centralizado */}
+            <div className="chat-border" style={{ height: '100%', background: '#0B0B0F', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+              <ChatBox streamId={stream.id} />
             </div>
           </div>
         </div>

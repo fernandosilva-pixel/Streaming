@@ -197,3 +197,15 @@ body {
     margin-left: -3.5%;
   }
 }
+
+/* Chat border: visível no mobile, substituída pelo overlay inclinado no desktop */
+.chat-border {
+  border: 1px solid #2A2A3A;
+  border-radius: 12px;
+}
+@media (min-width: 1280px) {
+  .chat-border {
+    border: none;
+    border-radius: 12px;
+  }
+}
