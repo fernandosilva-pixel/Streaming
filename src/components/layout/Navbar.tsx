@@ -1,29 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Zap } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Navbar() {
   const { user, showModal, logout } = useAuth();
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.from('site_settings').select('logo_url').single().then(({ data }) => {
-      if (data?.logo_url) setLogoUrl(data.logo_url);
-    });
-  }, []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
-      {/* Main bar */}
       <div
         style={{
           backgroundImage: 'url(/bg.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundSize: '100% 100%',
           borderBottomLeftRadius: '1.75rem',
           borderBottomRightRadius: '1.75rem',
           borderBottom: '1px solid rgba(255,106,0,0.22)',
@@ -32,40 +19,7 @@ export default function Navbar() {
           boxShadow: '0 6px 36px rgba(0,0,0,0.7)',
         }}
       >
-        <div className="flex items-center px-6 sm:px-10 gap-6" style={{ height: 64 }}>
-
-          {/* Logo */}
-          <Link href="/" className="flex-shrink-0 flex items-center">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt="FutZone"
-                width={160}
-                height={40}
-                className="block object-contain"
-                style={{
-                  height: 'clamp(36px, 6vw, 56px)',
-                  width: 'auto',
-                  maxWidth: 220,
-                  objectFit: 'contain',
-                  filter: 'drop-shadow(0 0 8px rgba(255,106,0,0.45))',
-                }}
-              />
-            ) : (
-              <span className="flex items-center gap-2">
-                <div className="w-9 h-9 bg-orange-500 rounded-lg flex items-center justify-center shadow-lg">
-                  <Zap className="w-5 h-5 text-white fill-white" />
-                </div>
-                <span className="text-xl font-black tracking-tight">
-                  FUT<span className="text-orange-500">ZONE</span>
-                </span>
-              </span>
-            )}
-          </Link>
-
-          <div className="flex-1" />
-
-          {/* Botões */}
+        <div className="flex items-center justify-end px-6 sm:px-10" style={{ height: 64 }}>
           <div className="flex items-center">
             {user ? (
               <SkewButton onClick={logout} variant="outline">Sair</SkewButton>
@@ -76,7 +30,6 @@ export default function Navbar() {
               </div>
             )}
           </div>
-
         </div>
       </div>
     </header>

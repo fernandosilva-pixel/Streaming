@@ -18,10 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR">
       <body className="min-h-screen flex flex-col text-white antialiased">
         {/* Background fixo */}
-        <div
-          className="fixed inset-0 -z-10 bg-[#0B0B0F] bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('/bg.jpg')" }}
-        />
+        <div className="fixed inset-0 -z-10 bg-[#0B0B0F]" />
         <AuthProvider>
           <Navbar />
           <main className="flex-1 pt-16">{children}</main>
