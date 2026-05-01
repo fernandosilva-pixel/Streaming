@@ -150,10 +150,12 @@ export default function AdminPage() {
   const [newTplText, setNewTplText] = useState('')
 
   // CTA cards
-  const [ctaCards, setCtaCards] = useState<{ id: string; slot: number; image_url: string | null; link_url: string | null }[]>([])
+  const [ctaCards, setCtaCards] = useState<{ id: string; slot: number; image_url: string | null; mobile_image_url: string | null; link_url: string | null }[]>([])
   const [ctaLinks, setCtaLinks] = useState<Record<number, string>>({})
   const [ctaDragging, setCtaDragging] = useState<number | null>(null)
   const [ctaUploading, setCtaUploading] = useState<number | null>(null)
+  const [ctaMobileDragging, setCtaMobileDragging] = useState<number | null>(null)
+  const [ctaMobileUploading, setCtaMobileUploading] = useState<number | null>(null)
 
   // Moderadores do chat
   const [adminUsers, setAdminUsers] = useState<{ id: string; name: string; phone: string }[]>([])
@@ -556,6 +558,20 @@ export default function AdminPage() {
     setCtaUploading(null)
   }
 
+  async function handleCtaMobileUpload(slot: number, file: File) {
+    if (!isImageFile(file)) return
+    setCtaMobileUploading(slot)
+    const ext = file.name.split('.').pop()
+    const fileName = `cta-mobile-${slot}-${Date.now()}.${ext}`
+    const contentType = getContentType(file)
+    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
+    if (error) { alert('Erro no upload: ' + error.message); setCtaMobileUploading(null); return }
+    const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
+    await supabase.from('cta_cards').update({ mobile_image_url: publicUrl }).eq('slot', slot)
+    await loadCtaCards()
+    setCtaMobileUploading(null)
+  }
+
   async function handleCtaLinkSave(slot: number) {
     await supabase.from('cta_cards').update({ link_url: ctaLinks[slot] || null }).eq('slot', slot)
   }
@@ -952,26 +968,54 @@ export default function AdminPage() {
 
             {/* Card principal */}
             <div className="space-y-2">
-              <p className="text-white text-sm font-semibold">Card Principal <span className="text-gray-500 font-normal">(coluna esquerda, maior) · <span className="text-orange-400">800 × 500px recomendado</span></span></p>
-              <div
-                onDragOver={e => { e.preventDefault(); setCtaDragging(0) }}
-                onDragLeave={() => setCtaDragging(null)}
-                onDrop={e => { e.preventDefault(); setCtaDragging(null); const f = e.dataTransfer.files[0]; if (f) handleCtaCardUpload(0, f) }}
-                onClick={() => document.getElementById('ctaInput-0')?.click()}
-                className={`relative border-2 border-dashed rounded-2xl cursor-pointer transition-all overflow-hidden ${ctaDragging === 0 ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
-                style={{ height: 160 }}
-              >
-                <input id="ctaInput-0" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaCardUpload(0, e.target.files[0])} />
-                {ctaUploading === 0 ? (
-                  <div className="absolute inset-0 flex items-center justify-center"><p className="text-white font-bold">Enviando...</p></div>
-                ) : ctaCards.find(c => c.slot === 0)?.image_url ? (
-                  <img src={ctaCards.find(c => c.slot === 0)!.image_url!} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full gap-1">
-                    <p className="text-white font-semibold text-sm">Arraste a imagem aqui</p>
-                    <p className="text-gray-600 text-xs">ou clique para selecionar</p>
+              <p className="text-white text-sm font-semibold">Card Principal <span className="text-gray-500 font-normal">(coluna esquerda, maior)</span></p>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Desktop */}
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-500">🖥 Desktop · <span className="text-orange-400">800 × 500px</span></p>
+                  <div
+                    onDragOver={e => { e.preventDefault(); setCtaDragging(0) }}
+                    onDragLeave={() => setCtaDragging(null)}
+                    onDrop={e => { e.preventDefault(); setCtaDragging(null); const f = e.dataTransfer.files[0]; if (f) handleCtaCardUpload(0, f) }}
+                    onClick={() => document.getElementById('ctaInput-0')?.click()}
+                    className={`relative border-2 border-dashed rounded-2xl cursor-pointer transition-all overflow-hidden ${ctaDragging === 0 ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+                    style={{ height: 130 }}
+                  >
+                    <input id="ctaInput-0" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaCardUpload(0, e.target.files[0])} />
+                    {ctaUploading === 0 ? (
+                      <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-sm font-bold">Enviando...</p></div>
+                    ) : ctaCards.find(c => c.slot === 0)?.image_url ? (
+                      <img src={ctaCards.find(c => c.slot === 0)!.image_url!} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full gap-1">
+                        <p className="text-gray-600 text-xs text-center">Arraste ou clique</p>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+                {/* Mobile */}
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-500">📱 Mobile · <span className="text-orange-400">500 × 600px</span></p>
+                  <div
+                    onDragOver={e => { e.preventDefault(); setCtaMobileDragging(0) }}
+                    onDragLeave={() => setCtaMobileDragging(null)}
+                    onDrop={e => { e.preventDefault(); setCtaMobileDragging(null); const f = e.dataTransfer.files[0]; if (f) handleCtaMobileUpload(0, f) }}
+                    onClick={() => document.getElementById('ctaMobileInput-0')?.click()}
+                    className={`relative border-2 border-dashed rounded-2xl cursor-pointer transition-all overflow-hidden ${ctaMobileDragging === 0 ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+                    style={{ height: 130 }}
+                  >
+                    <input id="ctaMobileInput-0" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaMobileUpload(0, e.target.files[0])} />
+                    {ctaMobileUploading === 0 ? (
+                      <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-sm font-bold">Enviando...</p></div>
+                    ) : ctaCards.find(c => c.slot === 0)?.mobile_image_url ? (
+                      <img src={ctaCards.find(c => c.slot === 0)!.mobile_image_url!} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full gap-1">
+                        <p className="text-gray-600 text-xs text-center">Arraste ou clique</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="flex gap-2">
                 <input
@@ -986,29 +1030,58 @@ export default function AdminPage() {
             </div>
 
             {/* 4 cards horizontais */}
-            <p className="text-white text-sm font-semibold pt-2">Cards Horizontais <span className="text-gray-500 font-normal">(linha inferior) · <span className="text-orange-400">360 × 120px recomendado</span></span></p>
+            <p className="text-white text-sm font-semibold pt-2">Cards Horizontais <span className="text-gray-500 font-normal">(linha inferior)</span></p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[1, 2, 3, 4].map(slot => (
                 <div key={slot} className="space-y-2">
                   <p className="text-gray-400 text-xs font-semibold">Card {slot}</p>
-                  <div
-                    onDragOver={e => { e.preventDefault(); setCtaDragging(slot) }}
-                    onDragLeave={() => setCtaDragging(null)}
-                    onDrop={e => { e.preventDefault(); setCtaDragging(null); const f = e.dataTransfer.files[0]; if (f) handleCtaCardUpload(slot, f) }}
-                    onClick={() => document.getElementById(`ctaInput-${slot}`)?.click()}
-                    className={`relative border-2 border-dashed rounded-xl cursor-pointer transition-all overflow-hidden ${ctaDragging === slot ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
-                    style={{ height: 80 }}
-                  >
-                    <input id={`ctaInput-${slot}`} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaCardUpload(slot, e.target.files[0])} />
-                    {ctaUploading === slot ? (
-                      <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-sm font-bold">Enviando...</p></div>
-                    ) : ctaCards.find(c => c.slot === slot)?.image_url ? (
-                      <img src={ctaCards.find(c => c.slot === slot)!.image_url!} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <p className="text-gray-600 text-xs">Arraste ou clique · 360×120px</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Desktop */}
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-gray-500">🖥 <span className="text-orange-400">360×120px</span></p>
+                      <div
+                        onDragOver={e => { e.preventDefault(); setCtaDragging(slot) }}
+                        onDragLeave={() => setCtaDragging(null)}
+                        onDrop={e => { e.preventDefault(); setCtaDragging(null); const f = e.dataTransfer.files[0]; if (f) handleCtaCardUpload(slot, f) }}
+                        onClick={() => document.getElementById(`ctaInput-${slot}`)?.click()}
+                        className={`relative border-2 border-dashed rounded-xl cursor-pointer transition-all overflow-hidden ${ctaDragging === slot ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+                        style={{ height: 70 }}
+                      >
+                        <input id={`ctaInput-${slot}`} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaCardUpload(slot, e.target.files[0])} />
+                        {ctaUploading === slot ? (
+                          <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-xs font-bold">Enviando...</p></div>
+                        ) : ctaCards.find(c => c.slot === slot)?.image_url ? (
+                          <img src={ctaCards.find(c => c.slot === slot)!.image_url!} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <p className="text-gray-600 text-[10px]">Arraste ou clique</p>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                    {/* Mobile */}
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-gray-500">📱 <span className="text-orange-400">360×200px</span></p>
+                      <div
+                        onDragOver={e => { e.preventDefault(); setCtaMobileDragging(slot) }}
+                        onDragLeave={() => setCtaMobileDragging(null)}
+                        onDrop={e => { e.preventDefault(); setCtaMobileDragging(null); const f = e.dataTransfer.files[0]; if (f) handleCtaMobileUpload(slot, f) }}
+                        onClick={() => document.getElementById(`ctaMobileInput-${slot}`)?.click()}
+                        className={`relative border-2 border-dashed rounded-xl cursor-pointer transition-all overflow-hidden ${ctaMobileDragging === slot ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+                        style={{ height: 70 }}
+                      >
+                        <input id={`ctaMobileInput-${slot}`} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaMobileUpload(slot, e.target.files[0])} />
+                        {ctaMobileUploading === slot ? (
+                          <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-xs font-bold">Enviando...</p></div>
+                        ) : ctaCards.find(c => c.slot === slot)?.mobile_image_url ? (
+                          <img src={ctaCards.find(c => c.slot === slot)!.mobile_image_url!} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <p className="text-gray-600 text-[10px]">Arraste ou clique</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <input

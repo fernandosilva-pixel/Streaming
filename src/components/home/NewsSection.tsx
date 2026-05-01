@@ -7,6 +7,7 @@ type CtaCard = {
   id: string
   slot: number
   image_url: string | null
+  mobile_image_url: string | null
   link_url: string | null
 }
 
@@ -44,7 +45,10 @@ export default function NewsSection() {
             style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' } as React.CSSProperties}
           >
             {featured?.image_url ? (
-              <img src={featured.image_url} alt="" className="w-full h-full object-cover" style={{ minHeight: 280 }} />
+              <picture className="block w-full h-full">
+                {featured.mobile_image_url && <source media="(max-width: 767px)" srcSet={featured.mobile_image_url} />}
+                <img src={featured.image_url} alt="" className="w-full h-full object-cover" style={{ minHeight: 280 }} />
+              </picture>
             ) : (
               <div className="h-full min-h-[280px] bg-gradient-to-br from-orange-500/10 via-[#1A1A26] to-[#12121A] flex items-center justify-center">
                 <p className="text-gray-700 font-bold tracking-widest text-sm">EM BREVE</p>
@@ -67,7 +71,10 @@ export default function NewsSection() {
                 style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' } as React.CSSProperties}
               >
                 {card?.image_url ? (
-                  <img src={card.image_url} alt="" className="w-full object-cover" style={{ height: 120 }} />
+                  <picture className="block w-full">
+                    {card.mobile_image_url && <source media="(max-width: 767px)" srcSet={card.mobile_image_url} />}
+                    <img src={card.image_url} alt="" className="w-full object-cover" style={{ height: 120 }} />
+                  </picture>
                 ) : (
                   <div className="flex items-center justify-center bg-gradient-to-br from-orange-500/10 via-[#1A1A26] to-[#12121A]" style={{ height: 120 }}>
                     <p className="text-gray-700 font-bold tracking-widest text-xs">EM BREVE</p>
