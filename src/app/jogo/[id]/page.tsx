@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Lock, DollarSign, Maximize, Minimize, Volume2 } from 'lucide-react'
+import { ChevronLeft, Lock, DollarSign, Maximize, Volume2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { use } from 'react'
@@ -58,8 +58,17 @@ export default function JogoPage({ params }: Props) {
 
   function toggleFullscreen() {
     if (!playerRef.current) return
-    if (document.fullscreenElement) document.exitFullscreen()
-    else playerRef.current.requestFullscreen()
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+      return
+    }
+    if (playerRef.current.requestFullscreen) {
+      playerRef.current.requestFullscreen()
+    } else {
+      // iOS Safari não suporta requestFullscreen em divs — desbloqueia o iframe
+      // para o usuário tocar no botão nativo de fullscreen da Kick/Soop
+      activateSound()
+    }
   }
 
   function activateSound() {
@@ -351,23 +360,24 @@ export default function JogoPage({ params }: Props) {
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-white font-black text-xl">{stream.title}</h1>
             <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse shrink-0">AO VIVO</span>
-            <div className="flex items-center gap-2 ml-auto">
-              <button
-                onClick={activateSound}
-                disabled={soundUnlocked}
-                className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg transition-all ${soundUnlocked ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] border border-[#2A2A3A] text-gray-400 hover:text-white hover:border-orange-500/50'}`}
-              >
-                <Volume2 className="w-4 h-4" />
-                {soundUnlocked ? `Toque no player (${soundCountdown}s)` : 'Ativar Som'}
-              </button>
-              <button
-                onClick={toggleFullscreen}
-                className="bg-[#1A1A26] border border-[#2A2A3A] text-gray-400 hover:text-white hover:border-orange-500/50 rounded-lg p-2 transition-all"
-              >
-                {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-              </button>
-            </div>
+            <button
+              onClick={activateSound}
+              disabled={soundUnlocked}
+              className={`ml-auto flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg transition-all ${soundUnlocked ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] border border-[#2A2A3A] text-gray-400 hover:text-white hover:border-orange-500/50'}`}
+            >
+              <Volume2 className="w-4 h-4" />
+              {soundUnlocked ? `Toque no player (${soundCountdown}s)` : 'Ativar Som'}
+            </button>
           </div>
+
+          {/* Botão tela cheia fora do iframe */}
+          <button
+            onClick={toggleFullscreen}
+            className="w-full flex items-center justify-center gap-2 bg-[#12121A] hover:bg-[#1A1A26] border border-[#2A2A3A] hover:border-orange-500/40 text-gray-400 hover:text-white font-bold py-2.5 rounded-xl transition-all text-sm tracking-wide"
+          >
+            <Maximize className="w-4 h-4" />
+            ASSISTIR EM TELA CHEIA
+          </button>
         </div>
 
         {/* Chat */}
