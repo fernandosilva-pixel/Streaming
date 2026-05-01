@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Lock, DollarSign, Maximize, Volume2 } from 'lucide-react'
+import { ChevronLeft, Lock, DollarSign, Maximize } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { use } from 'react'
@@ -74,7 +74,7 @@ export default function JogoPage({ params }: Props) {
   function activateSound() {
     if (soundTimerRef.current) clearInterval(soundTimerRef.current)
     setSoundUnlocked(true)
-    setSoundCountdown(3)
+    setSoundCountdown(5)
     soundTimerRef.current = setInterval(() => {
       setSoundCountdown(prev => {
         if (prev <= 1) {
@@ -286,6 +286,21 @@ export default function JogoPage({ params }: Props) {
               : renderPlayer(stream, isBlurred)
             }
 
+            {/* Overlay de instrução durante unlock */}
+            {soundUnlocked && !isBlurred && (
+              <div className="absolute inset-0 z-20 pointer-events-none">
+                <div className="absolute bottom-10 right-3 flex flex-col items-end gap-1">
+                  <div className="bg-orange-500 text-white font-black text-sm px-4 py-2.5 rounded-xl shadow-2xl whitespace-nowrap">
+                    TOQUE AQUI AGORA
+                  </div>
+                  <div className="flex items-center gap-2 pr-1">
+                    <span className="text-orange-300 text-xs font-bold">{soundCountdown}s</span>
+                    <span className="text-orange-500 text-4xl leading-none">↘</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Preview countdown badge */}
             {showCountdown && (
               <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1.5 rounded-lg pointer-events-none">
@@ -360,23 +375,20 @@ export default function JogoPage({ params }: Props) {
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-white font-black text-xl">{stream.title}</h1>
             <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse shrink-0">AO VIVO</span>
-            <button
-              onClick={activateSound}
-              disabled={soundUnlocked}
-              className={`ml-auto flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg transition-all ${soundUnlocked ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] border border-[#2A2A3A] text-gray-400 hover:text-white hover:border-orange-500/50'}`}
-            >
-              <Volume2 className="w-4 h-4" />
-              {soundUnlocked ? `Toque no player (${soundCountdown}s)` : 'Ativar Som'}
-            </button>
           </div>
 
-          {/* Botão tela cheia fora do iframe */}
+          {/* Botão unificado: som + tela cheia */}
           <button
-            onClick={toggleFullscreen}
-            className="w-full flex items-center justify-center gap-2 bg-[#12121A] hover:bg-[#1A1A26] border border-[#2A2A3A] hover:border-orange-500/40 text-gray-400 hover:text-white font-bold py-2.5 rounded-xl transition-all text-sm tracking-wide"
+            onClick={activateSound}
+            disabled={soundUnlocked}
+            className={`w-full flex items-center justify-center gap-2 font-black py-3 rounded-xl transition-all text-sm tracking-wide ${
+              soundUnlocked
+                ? 'bg-orange-500 text-white cursor-default'
+                : 'bg-[#12121A] hover:bg-orange-500/10 border border-orange-500/50 hover:border-orange-500 text-orange-400 hover:text-orange-300'
+            }`}
           >
             <Maximize className="w-4 h-4" />
-            ASSISTIR EM TELA CHEIA
+            {soundUnlocked ? `TOQUE NO CANTO INFERIOR DIREITO DO PLAYER (${soundCountdown}s)` : 'TOQUE AQUI PARA ATIVAR SOM E TELA CHEIA'}
           </button>
         </div>
 
