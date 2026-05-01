@@ -136,6 +136,15 @@ body {
   }
 }
 
+@keyframes orangePulseInner {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+
+.animate-orange-pulse-inner {
+  animation: orangePulseInner 1.8s ease-in-out infinite;
+}
+
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(100%); }
   to   { opacity: 1; transform: translateX(0); }
