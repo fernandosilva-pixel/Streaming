@@ -34,7 +34,7 @@ export default function Navbar() {
               src={logoUrl}
               alt="FutZone"
               className="block object-contain"
-              style={{ height: 36, width: 'auto', maxWidth: 140 }}
+              style={{ height: 44, width: 'auto', maxWidth: 180 }}
             />
           ) : (
             <>
