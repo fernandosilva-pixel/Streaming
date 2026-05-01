@@ -25,6 +25,13 @@ export default function HeroBanner() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [game, setGame] = useState<GameData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showWatchButton, setShowWatchButton] = useState(false)
+
+  useEffect(() => {
+    supabase.from('site_settings').select('show_watch_button').single().then(({ data }) => {
+      if (data) setShowWatchButton(data.show_watch_button ?? false)
+    })
+  }, [])
 
   useEffect(() => {
     supabase.from('banner').select('*').order('id').then(({ data }) => {
@@ -116,27 +123,29 @@ export default function HeroBanner() {
         </section>
       </div>
 
-      {/* Botão Assistir Agora fora do container, estilo inclinado igual ao Entrar */}
-      <button
-        onClick={() => {
-          const streamId = banners[0]?.stream_id
-          if (streamId) router.push(`/jogo/${streamId}`)
-        }}
-        className="relative font-extrabold text-white uppercase tracking-wide px-8 py-3 transition-all group"
-        style={{ transform: 'skewX(-12deg)' }}
-      >
-        <span
-          className="absolute inset-0 rounded-md transition-all group-hover:brightness-110 backdrop-blur-sm"
-          style={{
-            background: 'linear-gradient(135deg, #FF6A00 0%, #FF8533 100%)',
-            boxShadow: '0 0 18px rgba(255,106,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)',
+      {/* Botão Assistir Agora — visível só quando ligado no admin */}
+      {showWatchButton && (
+        <button
+          onClick={() => {
+            const streamId = banners[0]?.stream_id
+            if (streamId) router.push(`/jogo/${streamId}`)
           }}
-          aria-hidden
-        />
-        <span className="relative" style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>
-          Assistir Agora
-        </span>
-      </button>
+          className="animate-orange-pulse relative font-extrabold text-white uppercase tracking-wide px-8 py-3 transition-all group"
+          style={{ transform: 'skewX(-12deg)' }}
+        >
+          <span
+            className="absolute inset-0 rounded-md group-hover:brightness-110 backdrop-blur-sm"
+            style={{
+              background: 'linear-gradient(135deg, #FF6A00 0%, #FF8533 100%)',
+              boxShadow: '0 0 24px rgba(255,106,0,0.6), inset 0 1px 0 rgba(255,255,255,0.18)',
+            }}
+            aria-hidden
+          />
+          <span className="relative" style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>
+            Assistir Agora
+          </span>
+        </button>
+      )}
     </div>
   )
 }
