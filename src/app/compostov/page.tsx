@@ -319,15 +319,22 @@ export default function AdminPage() {
     const file = e.dataTransfer.files[0]; if (file) handleFile(file)
   }, [])
 
-  // Publicar: atualiza o banner principal (mesma linha de sempre)
   async function save() {
-    if (!previewUrl || !banner) return
+    if (!previewUrl) return
     setSaving(true)
-    await supabase.from('banner').update({
-      image_url: previewUrl,
-      game_id: selectedGameId,
-      updated_at: new Date().toISOString(),
-    }).eq('id', banner.id)
+    if (banner) {
+      await supabase.from('banner').update({
+        image_url: previewUrl,
+        game_id: selectedGameId,
+        updated_at: new Date().toISOString(),
+      }).eq('id', banner.id)
+    } else {
+      const { data } = await supabase.from('banner').insert({
+        image_url: previewUrl,
+        game_id: selectedGameId,
+      }).select().single()
+      if (data) setBanner(data)
+    }
     setSaving(false)
     alert('Banner publicado com sucesso!')
   }
