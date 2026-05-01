@@ -245,7 +245,7 @@ export default function JogoPage({ params }: Props) {
         {/* Player */}
         <div className="xl:col-span-2 space-y-3">
           {/* AO VIVO badge above iframe */}
-          <div className="flex items-center">
+          <div className="flex items-center justify-center">
             <div style={{ transform: 'skewX(-12deg)', background: '#DC2626', borderRadius: 6, padding: '3px 14px' }}>
               <span style={{ transform: 'skewX(12deg)', display: 'inline-block' }} className="text-white text-xs font-black tracking-widest animate-pulse">AO VIVO</span>
             </div>
