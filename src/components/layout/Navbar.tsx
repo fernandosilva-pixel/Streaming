@@ -1,16 +1,25 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Navbar() {
   const { user, showModal, logout } = useAuth();
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.from('site_settings').select('logo_url').single().then(({ data }) => {
+      if (data?.logo_url) setLogoUrl(data.logo_url);
+    });
+  }, []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <div
+        className="bg-[#0D0D18]"
         style={{
-          backgroundImage: 'url(/bg.jpg)',
-          backgroundSize: '100% 100%',
           borderBottomLeftRadius: '1.75rem',
           borderBottomRightRadius: '1.75rem',
           borderBottom: '1px solid rgba(255,106,0,0.22)',
@@ -19,68 +28,55 @@ export default function Navbar() {
           boxShadow: '0 6px 36px rgba(0,0,0,0.7)',
         }}
       >
-        <div className="flex items-center justify-end px-6 sm:px-10" style={{ height: 64 }}>
-          <div className="flex items-center">
+        <div className="relative flex items-center px-6 sm:px-10" style={{ height: 64 }}>
+
+          {/* Logo centralizada */}
+          <div className="absolute left-1/2 -translate-x-1/2">
+            <Link href="/" className="block">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt="FutZone"
+                  className="block object-contain"
+                  style={{ height: 36, width: 'auto', maxWidth: 160 }}
+                />
+              ) : (
+                <span className="text-xl font-black tracking-tight">
+                  FUT<span className="text-orange-500">ZONE</span>
+                </span>
+              )}
+            </Link>
+          </div>
+
+          {/* Botões direita */}
+          <div className="ml-auto flex items-center gap-2">
             {user ? (
-              <SkewButton onClick={logout} variant="outline">Sair</SkewButton>
+              <button
+                onClick={logout}
+                className="text-sm font-bold text-white border border-orange-500/60 rounded-full px-5 py-2 hover:bg-orange-500/10 transition-all"
+              >
+                Sair
+              </button>
             ) : (
-              <div className="flex items-center">
-                <SkewButton onClick={() => showModal('login')} variant="outline" z={1}>Entrar</SkewButton>
-                <SkewButton onClick={() => showModal('register')} variant="solid" z={2} overlap>Criar conta</SkewButton>
-              </div>
+              <>
+                <button
+                  onClick={() => showModal('login')}
+                  className="text-sm font-bold text-white border border-orange-500/60 rounded-full px-5 py-2 hover:bg-orange-500/10 transition-all"
+                >
+                  Entrar
+                </button>
+                <button
+                  onClick={() => showModal('register')}
+                  className="text-sm font-bold text-white bg-orange-500 hover:bg-orange-400 rounded-full px-5 py-2 transition-all"
+                >
+                  Criar conta
+                </button>
+              </>
             )}
           </div>
+
         </div>
       </div>
     </header>
-  );
-}
-
-function SkewButton({
-  onClick,
-  variant,
-  children,
-  z = 1,
-  overlap = false,
-}: {
-  onClick: () => void;
-  variant: 'outline' | 'solid';
-  children: React.ReactNode;
-  z?: number;
-  overlap?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="relative text-xs sm:text-sm font-extrabold text-white uppercase tracking-wide px-3 py-1.5 sm:px-5 sm:py-2.5 transition-all group"
-      style={{
-        transform: 'skewX(-12deg)',
-        zIndex: z,
-        marginLeft: overlap ? -10 : undefined,
-      }}
-    >
-      <span
-        className="absolute inset-0 rounded-md transition-all group-hover:brightness-110 backdrop-blur-sm"
-        style={
-          variant === 'solid'
-            ? {
-                background: 'linear-gradient(135deg, #FF6A00 0%, #FF8533 100%)',
-                boxShadow: '0 0 18px rgba(255,106,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)',
-              }
-            : {
-                background: 'rgba(255,255,255,0.04)',
-                border: '1.5px solid rgba(255,106,0,0.65)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
-              }
-        }
-        aria-hidden
-      />
-      <span
-        className="relative"
-        style={{ display: 'inline-block', transform: 'skewX(12deg)' }}
-      >
-        {children}
-      </span>
-    </button>
   );
 }
