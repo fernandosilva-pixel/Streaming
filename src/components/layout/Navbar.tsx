@@ -16,19 +16,15 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50">
+    <header className="fixed top-3 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-6xl px-0">
       <div
-        className="bg-[#0D0D18]"
+        className="bg-[#0D0D18]/95 backdrop-blur-md rounded-2xl"
         style={{
-          borderBottomLeftRadius: '1.75rem',
-          borderBottomRightRadius: '1.75rem',
-          borderBottom: '1px solid rgba(255,106,0,0.22)',
-          borderLeft: '1px solid rgba(255,106,0,0.15)',
-          borderRight: '1px solid rgba(255,106,0,0.15)',
-          boxShadow: '0 6px 36px rgba(0,0,0,0.7)',
+          border: '1px solid rgba(255,106,0,0.2)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
         }}
       >
-        <div className="relative flex items-center px-6 sm:px-10" style={{ height: 64 }}>
+        <div className="relative flex items-center px-5 sm:px-8" style={{ height: 58 }}>
 
           {/* Logo centralizada */}
           <div className="absolute left-1/2 -translate-x-1/2">
@@ -38,7 +34,7 @@ export default function Navbar() {
                   src={logoUrl}
                   alt="FutZone"
                   className="block object-contain"
-                  style={{ height: 36, width: 'auto', maxWidth: 160 }}
+                  style={{ height: 34, width: 'auto', maxWidth: 150 }}
                 />
               ) : (
                 <span className="text-xl font-black tracking-tight">
