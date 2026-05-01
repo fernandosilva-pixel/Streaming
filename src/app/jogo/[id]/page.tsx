@@ -339,19 +339,19 @@ export default function JogoPage({ params }: Props) {
             )}
           </div>
 
-          {/* Fullscreen button — desktop only, sits flush below the iframe */}
-          <div className="hidden md:flex justify-end pt-2">
+          {/* Title + fullscreen button — flush below the iframe */}
+          <div className="flex items-center justify-between gap-2.5 pt-2">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-white font-black text-xl">{stream.title}</h1>
+              <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse shrink-0">AO VIVO</span>
+            </div>
             <button
               onClick={toggleFullscreen}
-              className="p-2 rounded-lg bg-[#12121A] border border-orange-500/50 text-orange-500 hover:bg-orange-500/10 transition-all animate-orange-pulse"
+              className="hidden md:flex shrink-0 p-2 rounded-lg bg-[#12121A] border border-orange-500/50 text-orange-500 hover:bg-orange-500/10 transition-all animate-orange-pulse"
             >
               <Maximize className="w-4 h-4" />
             </button>
           </div>
-          </div>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-white font-black text-xl">{stream.title}</h1>
-            <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse shrink-0">AO VIVO</span>
           </div>
 
         </div>
