@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Lock, DollarSign } from 'lucide-react'
+import { ChevronLeft, Lock, DollarSign, Maximize } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { use } from 'react'
@@ -259,11 +259,13 @@ export default function JogoPage({ params }: Props) {
               : renderPlayer(stream, isBlurred)
             }
 
-            {/* Partial overlays: block Kick channel link (top) and logo (bottom-left) without covering native controls */}
+            {/* Partial overlays: position differs — mobile link is at top, desktop link is at bottom */}
             {!isBlurred && !needsPayment && (
               <>
-                <div className="absolute top-0 left-0 right-0 z-10" style={{ height: 48 }} />
-                <div className="absolute bottom-0 left-0 z-10" style={{ height: 48, width: '55%' }} />
+                {/* Mobile: channel name link appears at the top strip */}
+                <div className="absolute top-0 left-0 right-0 z-10 md:hidden" style={{ height: 48 }} />
+                {/* Desktop: "Visit KICK for HD quality" banner appears at the bottom strip */}
+                <div className="absolute bottom-0 left-0 right-0 z-10 hidden md:block" style={{ height: 52 }} />
               </>
             )}
 
@@ -342,6 +344,15 @@ export default function JogoPage({ params }: Props) {
             <h1 className="text-white font-black text-xl">{stream.title}</h1>
             <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse shrink-0">AO VIVO</span>
           </div>
+
+          {/* Fullscreen button — desktop only (mobile uses native Kick controls) */}
+          <button
+            onClick={toggleFullscreen}
+            className="hidden md:flex w-full items-center justify-center gap-2 font-bold py-3 rounded-xl transition-all text-sm bg-[#12121A] hover:bg-[#1A1A26] border border-[#2A2A3A] text-gray-400 hover:text-white"
+          >
+            <Maximize className="w-4 h-4" />
+            Tela cheia
+          </button>
 
         </div>
 
