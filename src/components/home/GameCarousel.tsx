@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 type CarouselBanner = {
   id: string
   image_url: string
+  mobile_image_url: string | null
   display_order: number
 }
 
@@ -53,21 +54,22 @@ export default function GameCarousel() {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-bold text-white">Próximos Jogos</h2>
-    <section className="relative overflow-hidden rounded-xl border border-[#2A2A3A] mx-auto max-w-full" style={{ width: 'fit-content' }}>
-      {/* Spacer invisível: define as dimensões naturais da imagem para o container */}
-      <img src={banners[0].image_url} alt="" aria-hidden className="invisible block h-20 w-auto max-w-full" />
-
+    <section className="relative overflow-hidden rounded-xl border border-[#2A2A3A] w-full" style={{ height: 80 }}>
       {banners.map((b, i) => (
         <div
           key={b.id}
           className={`absolute inset-0 transition-opacity duration-700 ${i === current ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
-          <img
-            src={b.image_url}
-            alt="Jogo em destaque"
-            className="w-full h-full object-cover"
-          />
+          <picture className="block w-full h-full">
+            {b.mobile_image_url && (
+              <source media="(max-width: 767px)" srcSet={b.mobile_image_url} />
+            )}
+            <img
+              src={b.image_url}
+              alt="Jogo em destaque"
+              className="w-full h-full object-cover"
+            />
+          </picture>
         </div>
       ))}
 

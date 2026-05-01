@@ -17,57 +17,117 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header
-      className="fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-5xl bg-[#0B0B0F]/70 backdrop-blur-md border-x border-b border-orange-500/40 rounded-b-[2rem]"
-      style={{ boxShadow: '0 0 18px rgba(249,115,22,0.18), 0 0 6px rgba(249,115,22,0.10) inset' }}
-    >
-      {/* Glow direito */}
-      <div className="pointer-events-none absolute right-0 top-0 h-full w-72 bg-gradient-to-l from-white/[0.05] to-transparent rounded-br-[2rem]" />
+    <header className="fixed top-0 left-0 right-0 z-50">
+      {/* Main bar */}
+      <div
+        style={{
+          backgroundImage: 'url(/bg.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          borderBottomLeftRadius: '1.75rem',
+          borderBottomRightRadius: '1.75rem',
+          borderBottom: '1px solid rgba(255,106,0,0.22)',
+          borderLeft: '1px solid rgba(255,106,0,0.15)',
+          borderRight: '1px solid rgba(255,106,0,0.15)',
+          boxShadow: '0 6px 36px rgba(0,0,0,0.7)',
+        }}
+      >
+        <div className="flex items-center px-6 sm:px-10 gap-6" style={{ height: 64 }}>
 
-      <nav className="relative px-6">
-        <div className="relative flex items-center justify-between h-16">
-          {/* Logo centralizado */}
-          <Link
-            href="/"
-            className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2"
-          >
+          {/* Logo */}
+          <Link href="/" className="flex-shrink-0 flex items-center">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain" />
+              <img
+                src={logoUrl}
+                alt="FutZone"
+                width={160}
+                height={40}
+                className="block object-contain"
+                style={{
+                  height: 'clamp(36px, 6vw, 56px)',
+                  width: 'auto',
+                  maxWidth: 220,
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 0 8px rgba(255,106,0,0.45))',
+                }}
+              />
             ) : (
-              <>
+              <span className="flex items-center gap-2">
                 <div className="w-9 h-9 bg-orange-500 rounded-lg flex items-center justify-center shadow-lg">
                   <Zap className="w-5 h-5 text-white fill-white" />
                 </div>
                 <span className="text-xl font-black tracking-tight">
                   FUT<span className="text-orange-500">ZONE</span>
                 </span>
-              </>
+              </span>
             )}
           </Link>
 
-          {/* Placeholder esquerdo para balancear */}
-          <div className="w-24" />
+          <div className="flex-1" />
 
-          {/* Ações direita */}
-          <div className="flex items-center gap-3">
+          {/* Botões */}
+          <div className="flex items-center">
             {user ? (
-              <button
-                onClick={logout}
-                className="text-sm text-gray-400 hover:text-white border border-[#2A2A3A] hover:border-orange-500/50 px-4 py-1.5 rounded-xl transition-all"
-              >
-                Sair
-              </button>
+              <SkewButton onClick={logout} variant="outline">Sair</SkewButton>
             ) : (
-              <button
-                onClick={showModal}
-                className="text-sm font-bold text-white bg-orange-500 hover:bg-orange-400 px-4 py-1.5 rounded-xl transition-all"
-              >
-                Entrar
-              </button>
+              <div className="flex items-center">
+                <SkewButton onClick={() => showModal('login')} variant="outline" z={1}>Entrar</SkewButton>
+                <SkewButton onClick={() => showModal('register')} variant="solid" z={2} overlap>Criar conta</SkewButton>
+              </div>
             )}
           </div>
+
         </div>
-      </nav>
+      </div>
     </header>
+  );
+}
+
+function SkewButton({
+  onClick,
+  variant,
+  children,
+  z = 1,
+  overlap = false,
+}: {
+  onClick: () => void;
+  variant: 'outline' | 'solid';
+  children: React.ReactNode;
+  z?: number;
+  overlap?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative text-xs sm:text-sm font-extrabold text-white uppercase tracking-wide px-3 py-1.5 sm:px-5 sm:py-2.5 transition-all group"
+      style={{
+        transform: 'skewX(-12deg)',
+        zIndex: z,
+        marginLeft: overlap ? -10 : undefined,
+      }}
+    >
+      <span
+        className="absolute inset-0 rounded-md transition-all group-hover:brightness-110 backdrop-blur-sm"
+        style={
+          variant === 'solid'
+            ? {
+                background: 'linear-gradient(135deg, #FF6A00 0%, #FF8533 100%)',
+                boxShadow: '0 0 18px rgba(255,106,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)',
+              }
+            : {
+                background: 'rgba(255,255,255,0.04)',
+                border: '1.5px solid rgba(255,106,0,0.65)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+              }
+        }
+        aria-hidden
+      />
+      <span
+        className="relative"
+        style={{ display: 'inline-block', transform: 'skewX(12deg)' }}
+      >
+        {children}
+      </span>
+    </button>
   );
 }

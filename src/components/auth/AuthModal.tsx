@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { X, Eye, EyeOff } from 'lucide-react'
 
 export default function AuthModal() {
-  const { modalVisible, hideModal, login, register } = useAuth()
+  const { modalVisible, hideModal, modalInitialView, login, register } = useAuth()
   const [view, setView] = useState<'login' | 'register'>('login')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
@@ -24,7 +24,7 @@ export default function AuthModal() {
 
   useEffect(() => {
     if (modalVisible) {
-      setView('login')
+      setView(modalInitialView)
       setPhone('')
       setPassword('')
       setName('')
@@ -107,7 +107,13 @@ export default function AuthModal() {
         {/* Logo */}
         <div className="flex justify-center pt-1 pb-1">
           {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain" />
+            <img
+              src={logoUrl}
+              alt="Logo"
+              width={160}
+              height={40}
+              style={{ height: 40, width: 'auto', maxWidth: 160, maxHeight: 40, objectFit: 'contain', display: 'block' }}
+            />
           ) : (
             <div className="h-10 w-28 rounded-lg bg-white/5" />
           )}

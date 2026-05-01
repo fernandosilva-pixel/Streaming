@@ -104,7 +104,7 @@ export default function ChatBox({ streamId }: { streamId: string }) {
         ) : (
           <button
             type="button"
-            onClick={showModal}
+            onClick={() => showModal('login')}
             className="w-full text-center text-gray-500 hover:text-orange-500 text-sm transition-colors py-2"
           >
             Entre para participar do chat

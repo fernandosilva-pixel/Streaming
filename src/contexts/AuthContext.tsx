@@ -11,9 +11,10 @@ type SiteUser = {
 type AuthContextType = {
   user: SiteUser | null
   initialized: boolean
-  showModal: () => void
+  showModal: (view?: 'login' | 'register') => void
   hideModal: () => void
   modalVisible: boolean
+  modalInitialView: 'login' | 'register'
   login: (phone: string, password: string) => Promise<boolean>
   register: (name: string, phone: string, password: string) => Promise<void>
   logout: () => void
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SiteUser | null>(null)
   const [initialized, setInitialized] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
+  const [modalInitialView, setModalInitialView] = useState<'login' | 'register'>('login')
 
   useEffect(() => {
     const stored = localStorage.getItem('futzone_user')
@@ -32,7 +34,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setInitialized(true)
   }, [])
 
-  function showModal() { setModalVisible(true) }
+  function showModal(view: 'login' | 'register' = 'login') {
+    setModalInitialView(view)
+    setModalVisible(true)
+  }
   function hideModal() { setModalVisible(false) }
 
   async function login(phone: string, password: string): Promise<boolean> {
@@ -83,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, initialized, showModal, hideModal, modalVisible, login, register, logout }}>
+    <AuthContext.Provider value={{ user, initialized, showModal, hideModal, modalVisible, modalInitialView, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )

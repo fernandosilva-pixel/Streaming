@@ -290,7 +290,7 @@ export default function JogoPage({ params }: Props) {
                 </div>
                 <button
                   className="animate-orange-pulse text-orange-500 font-bold border border-orange-500 rounded-full px-8 py-3 transition-all hover:bg-orange-500/10"
-                  onClick={showModal}
+                  onClick={() => showModal('login')}
                 >
                   Criar Conta
                 </button>

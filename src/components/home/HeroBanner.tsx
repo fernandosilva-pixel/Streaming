@@ -55,7 +55,7 @@ export default function HeroBanner() {
     game?.fixture.status.short === 'HT'
 
   if (loading) {
-    return <section className="w-full rounded-2xl border border-[#2A2A3A] bg-[#12121A] animate-pulse h-48 sm:h-72 md:h-96 lg:h-[480px]" />
+    return <section className="w-full rounded-2xl border border-[#2A2A3A] bg-[#12121A] animate-pulse h-40 md:h-96 lg:h-[480px]" />
   }
 
   if (banners.length === 0) {
@@ -77,7 +77,7 @@ export default function HeroBanner() {
         <img
           src={banner.image_url}
           alt="Banner do jogo em destaque"
-          className="w-full object-cover h-48 sm:h-72 md:h-96 lg:h-[480px]"
+          className="w-full block h-auto md:h-96 lg:h-[480px] md:object-cover"
           style={{ objectPosition: 'center' }}
         />
 

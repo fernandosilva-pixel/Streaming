@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Radio, Plus, Check, Pencil, X, Megaphone } from 'lucide-react'
+import { Trash2, Radio, Plus, Check, Pencil, X, Megaphone, ImageIcon, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 type Fixture = {
@@ -89,7 +89,7 @@ export default function AdminPage() {
   const [isExtraDragging, setIsExtraDragging] = useState(false)
 
   // Próximos Jogos (carousel_banners)
-  const [carouselBanners, setCarouselBanners] = useState<{ id: string; image_url: string; display_order: number }[]>([])
+  const [carouselBanners, setCarouselBanners] = useState<{ id: string; image_url: string; mobile_image_url: string | null; display_order: number }[]>([])
   const [carouselUploading, setCarouselUploading] = useState(false)
   const [isCarouselDragging, setIsCarouselDragging] = useState(false)
 
@@ -144,6 +144,9 @@ export default function AdminPage() {
   const [activePopup, setActivePopup] = useState<{ id: string; message: string } | null>(null)
   const [sendingPopup, setSendingPopup] = useState(false)
   const [closingPopup, setClosingPopup] = useState(false)
+
+  // Aba ativa
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar'>('visual')
 
   // Modal de método de pagamento
   const [chargeModal, setChargeModal] = useState<{ id: string } | null>(null)
@@ -461,6 +464,18 @@ export default function AdminPage() {
     setCarouselUploading(false)
   }
 
+  async function handleCarouselMobileFile(bannerId: string, file: File) {
+    if (!isImageFile(file)) return
+    const ext = file.name.split('.').pop()
+    const fileName = `carousel-mobile-${Date.now()}.${ext}`
+    const contentType = getContentType(file)
+    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
+    if (error) { alert('Erro no upload: ' + error.message); return }
+    const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
+    await supabase.from('carousel_banners').update({ mobile_image_url: publicUrl }).eq('id', bannerId)
+    await loadCarouselBanners()
+  }
+
   async function deleteCarouselBanner(id: string) {
     await supabase.from('carousel_banners').delete().eq('id', id)
     setCarouselBanners(prev => prev.filter(b => b.id !== id))
@@ -595,13 +610,13 @@ export default function AdminPage() {
   const internationalFixtures = fixtures.filter(f => INTERNATIONAL_LEAGUES.has(f.league.id)).filter(searchMatch)
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-10">
+    <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black text-white">Painel Admin</h1>
-          <p className="text-gray-500 text-sm mt-1">Gerencie o banner principal do site</p>
+          <p className="text-gray-500 text-sm mt-1">Gerencie o site</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-[#12121A] border border-[#2A2A3A] px-4 py-2 rounded-xl">
@@ -615,419 +630,462 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Logo */}
-      <div className="space-y-3">
-        <div>
-          <h2 className="text-lg font-bold text-white">Logo do Site</h2>
-          <p className="text-gray-500 text-sm mt-0.5">PNG com fundo transparente recomendado · altura ideal: 40px</p>
-        </div>
-        <div className="flex items-center gap-5">
-          {logoUrl && (
-            <div className="flex-shrink-0 h-14 w-32 bg-[#12121A] border border-[#2A2A3A] rounded-xl flex items-center justify-center overflow-hidden">
-              <img src={logoUrl} alt="Logo atual" className="h-10 w-auto object-contain" />
-            </div>
-          )}
-          <div
-            onDragOver={e => { e.preventDefault(); setIsLogoDragging(true) }}
-            onDragLeave={() => setIsLogoDragging(false)}
-            onDrop={e => { e.preventDefault(); setIsLogoDragging(false); const f = e.dataTransfer.files[0]; if (f) handleLogoFile(f) }}
-            onClick={() => document.getElementById('logoInput')?.click()}
-            className={`flex-1 border-2 border-dashed rounded-2xl cursor-pointer transition-all flex items-center justify-center h-14 ${isLogoDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+      {/* Tab Navigation */}
+      <div className="flex gap-1 bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-1">
+        {([
+          { id: 'visual', label: 'Visual', icon: <ImageIcon className="w-4 h-4" /> },
+          { id: 'transmissao', label: 'Transmissão', icon: <Radio className="w-4 h-4" /> },
+          { id: 'acesso', label: 'Acesso Gratuito', icon: <Users className="w-4 h-4" /> },
+          { id: 'notificar', label: 'Notificar', icon: <Megaphone className="w-4 h-4" /> },
+        ] as const).map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-2 rounded-xl text-sm font-bold transition-all ${
+              activeTab === tab.id ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-white'
+            }`}
           >
-            <input id="logoInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleLogoFile(e.target.files[0])} />
-            {logoUploading ? <p className="text-white text-sm font-semibold">Enviando...</p> : <p className="text-gray-500 text-sm">{logoUrl ? 'Arraste para substituir a logo' : 'Arraste a logo aqui ou clique'}</p>}
-          </div>
-        </div>
-        {logoSaved && <p className="text-green-500 text-xs">Logo salva! Recarregue a página para ver no navbar.</p>}
+            {tab.icon}
+            <span className="hidden sm:inline">{tab.label}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Transmissões */}
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Radio className="w-5 h-5 text-orange-500" />
-            Transmissões
-          </h2>
-          <p className="text-gray-500 text-sm mt-0.5">Gerencie as transmissões. "Destacar" define qual aparece no banner principal.</p>
-        </div>
+      {/* ── ABA: VISUAL ── */}
+      {activeTab === 'visual' && (
+        <div className="space-y-10">
 
-        <div className="flex items-start gap-2.5 bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3">
-          <span className="text-yellow-400 text-base shrink-0 mt-0.5">⚠️</span>
-          <p className="text-yellow-300 text-xs leading-relaxed">
-            <strong>Trocou de canal?</strong> Use o botão <strong>Editar</strong> na stream existente — não crie uma nova. Criar uma nova stream gera um ID diferente e usuários que já pagaram precisarão pagar novamente.
-          </p>
-        </div>
-
-        {/* Adicionar stream */}
-        <div className="space-y-2">
-          <div className="flex gap-2 flex-wrap">
-            <input type="text" placeholder="Nome do jogo (ex: Flamengo x Corinthians)" value={newTitle} onChange={e => setNewTitle(e.target.value)}
-              className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
-            <div className="flex rounded-xl overflow-hidden border border-[#2A2A3A]">
-              <button onClick={() => setNewSource('kick')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>Kick</button>
-              <button onClick={() => setNewSource('soop')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>Soop</button>
+          {/* Logo */}
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-bold text-white">Logo do Site</h2>
+              <p className="text-gray-500 text-sm mt-0.5">PNG com fundo transparente recomendado · altura ideal: 40px</p>
             </div>
+            <div className="flex items-center gap-5">
+              {logoUrl && (
+                <div className="flex-shrink-0 h-14 w-32 bg-[#12121A] border border-[#2A2A3A] rounded-xl flex items-center justify-center overflow-hidden">
+                  <img src={logoUrl} alt="Logo atual" className="h-10 w-auto object-contain" />
+                </div>
+              )}
+              <div
+                onDragOver={e => { e.preventDefault(); setIsLogoDragging(true) }}
+                onDragLeave={() => setIsLogoDragging(false)}
+                onDrop={e => { e.preventDefault(); setIsLogoDragging(false); const f = e.dataTransfer.files[0]; if (f) handleLogoFile(f) }}
+                onClick={() => document.getElementById('logoInput')?.click()}
+                className={`flex-1 border-2 border-dashed rounded-2xl cursor-pointer transition-all flex items-center justify-center h-14 ${isLogoDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+              >
+                <input id="logoInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleLogoFile(e.target.files[0])} />
+                {logoUploading ? <p className="text-white text-sm font-semibold">Enviando...</p> : <p className="text-gray-500 text-sm">{logoUrl ? 'Arraste para substituir a logo' : 'Arraste a logo aqui ou clique'}</p>}
+              </div>
+            </div>
+            {logoSaved && <p className="text-green-500 text-xs">Logo salva! Recarregue a página para ver no navbar.</p>}
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {newSource === 'kick' ? (
-              <input type="text" placeholder="Canal da Kick (ex: futzone_fla)" value={newChannel} onChange={e => setNewChannel(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
-                className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
-            ) : (
-              <>
-                <input type="text" placeholder="ID do canal Soop" value={newSoopChannel} onChange={e => setNewSoopChannel(e.target.value)}
-                  className="flex-1 min-w-36 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
-                <input type="text" placeholder="Nº do broadcast (opcional)" value={newSoopBroadNo} onChange={e => setNewSoopBroadNo(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
-                  className="w-52 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
-              </>
-            )}
-            <button onClick={addStream} disabled={addingStream || !newTitle.trim() || (newSource === 'kick' ? !newChannel.trim() : !newSoopChannel.trim())}
-              className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm">
-              <Plus className="w-4 h-4" />{addingStream ? 'Adicionando...' : 'Adicionar'}
-            </button>
-          </div>
-        </div>
 
-        {/* Lista de streams */}
-        {streams.length === 0 ? (
-          <div className="border border-dashed border-[#2A2A3A] rounded-xl py-8 text-center">
-            <p className="text-gray-600 text-sm">Nenhuma transmissão cadastrada</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {streams.map(s => {
-              const isHighlighted = highlightedStreamId === s.id
-              const isEditing = editingStreamId === s.id
-              const currentSource = editSources[s.id] ?? s.stream_source ?? 'kick'
-              return (
-                <div key={s.id} className={`rounded-xl border overflow-hidden transition-all ${isHighlighted ? 'border-orange-500 bg-orange-500/5' : 'border-[#2A2A3A] bg-[#12121A]'}`}>
-                  <div className="flex flex-wrap items-center gap-2 p-3">
-                    {isHighlighted && <span className="text-[10px] bg-orange-500 text-white font-bold px-1.5 py-0.5 rounded shrink-0">LIVE</span>}
-                    <p className="text-white text-sm font-semibold truncate flex-1 min-w-0">{s.title}</p>
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => {
-                          if (s.charge_enabled) {
-                            toggleCharge(s.id, false)
-                          } else {
-                            setChargeModalMethod('bspay')
-                            setChargeModalQrUrl(null)
-                            setChargeModal({ id: s.id })
-                          }
-                        }}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.charge_enabled ? 'bg-green-600/20 text-green-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-green-600/20 hover:text-green-400'}`}
-                        title={s.charge_enabled ? 'Cobrança ativa — clique para desativar' : 'Ativar cobrança'}>
-                        {s.charge_enabled ? 'Cobrança ON' : 'Cobrança OFF'}
-                      </button>
-                      {s.charge_enabled && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-gray-500 text-xs shrink-0">R$</span>
-                          <input type="number" min="0.01" step="0.01" value={editAmounts[s.id] ?? s.charge_amount}
-                            onChange={e => setEditAmounts(prev => ({ ...prev, [s.id]: e.target.value }))}
-                            onBlur={() => saveAmount(s.id)}
-                            className="bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-2 py-1.5 text-sm w-16 focus:outline-none focus:border-orange-500" />
-                        </div>
-                      )}
-                      <button onClick={() => highlightStream(s.id)} disabled={isHighlighted || highlightingSave}
-                        className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${isHighlighted ? 'bg-orange-500/20 text-orange-400 cursor-default' : 'bg-[#2A2A3A] hover:bg-orange-500 text-gray-300 hover:text-white'}`}>
-                        {isHighlighted ? <><Check className="w-3 h-3" /> Destacado</> : 'Destacar'}
-                      </button>
-                      <button onClick={() => setEditingStreamId(isEditing ? null : s.id)}
-                        className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-[#2A2A3A] text-gray-400 hover:text-white hover:bg-[#3A3A4A] transition-all">
-                        {isEditing ? <><X className="w-3 h-3" /> Fechar</> : <><Pencil className="w-3 h-3" /> Editar</>}
-                      </button>
-                      <button onClick={() => deleteStream(s.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1.5">
+          {/* Banners */}
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-bold text-white">Banners</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Adicione uma ou mais imagens — quando houver mais de uma, o sistema rotaciona automaticamente.</p>
+            </div>
+            <div className="flex gap-3 items-stretch">
+              <div
+                onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={onDrop}
+                onClick={() => document.getElementById('fileInput')?.click()}
+                className={`relative flex-1 border-2 border-dashed rounded-2xl overflow-hidden cursor-pointer transition-all ${isDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+                style={{ minHeight: 200 }}
+              >
+                <input id="fileInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+                {previewUrl ? (
+                  <img src={previewUrl} alt="Preview" className="w-full h-full object-cover absolute inset-0" />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-2 p-6 h-full min-h-[200px]">
+                    <p className="text-white font-semibold">Arraste o banner aqui</p>
+                    <p className="text-gray-600 text-sm">ou clique para selecionar</p>
+                  </div>
+                )}
+                {uploading && (
+                  <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                    <p className="text-white font-bold text-lg">Enviando...</p>
+                  </div>
+                )}
+              </div>
+              <div
+                onDragOver={e => { e.preventDefault(); setIsExtraDragging(true) }}
+                onDragLeave={() => setIsExtraDragging(false)}
+                onDrop={e => { e.preventDefault(); setIsExtraDragging(false); const f = e.dataTransfer.files[0]; if (f) handleExtraFile(f) }}
+                onClick={() => document.getElementById('extraInput')?.click()}
+                className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl cursor-pointer transition-all w-28 shrink-0 ${isExtraDragging ? 'border-orange-500 bg-orange-500/10 text-orange-400' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A] text-gray-500'}`}
+              >
+                <input id="extraInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleExtraFile(e.target.files[0])} />
+                {extraUploading
+                  ? <p className="text-white text-xs font-semibold text-center px-2">Enviando...</p>
+                  : <><Plus className="w-6 h-6" /><p className="text-xs text-center px-2">Adicionar mais imagens</p></>
+                }
+              </div>
+            </div>
+            {(banner?.image_url || extraBanners.length > 0) && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {banner?.image_url && (
+                  <div className="relative group rounded-xl overflow-hidden border border-orange-500/40 bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
+                    <img src={banner.image_url} alt="" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
+                      <button onClick={deleteMainBanner} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
+                    <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">#1 principal</span>
                   </div>
-                  {isEditing && (
-                    <div className="px-3 pb-3 pt-2 border-t border-[#2A2A3A] flex flex-wrap items-center gap-2">
-                      <div className="flex rounded-lg overflow-hidden border border-[#2A2A3A]">
-                        <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'kick' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Kick</button>
-                        <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'soop' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Soop</button>
-                      </div>
-                      {currentSource === 'kick' ? (
-                        <input type="text" value={editChannels[s.id] ?? ''} onChange={e => setEditChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Canal da Kick"
-                          className="flex-1 min-w-36 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
-                      ) : (
-                        <>
-                          <input type="text" value={editSoopChannels[s.id] ?? ''} onChange={e => setEditSoopChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="ID do canal Soop (bjid)"
-                            className="flex-1 min-w-28 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
-                          <input type="text" value={editSoopBroadNos[s.id] ?? ''} onChange={e => setEditSoopBroadNos(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Nº broadcast"
-                            className="w-32 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
-                          <button onClick={() => detectSoopBroadcast(s.id)} disabled={detectingBroad === s.id || !editSoopChannels[s.id]}
-                            className="bg-[#2A2A3A] hover:bg-orange-500 disabled:opacity-40 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all">
-                            {detectingBroad === s.id ? '...' : 'Detectar'}
-                          </button>
-                        </>
-                      )}
-                      <button onClick={async () => { await saveChannel(s.id); setEditingStreamId(null) }} disabled={savingChannel === s.id}
-                        className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-all">
-                        {savingChannel === s.id ? 'Salvando...' : 'Salvar'}
+                )}
+                {extraBanners.map((b, i) => (
+                  <div key={b.id} className="relative group rounded-xl overflow-hidden border border-[#2A2A3A] bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
+                    <img src={b.image_url} alt="" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
+                      <button onClick={() => deleteExtraBanner(b.id)} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Banners (unificado) */}
-      <div className="space-y-3">
-        <div>
-          <h2 className="text-lg font-bold text-white">Banners</h2>
-          <p className="text-gray-500 text-sm mt-0.5">Adicione uma ou mais imagens — quando houver mais de uma, o sistema rotaciona automaticamente.</p>
-        </div>
-
-        <div className="flex gap-3 items-stretch">
-          {/* Drop zone principal */}
-          <div
-            onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={onDrop}
-            onClick={() => document.getElementById('fileInput')?.click()}
-            className={`relative flex-1 border-2 border-dashed rounded-2xl overflow-hidden cursor-pointer transition-all ${isDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
-            style={{ minHeight: 200 }}
-          >
-            <input id="fileInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
-            {previewUrl ? (
-              <img src={previewUrl} alt="Preview" className="w-full h-full object-cover absolute inset-0" />
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-2 p-6 h-full min-h-[200px]">
-                <p className="text-white font-semibold">Arraste o banner aqui</p>
-                <p className="text-gray-600 text-sm">ou clique para selecionar</p>
+                    <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded">#{i + 2}</span>
+                  </div>
+                ))}
               </div>
             )}
-            {uploading && (
-              <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                <p className="text-white font-bold text-lg">Enviando...</p>
-              </div>
-            )}
+            {previewUrl && <p className="text-green-500 text-xs">Imagem carregada — clique em "Publicar" para salvar</p>}
           </div>
 
-          {/* Botão adicionar mais */}
-          <div
-            onDragOver={e => { e.preventDefault(); setIsExtraDragging(true) }}
-            onDragLeave={() => setIsExtraDragging(false)}
-            onDrop={e => { e.preventDefault(); setIsExtraDragging(false); const f = e.dataTransfer.files[0]; if (f) handleExtraFile(f) }}
-            onClick={() => document.getElementById('extraInput')?.click()}
-            className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl cursor-pointer transition-all w-28 shrink-0 ${isExtraDragging ? 'border-orange-500 bg-orange-500/10 text-orange-400' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A] text-gray-500'}`}
-          >
-            <input id="extraInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleExtraFile(e.target.files[0])} />
-            {extraUploading
-              ? <p className="text-white text-xs font-semibold text-center px-2">Enviando...</p>
-              : <><Plus className="w-6 h-6" /><p className="text-xs text-center px-2">Adicionar mais imagens</p></>
-            }
-          </div>
-        </div>
-
-        {/* Grid de todas as imagens salvas */}
-        {(banner?.image_url || extraBanners.length > 0) && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {banner?.image_url && (
-              <div className="relative group rounded-xl overflow-hidden border border-orange-500/40 bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
-                <img src={banner.image_url} alt="" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
-                  <button onClick={deleteMainBanner} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">#1 principal</span>
-              </div>
-            )}
-            {extraBanners.map((b, i) => (
-              <div key={b.id} className="relative group rounded-xl overflow-hidden border border-[#2A2A3A] bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
-                <img src={b.image_url} alt="" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
-                  <button onClick={() => deleteExtraBanner(b.id)} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded">#{i + 2}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {previewUrl && <p className="text-green-500 text-xs">Imagem carregada — clique em "Publicar" para salvar</p>}
-      </div>
-
-      {/* Jogo em destaque */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-white">Jogo em destaque</h2>
-        <div className="flex gap-3 flex-wrap">
-          <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-orange-500" />
-          <input type="text" placeholder="Buscar time ou liga..." value={search} onChange={e => setSearch(e.target.value)}
-            className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
-          <button onClick={loadFixtures} disabled={loadingFixtures}
-            className="bg-[#1A1A26] hover:bg-[#2A2A3A] border border-[#2A2A3A] text-gray-400 hover:text-white rounded-xl px-4 py-2 text-sm transition-all disabled:opacity-50">
-            {loadingFixtures ? 'Atualizando...' : 'Atualizar'}
-          </button>
-        </div>
-        <div className="space-y-2">
-          <button onClick={() => setSelectedGameId(null)}
-            className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${selectedGameId === null ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#12121A] hover:border-orange-500/30'}`}>
-            <span className="text-gray-400 text-sm">Sem jogo selecionado</span>
-          </button>
-        </div>
-        {loadingFixtures ? (
-          <div className="py-8 text-center text-gray-500 text-sm">Carregando jogos...</div>
-        ) : brazilFixtures.length === 0 && internationalFixtures.length === 0 ? (
-          <div className="py-8 text-center text-gray-600 text-sm">Nenhum jogo encontrado para esta data</div>
-        ) : (
-          <div className="space-y-5">
-            {brazilFixtures.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Brasil</p>
-                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                  {brazilFixtures.map(f => <FixtureRow key={f.fixture.id} f={f} selected={selectedGameId === f.fixture.id} onSelect={() => setSelectedGameId(f.fixture.id)} />)}
-                </div>
-              </div>
-            )}
-            {internationalFixtures.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Internacional</p>
-                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                  {internationalFixtures.map(f => <FixtureRow key={f.fixture.id} f={f} selected={selectedGameId === f.fixture.id} onSelect={() => setSelectedGameId(f.fixture.id)} />)}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Próximos Jogos (carousel_banners) */}
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-bold text-white">Próximos Jogos</h2>
-          <p className="text-gray-500 text-sm mt-0.5">Resolução recomendada: 1200 × 80px</p>
-        </div>
-        <div
-          onDragOver={e => { e.preventDefault(); setIsCarouselDragging(true) }}
-          onDragLeave={() => setIsCarouselDragging(false)}
-          onDrop={e => { e.preventDefault(); setIsCarouselDragging(false); const f = e.dataTransfer.files[0]; if (f) handleCarouselFile(f) }}
-          onClick={() => document.getElementById('carouselInput')?.click()}
-          className={`relative border-2 border-dashed rounded-2xl cursor-pointer transition-all flex items-center justify-center h-28 ${isCarouselDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
-        >
-          <input id="carouselInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleCarouselFile(e.target.files[0])} />
-          {carouselUploading
-            ? <p className="text-white font-semibold text-sm">Enviando...</p>
-            : <div className="text-center"><p className="text-white font-semibold text-sm">Arraste o banner aqui</p><p className="text-gray-600 text-xs mt-1">ou clique para selecionar · adiciona ao carrossel</p></div>
-          }
-        </div>
-        {carouselBanners.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {carouselBanners.map((b, i) => (
-              <div key={b.id} className="relative group rounded-xl overflow-hidden border border-[#2A2A3A]" style={{ aspectRatio: '3/1' }}>
-                <img src={b.image_url} alt="" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center">
-                  <button onClick={() => deleteCarouselBanner(b.id)} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <span className="absolute top-1.5 left-1.5 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">#{i + 1}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Acesso gratuito */}
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-bold text-white">Acesso gratuito</h2>
-          <p className="text-gray-500 text-sm mt-0.5">Usuários desta lista assistem de graça mesmo em transmissões pagas.</p>
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="tel"
-            placeholder="Número de telefone (ex: 11999999999)"
-            value={newFreePhone}
-            onChange={e => setNewFreePhone(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addFreeAccess()}
-            className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
-          />
+          {/* Publicar banner */}
           <button
-            onClick={addFreeAccess}
-            disabled={addingFreeUser || !newFreePhone.trim()}
-            className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm"
+            onClick={save}
+            disabled={saving || uploading || !previewUrl}
+            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl transition-all text-lg"
           >
-            <Plus className="w-4 h-4" />{addingFreeUser ? 'Adicionando...' : 'Adicionar'}
+            {saving ? 'Publicando...' : 'Confirmar e publicar banner'}
           </button>
-        </div>
-        {freeUsers.length === 0 ? (
-          <div className="border border-dashed border-[#2A2A3A] rounded-xl py-6 text-center">
-            <p className="text-gray-600 text-sm">Nenhum usuário com acesso gratuito</p>
+
+          {/* Próximos Jogos */}
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-white">Próximos Jogos</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Desktop: 1280×120px · Mobile: 390×120px</p>
+            </div>
+            <div
+              onDragOver={e => { e.preventDefault(); setIsCarouselDragging(true) }}
+              onDragLeave={() => setIsCarouselDragging(false)}
+              onDrop={e => { e.preventDefault(); setIsCarouselDragging(false); const f = e.dataTransfer.files[0]; if (f) handleCarouselFile(f) }}
+              onClick={() => document.getElementById('carouselInput')?.click()}
+              className={`relative border-2 border-dashed rounded-2xl cursor-pointer transition-all flex items-center justify-center h-28 ${isCarouselDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+            >
+              <input id="carouselInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleCarouselFile(e.target.files[0])} />
+              {carouselUploading
+                ? <p className="text-white font-semibold text-sm">Enviando...</p>
+                : <div className="text-center"><p className="text-white font-semibold text-sm">Arraste o banner desktop aqui</p><p className="text-gray-600 text-xs mt-1">ou clique para selecionar · adiciona ao carrossel</p></div>
+              }
+            </div>
+            {carouselBanners.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {carouselBanners.map((b, i) => (
+                  <div key={b.id} className="space-y-2">
+                    <div className="relative group rounded-xl overflow-hidden border border-[#2A2A3A]" style={{ aspectRatio: '10/1' }}>
+                      <img src={b.image_url} alt="" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center gap-2">
+                        <button onClick={() => deleteCarouselBanner(b.id)} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <span className="absolute top-1.5 left-1.5 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">#{i + 1} Desktop</span>
+                    </div>
+                    <div
+                      className="relative rounded-xl overflow-hidden border border-dashed border-[#2A2A3A] cursor-pointer hover:border-orange-500/40 transition-all"
+                      style={{ aspectRatio: '3/1' }}
+                      onClick={() => document.getElementById(`carouselMobileInput-${b.id}`)?.click()}
+                    >
+                      <input
+                        id={`carouselMobileInput-${b.id}`}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => e.target.files?.[0] && handleCarouselMobileFile(b.id, e.target.files[0])}
+                      />
+                      {b.mobile_image_url ? (
+                        <img src={b.mobile_image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <p className="text-gray-600 text-xs text-center">Clique para adicionar<br/>versão mobile (390×120px)</p>
+                        </div>
+                      )}
+                      <span className="absolute top-1.5 left-1.5 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">📱 Mobile</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="space-y-2">
-            {freeUsers.map(u => (
-              <div key={u.id} className="flex items-center justify-between bg-[#12121A] border border-[#2A2A3A] rounded-xl px-4 py-3">
-                <span className="text-white text-sm font-mono">{u.user_phone}</span>
-                <button onClick={() => deleteFreeAccess(u.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1">
-                  <Trash2 className="w-4 h-4" />
+
+        </div>
+      )}
+
+      {/* ── ABA: TRANSMISSÃO ── */}
+      {activeTab === 'transmissao' && (
+        <div className="space-y-10">
+
+          {/* Transmissões */}
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Radio className="w-5 h-5 text-orange-500" />
+                Transmissões
+              </h2>
+              <p className="text-gray-500 text-sm mt-0.5">Gerencie as transmissões. "Destacar" define qual aparece no banner principal.</p>
+            </div>
+            <div className="flex items-start gap-2.5 bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3">
+              <span className="text-yellow-400 text-base shrink-0 mt-0.5">⚠️</span>
+              <p className="text-yellow-300 text-xs leading-relaxed">
+                <strong>Trocou de canal?</strong> Use o botão <strong>Editar</strong> na stream existente — não crie uma nova. Criar uma nova stream gera um ID diferente e usuários que já pagaram precisarão pagar novamente.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                <input type="text" placeholder="Nome do jogo (ex: Flamengo x Corinthians)" value={newTitle} onChange={e => setNewTitle(e.target.value)}
+                  className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                <div className="flex rounded-xl overflow-hidden border border-[#2A2A3A]">
+                  <button onClick={() => setNewSource('kick')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>Kick</button>
+                  <button onClick={() => setNewSource('soop')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>Soop</button>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {newSource === 'kick' ? (
+                  <input type="text" placeholder="Canal da Kick (ex: futzone_fla)" value={newChannel} onChange={e => setNewChannel(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
+                    className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                ) : (
+                  <>
+                    <input type="text" placeholder="ID do canal Soop" value={newSoopChannel} onChange={e => setNewSoopChannel(e.target.value)}
+                      className="flex-1 min-w-36 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                    <input type="text" placeholder="Nº do broadcast (opcional)" value={newSoopBroadNo} onChange={e => setNewSoopBroadNo(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
+                      className="w-52 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                  </>
+                )}
+                <button onClick={addStream} disabled={addingStream || !newTitle.trim() || (newSource === 'kick' ? !newChannel.trim() : !newSoopChannel.trim())}
+                  className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm">
+                  <Plus className="w-4 h-4" />{addingStream ? 'Adicionando...' : 'Adicionar'}
                 </button>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Pop-up para usuários */}
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Megaphone className="w-5 h-5 text-orange-500" />
-            Pop-up para usuários
-          </h2>
-          <p className="text-gray-500 text-sm mt-0.5">Exibe um aviso em tempo real para todos os usuários online.</p>
-        </div>
-
-        {activePopup && (
-          <div className="flex items-center justify-between gap-3 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-orange-400 text-xs font-bold mb-0.5">POP-UP ATIVO AGORA</p>
-              <p className="text-white text-sm truncate">{activePopup.message}</p>
             </div>
+            {streams.length === 0 ? (
+              <div className="border border-dashed border-[#2A2A3A] rounded-xl py-8 text-center">
+                <p className="text-gray-600 text-sm">Nenhuma transmissão cadastrada</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {streams.map(s => {
+                  const isHighlighted = highlightedStreamId === s.id
+                  const isEditing = editingStreamId === s.id
+                  const currentSource = editSources[s.id] ?? s.stream_source ?? 'kick'
+                  return (
+                    <div key={s.id} className={`rounded-xl border overflow-hidden transition-all ${isHighlighted ? 'border-orange-500 bg-orange-500/5' : 'border-[#2A2A3A] bg-[#12121A]'}`}>
+                      <div className="flex flex-wrap items-center gap-2 p-3">
+                        {isHighlighted && <span className="text-[10px] bg-orange-500 text-white font-bold px-1.5 py-0.5 rounded shrink-0">LIVE</span>}
+                        <p className="text-white text-sm font-semibold truncate flex-1 min-w-0">{s.title}</p>
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => {
+                              if (s.charge_enabled) { toggleCharge(s.id, false) }
+                              else { setChargeModalMethod('bspay'); setChargeModalQrUrl(null); setChargeModal({ id: s.id }) }
+                            }}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.charge_enabled ? 'bg-green-600/20 text-green-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-green-600/20 hover:text-green-400'}`}
+                            title={s.charge_enabled ? 'Cobrança ativa — clique para desativar' : 'Ativar cobrança'}>
+                            {s.charge_enabled ? 'Cobrança ON' : 'Cobrança OFF'}
+                          </button>
+                          {s.charge_enabled && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-gray-500 text-xs shrink-0">R$</span>
+                              <input type="number" min="0.01" step="0.01" value={editAmounts[s.id] ?? s.charge_amount}
+                                onChange={e => setEditAmounts(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                onBlur={() => saveAmount(s.id)}
+                                className="bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-2 py-1.5 text-sm w-16 focus:outline-none focus:border-orange-500" />
+                            </div>
+                          )}
+                          <button onClick={() => highlightStream(s.id)} disabled={isHighlighted || highlightingSave}
+                            className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${isHighlighted ? 'bg-orange-500/20 text-orange-400 cursor-default' : 'bg-[#2A2A3A] hover:bg-orange-500 text-gray-300 hover:text-white'}`}>
+                            {isHighlighted ? <><Check className="w-3 h-3" /> Destacado</> : 'Destacar'}
+                          </button>
+                          <button onClick={() => setEditingStreamId(isEditing ? null : s.id)}
+                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-[#2A2A3A] text-gray-400 hover:text-white hover:bg-[#3A3A4A] transition-all">
+                            {isEditing ? <><X className="w-3 h-3" /> Fechar</> : <><Pencil className="w-3 h-3" /> Editar</>}
+                          </button>
+                          <button onClick={() => deleteStream(s.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1.5">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      {isEditing && (
+                        <div className="px-3 pb-3 pt-2 border-t border-[#2A2A3A] flex flex-wrap items-center gap-2">
+                          <div className="flex rounded-lg overflow-hidden border border-[#2A2A3A]">
+                            <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'kick' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Kick</button>
+                            <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'soop' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Soop</button>
+                          </div>
+                          {currentSource === 'kick' ? (
+                            <input type="text" value={editChannels[s.id] ?? ''} onChange={e => setEditChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Canal da Kick"
+                              className="flex-1 min-w-36 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                          ) : (
+                            <>
+                              <input type="text" value={editSoopChannels[s.id] ?? ''} onChange={e => setEditSoopChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="ID do canal Soop (bjid)"
+                                className="flex-1 min-w-28 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                              <input type="text" value={editSoopBroadNos[s.id] ?? ''} onChange={e => setEditSoopBroadNos(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Nº broadcast"
+                                className="w-32 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                              <button onClick={() => detectSoopBroadcast(s.id)} disabled={detectingBroad === s.id || !editSoopChannels[s.id]}
+                                className="bg-[#2A2A3A] hover:bg-orange-500 disabled:opacity-40 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all">
+                                {detectingBroad === s.id ? '...' : 'Detectar'}
+                              </button>
+                            </>
+                          )}
+                          <button onClick={async () => { await saveChannel(s.id); setEditingStreamId(null) }} disabled={savingChannel === s.id}
+                            className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-all">
+                            {savingChannel === s.id ? 'Salvando...' : 'Salvar'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Jogo em destaque */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-bold text-white">Jogo em destaque</h2>
+            <div className="flex gap-3 flex-wrap">
+              <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                className="bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-orange-500" />
+              <input type="text" placeholder="Buscar time ou liga..." value={search} onChange={e => setSearch(e.target.value)}
+                className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+              <button onClick={loadFixtures} disabled={loadingFixtures}
+                className="bg-[#1A1A26] hover:bg-[#2A2A3A] border border-[#2A2A3A] text-gray-400 hover:text-white rounded-xl px-4 py-2 text-sm transition-all disabled:opacity-50">
+                {loadingFixtures ? 'Atualizando...' : 'Atualizar'}
+              </button>
+            </div>
+            <div className="space-y-2">
+              <button onClick={() => setSelectedGameId(null)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${selectedGameId === null ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#12121A] hover:border-orange-500/30'}`}>
+                <span className="text-gray-400 text-sm">Sem jogo selecionado</span>
+              </button>
+            </div>
+            {loadingFixtures ? (
+              <div className="py-8 text-center text-gray-500 text-sm">Carregando jogos...</div>
+            ) : brazilFixtures.length === 0 && internationalFixtures.length === 0 ? (
+              <div className="py-8 text-center text-gray-600 text-sm">Nenhum jogo encontrado para esta data</div>
+            ) : (
+              <div className="space-y-5">
+                {brazilFixtures.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Brasil</p>
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {brazilFixtures.map(f => <FixtureRow key={f.fixture.id} f={f} selected={selectedGameId === f.fixture.id} onSelect={() => setSelectedGameId(f.fixture.id)} />)}
+                    </div>
+                  </div>
+                )}
+                {internationalFixtures.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Internacional</p>
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {internationalFixtures.map(f => <FixtureRow key={f.fixture.id} f={f} selected={selectedGameId === f.fixture.id} onSelect={() => setSelectedGameId(f.fixture.id)} />)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* ── ABA: ACESSO GRATUITO ── */}
+      {activeTab === 'acesso' && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-bold text-white">Acesso gratuito</h2>
+            <p className="text-gray-500 text-sm mt-0.5">Usuários desta lista assistem de graça mesmo em transmissões pagas.</p>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="tel"
+              placeholder="Número de telefone (ex: 11999999999)"
+              value={newFreePhone}
+              onChange={e => setNewFreePhone(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addFreeAccess()}
+              className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
+            />
             <button
-              onClick={closePopup}
-              disabled={closingPopup}
-              className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/40 disabled:opacity-50 transition-all"
+              onClick={addFreeAccess}
+              disabled={addingFreeUser || !newFreePhone.trim()}
+              className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm"
             >
-              {closingPopup ? 'Fechando...' : 'Fechar pop-up'}
+              <Plus className="w-4 h-4" />{addingFreeUser ? 'Adicionando...' : 'Adicionar'}
             </button>
           </div>
-        )}
-
-        <div className="flex gap-2 items-start">
-          <textarea
-            placeholder="Digite o texto do aviso para todos os usuários..."
-            value={popupMessage}
-            onChange={e => setPopupMessage(e.target.value)}
-            rows={2}
-            className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 resize-none"
-          />
-          <button
-            onClick={sendPopup}
-            disabled={sendingPopup || !popupMessage.trim()}
-            className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-5 py-2.5 rounded-xl transition-all text-sm"
-          >
-            {sendingPopup ? 'Enviando...' : 'Exibir para todos'}
-          </button>
+          {freeUsers.length === 0 ? (
+            <div className="border border-dashed border-[#2A2A3A] rounded-xl py-6 text-center">
+              <p className="text-gray-600 text-sm">Nenhum usuário com acesso gratuito</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {freeUsers.map(u => (
+                <div key={u.id} className="flex items-center justify-between bg-[#12121A] border border-[#2A2A3A] rounded-xl px-4 py-3">
+                  <span className="text-white text-sm font-mono">{u.user_phone}</span>
+                  <button onClick={() => deleteFreeAccess(u.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
-      {/* Botão publicar — igual ao original */}
-      <button
-        onClick={save}
-        disabled={saving || uploading || !previewUrl}
-        className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl transition-all text-lg"
-      >
-        {saving ? 'Publicando...' : 'Confirmar e publicar banner'}
-      </button>
+      {/* ── ABA: NOTIFICAR USUÁRIOS ── */}
+      {activeTab === 'notificar' && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Megaphone className="w-5 h-5 text-orange-500" />
+              Notificar Usuários
+            </h2>
+            <p className="text-gray-500 text-sm mt-0.5">Exibe um aviso em tempo real para todos os usuários online.</p>
+          </div>
+          {activePopup && (
+            <div className="flex items-center justify-between gap-3 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-orange-400 text-xs font-bold mb-0.5">POP-UP ATIVO AGORA</p>
+                <p className="text-white text-sm truncate">{activePopup.message}</p>
+              </div>
+              <button
+                onClick={closePopup}
+                disabled={closingPopup}
+                className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/40 disabled:opacity-50 transition-all"
+              >
+                {closingPopup ? 'Fechando...' : 'Fechar pop-up'}
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2 items-start">
+            <textarea
+              placeholder="Digite o texto do aviso para todos os usuários..."
+              value={popupMessage}
+              onChange={e => setPopupMessage(e.target.value)}
+              rows={3}
+              className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 resize-none"
+            />
+            <button
+              onClick={sendPopup}
+              disabled={sendingPopup || !popupMessage.trim()}
+              className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-5 py-2.5 rounded-xl transition-all text-sm"
+            >
+              {sendingPopup ? 'Enviando...' : 'Exibir para todos'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal — método de pagamento */}
       {chargeModal && (
