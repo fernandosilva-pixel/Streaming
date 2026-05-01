@@ -5,6 +5,7 @@ import Footer from '@/components/layout/Footer';
 import { AuthProvider } from '@/contexts/AuthContext';
 import AuthModal from '@/components/auth/AuthModal'
 import PresenceTracker from '@/components/analytics/PresenceTracker';
+import PopupBanner from '@/components/common/PopupBanner';
 
 export const metadata: Metadata = {
   title: 'FutZone — Futebol Ao Vivo',
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
           <AuthModal />
           <PresenceTracker />
+          <PopupBanner />
         </AuthProvider>
       </body>
     </html>

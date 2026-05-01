@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Radio, Plus, Check, Pencil, X } from 'lucide-react'
+import { Trash2, Radio, Plus, Check, Pencil, X, Megaphone } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 type Fixture = {
@@ -139,6 +139,12 @@ export default function AdminPage() {
   const [detectingBroad, setDetectingBroad] = useState<string | null>(null)
   const [editingStreamId, setEditingStreamId] = useState<string | null>(null)
 
+  // Pop-up para usuários
+  const [popupMessage, setPopupMessage] = useState('')
+  const [activePopup, setActivePopup] = useState<{ id: string; message: string } | null>(null)
+  const [sendingPopup, setSendingPopup] = useState(false)
+  const [closingPopup, setClosingPopup] = useState(false)
+
   // Modal de método de pagamento
   const [chargeModal, setChargeModal] = useState<{ id: string } | null>(null)
   const [chargeModalMethod, setChargeModalMethod] = useState<'bspay' | 'fixed_qr'>('bspay')
@@ -162,6 +168,7 @@ export default function AdminPage() {
       loadLogo()
       loadStreams()
       loadFreeAccess()
+      loadActivePopup()
     }
   }, [authChecked])
 
@@ -499,6 +506,39 @@ export default function AdminPage() {
   async function deleteFreeAccess(id: string) {
     await supabase.from('free_access').delete().eq('id', id)
     setFreeUsers(prev => prev.filter(u => u.id !== id))
+  }
+
+  async function loadActivePopup() {
+    const { data } = await supabase
+      .from('popup_messages')
+      .select('*')
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    setActivePopup(data ?? null)
+  }
+
+  async function sendPopup() {
+    if (!popupMessage.trim()) return
+    setSendingPopup(true)
+    await supabase.from('popup_messages').update({ active: false }).eq('active', true)
+    const { data } = await supabase
+      .from('popup_messages')
+      .insert({ message: popupMessage.trim(), active: true })
+      .select()
+      .single()
+    if (data) setActivePopup(data)
+    setPopupMessage('')
+    setSendingPopup(false)
+  }
+
+  async function closePopup() {
+    if (!activePopup) return
+    setClosingPopup(true)
+    await supabase.from('popup_messages').update({ active: false }).eq('id', activePopup.id)
+    setActivePopup(null)
+    setClosingPopup(false)
   }
 
   async function handleChargeModalQrFile(file: File) {
@@ -934,6 +974,50 @@ export default function AdminPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Pop-up para usuários */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Megaphone className="w-5 h-5 text-orange-500" />
+            Pop-up para usuários
+          </h2>
+          <p className="text-gray-500 text-sm mt-0.5">Exibe um aviso em tempo real para todos os usuários online.</p>
+        </div>
+
+        {activePopup && (
+          <div className="flex items-center justify-between gap-3 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-orange-400 text-xs font-bold mb-0.5">POP-UP ATIVO AGORA</p>
+              <p className="text-white text-sm truncate">{activePopup.message}</p>
+            </div>
+            <button
+              onClick={closePopup}
+              disabled={closingPopup}
+              className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/40 disabled:opacity-50 transition-all"
+            >
+              {closingPopup ? 'Fechando...' : 'Fechar pop-up'}
+            </button>
+          </div>
+        )}
+
+        <div className="flex gap-2 items-start">
+          <textarea
+            placeholder="Digite o texto do aviso para todos os usuários..."
+            value={popupMessage}
+            onChange={e => setPopupMessage(e.target.value)}
+            rows={2}
+            className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 resize-none"
+          />
+          <button
+            onClick={sendPopup}
+            disabled={sendingPopup || !popupMessage.trim()}
+            className="shrink-0 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-5 py-2.5 rounded-xl transition-all text-sm"
+          >
+            {sendingPopup ? 'Enviando...' : 'Exibir para todos'}
+          </button>
+        </div>
       </div>
 
       {/* Botão publicar — igual ao original */}
