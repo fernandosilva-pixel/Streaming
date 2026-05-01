@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -16,66 +17,71 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="fixed top-3 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-6xl">
-      <div
-        className="bg-[#0D0D18]/95 backdrop-blur-md rounded-full"
-        style={{
-          border: '1px solid rgba(255,106,0,0.2)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
-        }}
-      >
-        {/* grid 3 colunas: espaço | logo | botões — garante logo centralizada sem sobrepor */}
-        <div
-          className="grid items-center px-4 sm:px-6"
-          style={{ height: 58, gridTemplateColumns: '1fr auto 1fr' }}
-        >
-          {/* coluna esquerda vazia */}
-          <div />
+    <header
+      className="fixed top-0 left-0 right-0 z-50"
+      style={{
+        background: 'linear-gradient(180deg, #0D0D1A 0%, #0B0B14 100%)',
+        borderBottom: '1px solid rgba(255, 106, 0, 0.15)',
+        boxShadow: '0 2px 24px rgba(0,0,0,0.6)',
+      }}
+    >
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-8" style={{ height: 64 }}>
 
-          {/* Logo centro */}
-          <Link href="/" className="block">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt="FutZone"
-                className="block object-contain"
-                style={{ height: 32, width: 'auto', maxWidth: 140 }}
-              />
-            ) : (
-              <span className="text-lg font-black tracking-tight">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="FutZone"
+              className="block object-contain"
+              style={{ height: 36, width: 'auto', maxWidth: 140 }}
+            />
+          ) : (
+            <>
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: 'linear-gradient(135deg, #FF6A00, #FF8C00)' }}
+              >
+                <Zap className="w-4 h-4 text-white fill-white" />
+              </div>
+              <span className="text-lg font-black tracking-tight text-white">
                 FUT<span className="text-orange-500">ZONE</span>
               </span>
-            )}
-          </Link>
+            </>
+          )}
+        </Link>
 
-          {/* Botões direita */}
-          <div className="flex items-center justify-end gap-2">
-            {user ? (
+        {/* Botões */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {user ? (
+            <button
+              onClick={logout}
+              className="text-sm font-semibold text-gray-300 hover:text-white transition-colors px-4 py-2"
+            >
+              Sair
+            </button>
+          ) : (
+            <>
               <button
-                onClick={logout}
-                className="text-xs sm:text-sm font-bold text-white border border-orange-500/60 rounded-full px-4 py-1.5 sm:px-5 sm:py-2 hover:bg-orange-500/10 transition-all whitespace-nowrap"
+                onClick={() => showModal('login')}
+                className="text-sm font-semibold text-white transition-all px-4 sm:px-5 py-2 rounded-lg hover:bg-white/5"
               >
-                Sair
+                Entrar
               </button>
-            ) : (
-              <>
-                <button
-                  onClick={() => showModal('login')}
-                  className="text-xs sm:text-sm font-bold text-white border border-orange-500/60 rounded-full px-4 py-1.5 sm:px-5 sm:py-2 hover:bg-orange-500/10 transition-all whitespace-nowrap"
-                >
-                  Entrar
-                </button>
-                <button
-                  onClick={() => showModal('register')}
-                  className="text-xs sm:text-sm font-bold text-white bg-orange-500 hover:bg-orange-400 rounded-full px-4 py-1.5 sm:px-5 sm:py-2 transition-all whitespace-nowrap"
-                >
-                  <span className="hidden sm:inline">Criar conta</span>
-                  <span className="sm:hidden">Cadastrar</span>
-                </button>
-              </>
-            )}
-          </div>
+              <button
+                onClick={() => showModal('register')}
+                className="text-sm font-bold text-white rounded-lg px-4 sm:px-5 py-2 transition-all hover:brightness-110 active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, #FF6A00 0%, #FF8C00 100%)',
+                  boxShadow: '0 0 16px rgba(255,106,0,0.35)',
+                }}
+              >
+                Criar conta
+              </button>
+            </>
+          )}
         </div>
+
       </div>
     </header>
   );
