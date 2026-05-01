@@ -540,12 +540,16 @@ export default function AdminPage() {
   async function loadCtaCards() {
     const { data } = await supabase.from('cta_cards').select('*').order('slot')
     const loaded = data ?? []
+    // Inicializa slots ausentes sem depender de colunas opcionais
     const existingSlots = loaded.map(c => c.slot)
     const missing = [0, 1, 2, 3, 4].filter(s => !existingSlots.includes(s))
     if (missing.length > 0) {
-      await supabase.from('cta_cards').insert(missing.map(s => ({ slot: s, image_url: null, mobile_image_url: null, link_url: null })))
+      const { error: insertErr } = await supabase.from('cta_cards').insert(
+        missing.map(s => ({ slot: s, image_url: null, link_url: null }))
+      )
+      if (insertErr) console.error('Erro ao inicializar slots CTA:', insertErr.message)
       const { data: fresh } = await supabase.from('cta_cards').select('*').order('slot')
-      const rows = fresh ?? []
+      const rows = fresh ?? loaded
       setCtaCards(rows)
       const links: Record<number, string> = {}
       rows.forEach(c => { links[c.slot] = c.link_url ?? '' })
@@ -558,6 +562,14 @@ export default function AdminPage() {
     }
   }
 
+  async function ctaUpsert(slot: number, patch: Record<string, unknown>) {
+    const exists = ctaCards.some(c => c.slot === slot)
+    if (exists) {
+      return supabase.from('cta_cards').update(patch).eq('slot', slot)
+    }
+    return supabase.from('cta_cards').insert({ slot, image_url: null, link_url: null, ...patch })
+  }
+
   async function handleCtaCardUpload(slot: number, file: File) {
     if (!isImageFile(file)) return
     setCtaLocalPreviews(p => ({ ...p, [slot]: URL.createObjectURL(file) }))
@@ -568,7 +580,7 @@ export default function AdminPage() {
     const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
     if (error) { alert('Erro no upload: ' + error.message); setCtaUploading(null); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
-    const { error: dbErr } = await supabase.from('cta_cards').update({ image_url: publicUrl }).eq('slot', slot)
+    const { error: dbErr } = await ctaUpsert(slot, { image_url: publicUrl })
     if (dbErr) { alert('Erro ao salvar imagem: ' + dbErr.message); setCtaUploading(null); return }
     await loadCtaCards()
     setCtaUploading(null)
@@ -584,7 +596,7 @@ export default function AdminPage() {
     const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
     if (error) { alert('Erro no upload: ' + error.message); setCtaMobileUploading(null); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
-    const { error: dbErr } = await supabase.from('cta_cards').update({ mobile_image_url: publicUrl }).eq('slot', slot)
+    const { error: dbErr } = await ctaUpsert(slot, { mobile_image_url: publicUrl })
     if (dbErr) { alert('Erro ao salvar imagem mobile: ' + dbErr.message); setCtaMobileUploading(null); return }
     await loadCtaCards()
     setCtaMobileUploading(null)
@@ -592,8 +604,9 @@ export default function AdminPage() {
 
   async function handleCtaLinkSave(slot: number) {
     setCtaLinkSaving(p => ({ ...p, [slot]: true }))
-    const { error } = await supabase.from('cta_cards').update({ link_url: ctaLinks[slot] || null }).eq('slot', slot)
+    const { error } = await ctaUpsert(slot, { link_url: ctaLinks[slot] || null })
     if (error) { alert('Erro ao salvar link: ' + error.message) }
+    else await loadCtaCards()
     setCtaLinkSaving(p => ({ ...p, [slot]: false }))
   }
 
