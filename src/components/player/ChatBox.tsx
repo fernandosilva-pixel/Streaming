@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { Send } from 'lucide-react'
+import { Send, Trash2 } from 'lucide-react'
 
 type Message = {
   id: string
@@ -17,7 +17,18 @@ export default function ChatBox({ streamId }: { streamId: string }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const messagesRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!user?.phone) { setIsAdmin(false); return }
+    supabase
+      .from('registrations')
+      .select('is_admin')
+      .eq('phone', user.phone)
+      .single()
+      .then(({ data }) => setIsAdmin(data?.is_admin ?? false))
+  }, [user?.phone])
 
   useEffect(() => {
     supabase
@@ -34,6 +45,11 @@ export default function ChatBox({ streamId }: { streamId: string }) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `stream_id=eq.${streamId}` },
         payload => setMessages(prev => [...prev, payload.new as Message])
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'chat_messages' },
+        payload => setMessages(prev => prev.filter(m => m.id !== (payload.old as { id: string }).id))
       )
       .subscribe()
 
@@ -59,6 +75,10 @@ export default function ChatBox({ streamId }: { streamId: string }) {
     setSending(false)
   }
 
+  async function deleteMessage(id: string) {
+    await supabase.from('chat_messages').delete().eq('id', id)
+  }
+
   function formatTime(iso: string) {
     return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   }
@@ -74,10 +94,21 @@ export default function ChatBox({ streamId }: { streamId: string }) {
           <p className="text-gray-600 text-xs text-center mt-4">Nenhuma mensagem ainda. Seja o primeiro!</p>
         )}
         {messages.map(m => (
-          <div key={m.id} className="text-sm leading-snug">
-            <span className="text-orange-400 font-bold">{m.user_name}</span>
-            <span className="text-gray-600 text-[10px] ml-1.5">{formatTime(m.created_at)}</span>
-            <p className="text-gray-200 mt-0.5 break-words">{m.message}</p>
+          <div key={m.id} className="group text-sm leading-snug flex items-start gap-1.5">
+            <div className="flex-1 min-w-0">
+              <span className="text-orange-400 font-bold">{m.user_name}</span>
+              <span className="text-gray-600 text-[10px] ml-1.5">{formatTime(m.created_at)}</span>
+              <p className="text-gray-200 mt-0.5 break-words">{m.message}</p>
+            </div>
+            {isAdmin && (
+              <button
+                onClick={() => deleteMessage(m.id)}
+                className="shrink-0 mt-0.5 text-gray-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                title="Excluir mensagem"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         ))}
       </div>

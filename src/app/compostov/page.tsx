@@ -151,6 +151,11 @@ export default function AdminPage() {
   const [ctaDragging, setCtaDragging] = useState<number | null>(null)
   const [ctaUploading, setCtaUploading] = useState<number | null>(null)
 
+  // Moderadores do chat
+  const [adminUsers, setAdminUsers] = useState<{ id: string; name: string; phone: string }[]>([])
+  const [newAdminPhone, setNewAdminPhone] = useState('')
+  const [addingAdmin, setAddingAdmin] = useState(false)
+
   // Botão Assistir Agora
   const [showWatchButton, setShowWatchButton] = useState(false)
   const [togglingWatch, setTogglingWatch] = useState(false)
@@ -181,6 +186,7 @@ export default function AdminPage() {
       loadLogo()
       loadStreams()
       loadFreeAccess()
+      loadAdminUsers()
       loadActivePopup()
       loadCtaCards()
     }
@@ -576,6 +582,40 @@ export default function AdminPage() {
   async function deleteFreeAccess(id: string) {
     await supabase.from('free_access').delete().eq('id', id)
     setFreeUsers(prev => prev.filter(u => u.id !== id))
+  }
+
+  async function loadAdminUsers() {
+    const { data } = await supabase
+      .from('registrations')
+      .select('id, name, phone')
+      .eq('is_admin', true)
+      .order('name')
+    setAdminUsers(data ?? [])
+  }
+
+  async function addAdminUser() {
+    const phone = newAdminPhone.trim().replace(/\D/g, '')
+    if (!phone) return
+    setAddingAdmin(true)
+    const { data, error } = await supabase
+      .from('registrations')
+      .update({ is_admin: true })
+      .eq('phone', phone)
+      .select('id, name, phone')
+      .single()
+    if (error || !data) {
+      alert(error ? 'Erro: ' + error.message : 'Telefone não encontrado.')
+      setAddingAdmin(false)
+      return
+    }
+    setNewAdminPhone('')
+    await loadAdminUsers()
+    setAddingAdmin(false)
+  }
+
+  async function removeAdminUser(id: string) {
+    await supabase.from('registrations').update({ is_admin: false }).eq('id', id)
+    setAdminUsers(prev => prev.filter(u => u.id !== id))
   }
 
   async function loadActivePopup() {
@@ -1194,6 +1234,50 @@ export default function AdminPage() {
               ))}
             </div>
           )}
+
+          {/* Moderadores do chat */}
+          <div className="pt-4 border-t border-[#2A2A3A] space-y-3">
+            <div>
+              <h2 className="text-lg font-bold text-white">Moderadores do chat</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Usuários com poder de excluir mensagens no chat ao vivo.</p>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="tel"
+                placeholder="Telefone do usuário (ex: 11999999999)"
+                value={newAdminPhone}
+                onChange={e => setNewAdminPhone(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addAdminUser()}
+                className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
+              />
+              <button
+                onClick={addAdminUser}
+                disabled={addingAdmin || !newAdminPhone.trim()}
+                className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm"
+              >
+                <Plus className="w-4 h-4" />{addingAdmin ? 'Adicionando...' : 'Promover'}
+              </button>
+            </div>
+            {adminUsers.length === 0 ? (
+              <div className="border border-dashed border-[#2A2A3A] rounded-xl py-6 text-center">
+                <p className="text-gray-600 text-sm">Nenhum moderador cadastrado</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {adminUsers.map(u => (
+                  <div key={u.id} className="flex items-center justify-between bg-[#12121A] border border-[#2A2A3A] rounded-xl px-4 py-3">
+                    <div>
+                      <p className="text-white text-sm font-semibold">{u.name}</p>
+                      <p className="text-gray-500 text-xs font-mono">{u.phone}</p>
+                    </div>
+                    <button onClick={() => removeAdminUser(u.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1" title="Revogar moderação">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
