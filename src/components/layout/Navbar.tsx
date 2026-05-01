@@ -52,37 +52,60 @@ export default function Navbar() {
         </Link>
 
         {/* Botões */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center">
           {user ? (
-            <button
-              onClick={logout}
-              className="text-sm font-semibold text-gray-300 hover:text-white transition-colors px-4 py-2"
-            >
-              Sair
-            </button>
+            <SkewButton onClick={logout} variant="outline">Sair</SkewButton>
           ) : (
             <>
-              <button
-                onClick={() => showModal('login')}
-                className="text-sm font-semibold text-white transition-all px-4 sm:px-5 py-2 rounded-lg hover:bg-white/5"
-              >
-                Entrar
-              </button>
-              <button
-                onClick={() => showModal('register')}
-                className="text-sm font-bold text-white rounded-lg px-4 sm:px-5 py-2 transition-all hover:brightness-110 active:scale-95"
-                style={{
-                  background: 'linear-gradient(135deg, #FF6A00 0%, #FF8C00 100%)',
-                  boxShadow: '0 0 16px rgba(255,106,0,0.35)',
-                }}
-              >
-                Criar conta
-              </button>
+              <SkewButton onClick={() => showModal('login')} variant="outline" z={1}>Entrar</SkewButton>
+              <SkewButton onClick={() => showModal('register')} variant="solid" z={2} overlap>Criar conta</SkewButton>
             </>
           )}
         </div>
 
       </div>
     </header>
+  );
+}
+
+function SkewButton({
+  onClick,
+  variant,
+  children,
+  z = 1,
+  overlap = false,
+}: {
+  onClick: () => void;
+  variant: 'outline' | 'solid';
+  children: React.ReactNode;
+  z?: number;
+  overlap?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative text-xs sm:text-sm font-extrabold text-white uppercase tracking-wide px-3 py-1.5 sm:px-5 sm:py-2.5 transition-all group"
+      style={{ transform: 'skewX(-12deg)', zIndex: z, marginLeft: overlap ? -10 : undefined }}
+    >
+      <span
+        className="absolute inset-0 rounded-md transition-all group-hover:brightness-110 backdrop-blur-sm"
+        style={
+          variant === 'solid'
+            ? {
+                background: 'linear-gradient(135deg, #FF6A00 0%, #FF8533 100%)',
+                boxShadow: '0 0 18px rgba(255,106,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18)',
+              }
+            : {
+                background: 'rgba(255,255,255,0.04)',
+                border: '1.5px solid rgba(255,106,0,0.65)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+              }
+        }
+        aria-hidden
+      />
+      <span className="relative" style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>
+        {children}
+      </span>
+    </button>
   );
 }
