@@ -1,53 +1,84 @@
-import { Newspaper } from 'lucide-react';
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+
+type CtaCard = {
+  id: string
+  slot: number
+  image_url: string | null
+  link_url: string | null
+}
+
+function CtaWrapper({ card, children, className, style }: { card: CtaCard | undefined; children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  if (card?.link_url) {
+    return <a href={card.link_url} target="_blank" rel="noopener noreferrer" className={className} style={style}>{children}</a>
+  }
+  return <div className={className} style={style}>{children}</div>
+}
 
 export default function NewsSection() {
+  const [cards, setCards] = useState<CtaCard[]>([])
+
+  useEffect(() => {
+    supabase.from('cta_cards').select('*').order('slot').then(({ data }) => {
+      setCards(data ?? [])
+    })
+  }, [])
+
+  const featured = cards.find(c => c.slot === 0)
+  const smalls = [1, 2, 3, 4].map(s => cards.find(c => c.slot === s))
+
   return (
     <section>
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-orange-500/10 rounded-lg flex items-center justify-center">
-            <Newspaper className="w-4 h-4 text-orange-500" />
-          </div>
-          <h2 className="text-lg font-bold text-white">Notícias</h2>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Featured card */}
+
+        {/* Card principal (coluna esquerda, maior) */}
         <div
-          className="lg:col-span-1 h-full overflow-hidden"
-          style={{ transform: 'skewX(-3deg)', border: '1px solid #2A2A3A', borderRadius: '16px' }}
+          className="lg:col-span-1 overflow-hidden"
+          style={{ transform: 'skewX(-3deg)', border: '1px solid #2A2A3A', borderRadius: '16px', minHeight: 280 }}
         >
-          <div className="h-full bg-[#1A1A26]" style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' }}>
-            <div className="h-52 bg-gradient-to-br from-orange-500/30 via-[#2A1A0A] to-[#12121A] flex items-center justify-center text-6xl">
-              ⚽
-            </div>
-            <div className="p-5 flex items-center justify-center" style={{ minHeight: 120 }}>
-              <p className="text-gray-600 font-bold tracking-widest text-sm">EM BREVE</p>
-            </div>
-          </div>
+          <CtaWrapper
+            card={featured}
+            className="block h-full"
+            style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' } as React.CSSProperties}
+          >
+            {featured?.image_url ? (
+              <img src={featured.image_url} alt="" className="w-full h-full object-cover" style={{ minHeight: 280 }} />
+            ) : (
+              <div className="h-full min-h-[280px] bg-gradient-to-br from-orange-500/10 via-[#1A1A26] to-[#12121A] flex items-center justify-center">
+                <p className="text-gray-700 font-bold tracking-widest text-sm">EM BREVE</p>
+              </div>
+            )}
+          </CtaWrapper>
         </div>
 
-        {/* Smaller cards */}
+        {/* 4 cards horizontais */}
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[0, 1, 2, 3].map(i => (
+          {smalls.map((card, i) => (
             <div
               key={i}
               className="overflow-hidden"
               style={{ transform: 'skewX(-3deg)', border: '1px solid #2A2A3A', borderRadius: '12px' }}
             >
-              <div className="flex gap-3 p-4 bg-[#1A1A26]" style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' }}>
-                <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-orange-500/20 to-[#2A1A0A] flex items-center justify-center text-2xl shrink-0">
-                  ⚽
-                </div>
-                <div className="flex-1 flex items-center">
-                  <p className="text-gray-600 font-bold tracking-widest text-xs">EM BREVE</p>
-                </div>
-              </div>
+              <CtaWrapper
+                card={card}
+                className="block"
+                style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' } as React.CSSProperties}
+              >
+                {card?.image_url ? (
+                  <img src={card.image_url} alt="" className="w-full object-cover" style={{ height: 120 }} />
+                ) : (
+                  <div className="flex items-center justify-center bg-gradient-to-br from-orange-500/10 via-[#1A1A26] to-[#12121A]" style={{ height: 120 }}>
+                    <p className="text-gray-700 font-bold tracking-widest text-xs">EM BREVE</p>
+                  </div>
+                )}
+              </CtaWrapper>
             </div>
           ))}
         </div>
+
       </div>
     </section>
-  );
+  )
 }

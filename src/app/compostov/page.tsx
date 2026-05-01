@@ -145,6 +145,12 @@ export default function AdminPage() {
   const [sendingPopup, setSendingPopup] = useState(false)
   const [closingPopup, setClosingPopup] = useState(false)
 
+  // CTA cards
+  const [ctaCards, setCtaCards] = useState<{ id: string; slot: number; image_url: string | null; link_url: string | null }[]>([])
+  const [ctaLinks, setCtaLinks] = useState<Record<number, string>>({})
+  const [ctaDragging, setCtaDragging] = useState<number | null>(null)
+  const [ctaUploading, setCtaUploading] = useState<number | null>(null)
+
   // Botão Assistir Agora
   const [showWatchButton, setShowWatchButton] = useState(false)
   const [togglingWatch, setTogglingWatch] = useState(false)
@@ -176,6 +182,7 @@ export default function AdminPage() {
       loadStreams()
       loadFreeAccess()
       loadActivePopup()
+      loadCtaCards()
     }
   }, [authChecked])
 
@@ -492,6 +499,34 @@ export default function AdminPage() {
       if (data.logo_url) setLogoUrl(data.logo_url)
       setShowWatchButton(data.show_watch_button ?? false)
     }
+  }
+
+  async function loadCtaCards() {
+    const { data } = await supabase.from('cta_cards').select('*').order('slot')
+    if (data) {
+      setCtaCards(data)
+      const links: Record<number, string> = {}
+      data.forEach(c => { links[c.slot] = c.link_url ?? '' })
+      setCtaLinks(links)
+    }
+  }
+
+  async function handleCtaCardUpload(slot: number, file: File) {
+    if (!isImageFile(file)) return
+    setCtaUploading(slot)
+    const ext = file.name.split('.').pop()
+    const fileName = `cta-${slot}-${Date.now()}.${ext}`
+    const contentType = getContentType(file)
+    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
+    if (error) { alert('Erro no upload: ' + error.message); setCtaUploading(null); return }
+    const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
+    await supabase.from('cta_cards').update({ image_url: publicUrl, updated_at: new Date().toISOString() }).eq('slot', slot)
+    await loadCtaCards()
+    setCtaUploading(null)
+  }
+
+  async function handleCtaLinkSave(slot: number) {
+    await supabase.from('cta_cards').update({ link_url: ctaLinks[slot] || null }).eq('slot', slot)
   }
 
   async function toggleWatchButton() {
@@ -840,6 +875,88 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* CTA Cards */}
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-white">Cards de CTA</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Cards para redes sociais, sorteios e promoções. Clique ou arraste para enviar a imagem.</p>
+            </div>
+
+            {/* Card principal */}
+            <div className="space-y-2">
+              <p className="text-white text-sm font-semibold">Card Principal <span className="text-gray-500 font-normal">(coluna esquerda, maior) · <span className="text-orange-400">800 × 500px recomendado</span></span></p>
+              <div
+                onDragOver={e => { e.preventDefault(); setCtaDragging(0) }}
+                onDragLeave={() => setCtaDragging(null)}
+                onDrop={e => { e.preventDefault(); setCtaDragging(null); const f = e.dataTransfer.files[0]; if (f) handleCtaCardUpload(0, f) }}
+                onClick={() => document.getElementById('ctaInput-0')?.click()}
+                className={`relative border-2 border-dashed rounded-2xl cursor-pointer transition-all overflow-hidden ${ctaDragging === 0 ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+                style={{ height: 160 }}
+              >
+                <input id="ctaInput-0" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaCardUpload(0, e.target.files[0])} />
+                {ctaUploading === 0 ? (
+                  <div className="absolute inset-0 flex items-center justify-center"><p className="text-white font-bold">Enviando...</p></div>
+                ) : ctaCards.find(c => c.slot === 0)?.image_url ? (
+                  <img src={ctaCards.find(c => c.slot === 0)!.image_url!} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full gap-1">
+                    <p className="text-white font-semibold text-sm">Arraste a imagem aqui</p>
+                    <p className="text-gray-600 text-xs">ou clique para selecionar</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  placeholder="Link ao clicar (ex: https://instagram.com/...)"
+                  value={ctaLinks[0] ?? ''}
+                  onChange={e => setCtaLinks(p => ({ ...p, 0: e.target.value }))}
+                  className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
+                />
+                <button onClick={() => handleCtaLinkSave(0)} className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all">Salvar</button>
+              </div>
+            </div>
+
+            {/* 4 cards horizontais */}
+            <p className="text-white text-sm font-semibold pt-2">Cards Horizontais <span className="text-gray-500 font-normal">(linha inferior) · <span className="text-orange-400">360 × 120px recomendado</span></span></p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map(slot => (
+                <div key={slot} className="space-y-2">
+                  <p className="text-gray-400 text-xs font-semibold">Card {slot}</p>
+                  <div
+                    onDragOver={e => { e.preventDefault(); setCtaDragging(slot) }}
+                    onDragLeave={() => setCtaDragging(null)}
+                    onDrop={e => { e.preventDefault(); setCtaDragging(null); const f = e.dataTransfer.files[0]; if (f) handleCtaCardUpload(slot, f) }}
+                    onClick={() => document.getElementById(`ctaInput-${slot}`)?.click()}
+                    className={`relative border-2 border-dashed rounded-xl cursor-pointer transition-all overflow-hidden ${ctaDragging === slot ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+                    style={{ height: 80 }}
+                  >
+                    <input id={`ctaInput-${slot}`} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaCardUpload(slot, e.target.files[0])} />
+                    {ctaUploading === slot ? (
+                      <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-sm font-bold">Enviando...</p></div>
+                    ) : ctaCards.find(c => c.slot === slot)?.image_url ? (
+                      <img src={ctaCards.find(c => c.slot === slot)!.image_url!} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <p className="text-gray-600 text-xs">Arraste ou clique · 360×120px</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="Link ao clicar..."
+                      value={ctaLinks[slot] ?? ''}
+                      onChange={e => setCtaLinks(p => ({ ...p, [slot]: e.target.value }))}
+                      className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-xs placeholder-gray-600 focus:outline-none focus:border-orange-500"
+                    />
+                    <button onClick={() => handleCtaLinkSave(slot)} className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-3 py-2 rounded-xl text-xs transition-all">Salvar</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
         </div>
