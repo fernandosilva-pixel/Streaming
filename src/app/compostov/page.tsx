@@ -144,6 +144,10 @@ export default function AdminPage() {
   const [activePopup, setActivePopup] = useState<{ id: string; message: string } | null>(null)
   const [sendingPopup, setSendingPopup] = useState(false)
   const [closingPopup, setClosingPopup] = useState(false)
+  const [customTemplates, setCustomTemplates] = useState<{ label: string; text: string }[]>([])
+  const [addingTemplate, setAddingTemplate] = useState(false)
+  const [newTplLabel, setNewTplLabel] = useState('')
+  const [newTplText, setNewTplText] = useState('')
 
   // CTA cards
   const [ctaCards, setCtaCards] = useState<{ id: string; slot: number; image_url: string | null; link_url: string | null }[]>([])
@@ -233,6 +237,27 @@ export default function AdminPage() {
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('futzone_popup_templates')
+    if (saved) setCustomTemplates(JSON.parse(saved))
+  }, [])
+
+  function saveTemplate() {
+    if (!newTplLabel.trim() || !newTplText.trim()) return
+    const updated = [...customTemplates, { label: newTplLabel.trim(), text: newTplText.trim() }]
+    setCustomTemplates(updated)
+    localStorage.setItem('futzone_popup_templates', JSON.stringify(updated))
+    setNewTplLabel('')
+    setNewTplText('')
+    setAddingTemplate(false)
+  }
+
+  function deleteTemplate(i: number) {
+    const updated = customTemplates.filter((_, idx) => idx !== i)
+    setCustomTemplates(updated)
+    localStorage.setItem('futzone_popup_templates', JSON.stringify(updated))
+  }
 
   function updateFaviconBadge(count: number) {
     const canvas = document.createElement('canvas')
@@ -1308,22 +1333,84 @@ export default function AdminPage() {
             </div>
           )}
           {/* Templates rápidos */}
-          <div>
-            <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-2">Templates rápidos</p>
+          <div className="space-y-2">
+            <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide">Templates rápidos</p>
             <div className="flex flex-wrap gap-2">
-              {[
-                { label: '⚡ Instabilidade', text: 'Instabilidade na transmissão, voltamos em alguns segundos.' },
-              ].map(tpl => (
-                <button
-                  key={tpl.label}
-                  onClick={() => sendPopup(tpl.text)}
-                  disabled={sendingPopup}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-orange-500/40 text-orange-400 hover:bg-orange-500/10 disabled:opacity-40 transition-all"
-                >
-                  {tpl.label}
-                </button>
+              {/* Template fixo */}
+              <button
+                onClick={() => sendPopup('Instabilidade na transmissão, voltamos em alguns segundos.')}
+                disabled={sendingPopup}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-orange-500/40 text-orange-400 hover:bg-orange-500/10 disabled:opacity-40 transition-all"
+              >
+                ⚡ Instabilidade
+              </button>
+
+              {/* Templates personalizados */}
+              {customTemplates.map((tpl, i) => (
+                <div key={i} className="group flex items-center gap-1">
+                  <button
+                    onClick={() => sendPopup(tpl.text)}
+                    disabled={sendingPopup}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#2A2A3A] text-gray-300 hover:border-orange-500/40 hover:text-orange-400 disabled:opacity-40 transition-all"
+                  >
+                    {tpl.label}
+                  </button>
+                  <button
+                    onClick={() => deleteTemplate(i)}
+                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-500 transition-all"
+                    title="Remover template"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               ))}
+
+              {/* Botão + */}
+              {!addingTemplate && (
+                <button
+                  onClick={() => setAddingTemplate(true)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-dashed border-[#2A2A3A] text-gray-600 hover:border-orange-500/40 hover:text-orange-400 transition-all"
+                >
+                  + Novo
+                </button>
+              )}
             </div>
+
+            {/* Formulário inline para novo template */}
+            {addingTemplate && (
+              <div className="flex flex-col gap-2 p-3 bg-[#12121A] border border-[#2A2A3A] rounded-xl">
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Nome do template (ex: 🔧 Manutenção)"
+                  value={newTplLabel}
+                  onChange={e => setNewTplLabel(e.target.value)}
+                  className="bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-lg px-3 py-2 text-xs placeholder-gray-600 focus:outline-none focus:border-orange-500"
+                />
+                <textarea
+                  placeholder="Texto do aviso..."
+                  value={newTplText}
+                  onChange={e => setNewTplText(e.target.value)}
+                  rows={2}
+                  className="bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-lg px-3 py-2 text-xs placeholder-gray-600 focus:outline-none focus:border-orange-500 resize-none"
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => { setAddingTemplate(false); setNewTplLabel(''); setNewTplText('') }}
+                    className="text-xs text-gray-500 hover:text-white px-3 py-1.5 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={saveTemplate}
+                    disabled={!newTplLabel.trim() || !newTplText.trim()}
+                    className="text-xs font-bold bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white px-4 py-1.5 rounded-lg transition-all"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 items-start">

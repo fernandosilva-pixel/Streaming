@@ -15,7 +15,7 @@ export default function Footer() {
   }, [])
 
   return (
-    <footer className="border-t border-[#2A2A3A] bg-black mt-20">
+    <footer className="border-t border-[#2A2A3A] mt-20" style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
