@@ -156,6 +156,9 @@ export default function AdminPage() {
   const [ctaUploading, setCtaUploading] = useState<number | null>(null)
   const [ctaMobileDragging, setCtaMobileDragging] = useState<number | null>(null)
   const [ctaMobileUploading, setCtaMobileUploading] = useState<number | null>(null)
+  const [ctaLocalPreviews, setCtaLocalPreviews] = useState<Record<number, string>>({})
+  const [ctaMobileLocalPreviews, setCtaMobileLocalPreviews] = useState<Record<number, string>>({})
+  const [ctaLinkSaving, setCtaLinkSaving] = useState<Record<number, boolean>>({})
 
   // Moderadores do chat
   const [adminUsers, setAdminUsers] = useState<{ id: string; name: string; phone: string }[]>([])
@@ -536,16 +539,28 @@ export default function AdminPage() {
 
   async function loadCtaCards() {
     const { data } = await supabase.from('cta_cards').select('*').order('slot')
-    if (data) {
-      setCtaCards(data)
+    const loaded = data ?? []
+    const existingSlots = loaded.map(c => c.slot)
+    const missing = [0, 1, 2, 3, 4].filter(s => !existingSlots.includes(s))
+    if (missing.length > 0) {
+      await supabase.from('cta_cards').insert(missing.map(s => ({ slot: s, image_url: null, mobile_image_url: null, link_url: null })))
+      const { data: fresh } = await supabase.from('cta_cards').select('*').order('slot')
+      const rows = fresh ?? []
+      setCtaCards(rows)
       const links: Record<number, string> = {}
-      data.forEach(c => { links[c.slot] = c.link_url ?? '' })
+      rows.forEach(c => { links[c.slot] = c.link_url ?? '' })
+      setCtaLinks(links)
+    } else {
+      setCtaCards(loaded)
+      const links: Record<number, string> = {}
+      loaded.forEach(c => { links[c.slot] = c.link_url ?? '' })
       setCtaLinks(links)
     }
   }
 
   async function handleCtaCardUpload(slot: number, file: File) {
     if (!isImageFile(file)) return
+    setCtaLocalPreviews(p => ({ ...p, [slot]: URL.createObjectURL(file) }))
     setCtaUploading(slot)
     const ext = file.name.split('.').pop()
     const fileName = `cta-${slot}-${Date.now()}.${ext}`
@@ -553,13 +568,15 @@ export default function AdminPage() {
     const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
     if (error) { alert('Erro no upload: ' + error.message); setCtaUploading(null); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
-    await supabase.from('cta_cards').update({ image_url: publicUrl, updated_at: new Date().toISOString() }).eq('slot', slot)
+    const { error: dbErr } = await supabase.from('cta_cards').update({ image_url: publicUrl }).eq('slot', slot)
+    if (dbErr) { alert('Erro ao salvar imagem: ' + dbErr.message); setCtaUploading(null); return }
     await loadCtaCards()
     setCtaUploading(null)
   }
 
   async function handleCtaMobileUpload(slot: number, file: File) {
     if (!isImageFile(file)) return
+    setCtaMobileLocalPreviews(p => ({ ...p, [slot]: URL.createObjectURL(file) }))
     setCtaMobileUploading(slot)
     const ext = file.name.split('.').pop()
     const fileName = `cta-mobile-${slot}-${Date.now()}.${ext}`
@@ -567,13 +584,17 @@ export default function AdminPage() {
     const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
     if (error) { alert('Erro no upload: ' + error.message); setCtaMobileUploading(null); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
-    await supabase.from('cta_cards').update({ mobile_image_url: publicUrl }).eq('slot', slot)
+    const { error: dbErr } = await supabase.from('cta_cards').update({ mobile_image_url: publicUrl }).eq('slot', slot)
+    if (dbErr) { alert('Erro ao salvar imagem mobile: ' + dbErr.message); setCtaMobileUploading(null); return }
     await loadCtaCards()
     setCtaMobileUploading(null)
   }
 
   async function handleCtaLinkSave(slot: number) {
-    await supabase.from('cta_cards').update({ link_url: ctaLinks[slot] || null }).eq('slot', slot)
+    setCtaLinkSaving(p => ({ ...p, [slot]: true }))
+    const { error } = await supabase.from('cta_cards').update({ link_url: ctaLinks[slot] || null }).eq('slot', slot)
+    if (error) { alert('Erro ao salvar link: ' + error.message) }
+    setCtaLinkSaving(p => ({ ...p, [slot]: false }))
   }
 
   async function toggleWatchButton() {
@@ -982,10 +1003,13 @@ export default function AdminPage() {
                     style={{ height: 130 }}
                   >
                     <input id="ctaInput-0" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaCardUpload(0, e.target.files[0])} />
-                    {ctaUploading === 0 ? (
+                    {(ctaLocalPreviews[0] || ctaCards.find(c => c.slot === 0)?.image_url) ? (
+                      <>
+                        <img src={ctaLocalPreviews[0] || ctaCards.find(c => c.slot === 0)!.image_url!} alt="" className="w-full h-full object-cover" />
+                        {ctaUploading === 0 && <div className="absolute inset-0 flex items-center justify-center bg-black/60"><p className="text-white text-sm font-bold">Enviando...</p></div>}
+                      </>
+                    ) : ctaUploading === 0 ? (
                       <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-sm font-bold">Enviando...</p></div>
-                    ) : ctaCards.find(c => c.slot === 0)?.image_url ? (
-                      <img src={ctaCards.find(c => c.slot === 0)!.image_url!} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full gap-1">
                         <p className="text-gray-600 text-xs text-center">Arraste ou clique</p>
@@ -1005,10 +1029,13 @@ export default function AdminPage() {
                     style={{ height: 130 }}
                   >
                     <input id="ctaMobileInput-0" type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaMobileUpload(0, e.target.files[0])} />
-                    {ctaMobileUploading === 0 ? (
+                    {(ctaMobileLocalPreviews[0] || ctaCards.find(c => c.slot === 0)?.mobile_image_url) ? (
+                      <>
+                        <img src={ctaMobileLocalPreviews[0] || ctaCards.find(c => c.slot === 0)!.mobile_image_url!} alt="" className="w-full h-full object-cover" />
+                        {ctaMobileUploading === 0 && <div className="absolute inset-0 flex items-center justify-center bg-black/60"><p className="text-white text-sm font-bold">Enviando...</p></div>}
+                      </>
+                    ) : ctaMobileUploading === 0 ? (
                       <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-sm font-bold">Enviando...</p></div>
-                    ) : ctaCards.find(c => c.slot === 0)?.mobile_image_url ? (
-                      <img src={ctaCards.find(c => c.slot === 0)!.mobile_image_url!} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full gap-1">
                         <p className="text-gray-600 text-xs text-center">Arraste ou clique</p>
@@ -1025,7 +1052,7 @@ export default function AdminPage() {
                   onChange={e => setCtaLinks(p => ({ ...p, 0: e.target.value }))}
                   className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
                 />
-                <button onClick={() => handleCtaLinkSave(0)} className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all">Salvar</button>
+                <button onClick={() => handleCtaLinkSave(0)} disabled={ctaLinkSaving[0]} className="bg-orange-500 hover:bg-orange-400 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all min-w-[80px]">{ctaLinkSaving[0] ? 'Salvando...' : 'Salvar'}</button>
               </div>
             </div>
 
@@ -1048,10 +1075,13 @@ export default function AdminPage() {
                         style={{ height: 70 }}
                       >
                         <input id={`ctaInput-${slot}`} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaCardUpload(slot, e.target.files[0])} />
-                        {ctaUploading === slot ? (
+                        {(ctaLocalPreviews[slot] || ctaCards.find(c => c.slot === slot)?.image_url) ? (
+                          <>
+                            <img src={ctaLocalPreviews[slot] || ctaCards.find(c => c.slot === slot)!.image_url!} alt="" className="w-full h-full object-cover" />
+                            {ctaUploading === slot && <div className="absolute inset-0 flex items-center justify-center bg-black/60"><p className="text-white text-xs font-bold">Enviando...</p></div>}
+                          </>
+                        ) : ctaUploading === slot ? (
                           <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-xs font-bold">Enviando...</p></div>
-                        ) : ctaCards.find(c => c.slot === slot)?.image_url ? (
-                          <img src={ctaCards.find(c => c.slot === slot)!.image_url!} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="flex items-center justify-center h-full">
                             <p className="text-gray-600 text-[10px]">Arraste ou clique</p>
@@ -1071,10 +1101,13 @@ export default function AdminPage() {
                         style={{ height: 70 }}
                       >
                         <input id={`ctaMobileInput-${slot}`} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCtaMobileUpload(slot, e.target.files[0])} />
-                        {ctaMobileUploading === slot ? (
+                        {(ctaMobileLocalPreviews[slot] || ctaCards.find(c => c.slot === slot)?.mobile_image_url) ? (
+                          <>
+                            <img src={ctaMobileLocalPreviews[slot] || ctaCards.find(c => c.slot === slot)!.mobile_image_url!} alt="" className="w-full h-full object-cover" />
+                            {ctaMobileUploading === slot && <div className="absolute inset-0 flex items-center justify-center bg-black/60"><p className="text-white text-xs font-bold">Enviando...</p></div>}
+                          </>
+                        ) : ctaMobileUploading === slot ? (
                           <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-xs font-bold">Enviando...</p></div>
-                        ) : ctaCards.find(c => c.slot === slot)?.mobile_image_url ? (
-                          <img src={ctaCards.find(c => c.slot === slot)!.mobile_image_url!} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="flex items-center justify-center h-full">
                             <p className="text-gray-600 text-[10px]">Arraste ou clique</p>
@@ -1091,7 +1124,7 @@ export default function AdminPage() {
                       onChange={e => setCtaLinks(p => ({ ...p, [slot]: e.target.value }))}
                       className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-xs placeholder-gray-600 focus:outline-none focus:border-orange-500"
                     />
-                    <button onClick={() => handleCtaLinkSave(slot)} className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-3 py-2 rounded-xl text-xs transition-all">Salvar</button>
+                    <button onClick={() => handleCtaLinkSave(slot)} disabled={ctaLinkSaving[slot]} className="bg-orange-500 hover:bg-orange-400 disabled:opacity-60 text-white font-bold px-3 py-2 rounded-xl text-xs transition-all min-w-[72px]">{ctaLinkSaving[slot] ? 'Salvando...' : 'Salvar'}</button>
                   </div>
                 </div>
               ))}
