@@ -244,6 +244,13 @@ export default function JogoPage({ params }: Props) {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         {/* Player */}
         <div className="xl:col-span-2 space-y-3">
+          {/* AO VIVO badge above iframe */}
+          <div className="flex items-center">
+            <div style={{ transform: 'skewX(-12deg)', background: '#DC2626', borderRadius: 6, padding: '3px 14px' }}>
+              <span style={{ transform: 'skewX(12deg)', display: 'inline-block' }} className="text-white text-xs font-black tracking-widest animate-pulse">AO VIVO</span>
+            </div>
+          </div>
+
           {/* Wrapper fullscreen — ref aqui fora do iframe */}
           <div ref={playerRef} className="relative">
           <div className={!isFullscreen ? 'skew-frame' : ''}>
@@ -271,13 +278,6 @@ export default function JogoPage({ params }: Props) {
               </>
             )}
 
-            {/* Preview countdown badge */}
-            {showCountdown && (
-              <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1.5 rounded-lg pointer-events-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                Preview: {previewSeconds}s
-              </div>
-            )}
 
             {/* Login overlay */}
             {needsLogin && (
@@ -352,9 +352,8 @@ export default function JogoPage({ params }: Props) {
               background: 'rgba(255,255,255,0.03)',
               padding: '8px 28px',
             }}>
-              <div style={{ transform: 'skewX(3deg)' }} className="flex items-center gap-2.5">
+              <div style={{ transform: 'skewX(3deg)' }}>
                 <h1 className="text-white font-black text-xl">{stream.title}</h1>
-                <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse shrink-0">AO VIVO</span>
               </div>
             </div>
             <button
