@@ -239,11 +239,12 @@ export default function JogoPage({ params }: Props) {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         {/* Player */}
         <div className="xl:col-span-2 space-y-3">
+          {/* Wrapper fullscreen — ref aqui fora do iframe */}
+          <div ref={playerRef} className="relative">
           <div
-            ref={playerRef}
             className="rounded-xl border border-[#2A2A3A] bg-black w-full"
             style={isFullscreen
-              ? { position: 'relative', height: '100%', overflow: 'hidden' }
+              ? { position: 'relative', height: '100vh', overflow: 'hidden' }
               : { position: 'relative', paddingTop: '56.25%', overflow: 'hidden' }
             }
           >
@@ -255,14 +256,6 @@ export default function JogoPage({ params }: Props) {
 
             {/* Click shield — always active, blocks all interaction with the iframe */}
             <div className="absolute inset-0 z-10" />
-
-            {/* Fullscreen button */}
-            <button
-              onClick={toggleFullscreen}
-              className="absolute bottom-3 right-3 z-30 bg-black/60 hover:bg-black/90 text-white rounded-lg p-2 transition-all"
-            >
-              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-            </button>
 
             {/* Preview countdown badge */}
             {showCountdown && (
@@ -332,6 +325,15 @@ export default function JogoPage({ params }: Props) {
                 onClose={() => setPaymentModalOpen(false)}
               />
             )}
+          </div>
+
+          {/* Botão fullscreen fora do iframe — clicável no mobile */}
+          <button
+            onClick={toggleFullscreen}
+            className="absolute bottom-3 right-3 z-30 bg-black/60 hover:bg-black/90 text-white rounded-lg p-2.5 transition-all"
+          >
+            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+          </button>
           </div>
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-white font-black text-xl">{stream.title}</h1>
