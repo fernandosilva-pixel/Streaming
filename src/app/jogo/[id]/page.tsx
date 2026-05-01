@@ -369,11 +369,17 @@ export default function JogoPage({ params }: Props) {
 
         {/* Chat */}
         <div className="xl:col-span-1">
-          <div className="sticky top-20" style={{ height: 560 }}>
-            <div className="skew-frame" style={{ height: '100%' }}>
-              <div className="skew-frame-inner" style={{ height: '100%', background: '#0B0B0F' }}>
-                <ChatBox streamId={stream.id} />
-              </div>
+          <div className="sticky top-20" style={{ height: 560, position: 'relative' }}>
+            {/* Parallelogram border — visual only, xl+ */}
+            <div className="hidden xl:block pointer-events-none" style={{
+              position: 'absolute', inset: 0, zIndex: 2,
+              transform: 'skewX(-3deg)',
+              border: '1px solid #2A2A3A',
+              borderRadius: 16,
+            }} />
+            {/* Content — no skew, perfectly centered */}
+            <div className="border border-[#2A2A3A] xl:border-0" style={{ height: '100%', background: '#0B0B0F', borderRadius: 16, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+              <ChatBox streamId={stream.id} />
             </div>
           </div>
         </div>
