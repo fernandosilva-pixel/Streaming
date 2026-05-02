@@ -1015,7 +1015,7 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 gap-3">
                 {/* Desktop */}
                 <div className="space-y-1">
-                  <p className="text-xs text-gray-500">🖥 Desktop · <span className="text-orange-400">qualquer tamanho</span></p>
+                  <p className="text-xs text-gray-500">🖥 Desktop · <span className="text-orange-400">800 × 530px</span></p>
                   <div
                     onDragOver={e => { e.preventDefault(); setCtaDragging(0) }}
                     onDragLeave={() => setCtaDragging(null)}
@@ -1042,7 +1042,7 @@ export default function AdminPage() {
                 </div>
                 {/* Mobile */}
                 <div className="space-y-1">
-                  <p className="text-xs text-gray-500">📱 Mobile · <span className="text-orange-400">qualquer tamanho</span></p>
+                  <p className="text-xs text-gray-500">📱 Mobile · <span className="text-orange-400">700 × 500px</span></p>
                   <div
                     onDragOver={e => { e.preventDefault(); setCtaMobileDragging(0) }}
                     onDragLeave={() => setCtaMobileDragging(null)}
@@ -1089,7 +1089,7 @@ export default function AdminPage() {
                   <div className="grid grid-cols-2 gap-2">
                     {/* Desktop */}
                     <div className="space-y-1">
-                      <p className="text-[10px] text-gray-500">🖥 <span className="text-orange-400">qualquer tamanho</span></p>
+                      <p className="text-[10px] text-gray-500">🖥 <span className="text-orange-400">1050 × 300px</span></p>
                       <div
                         onDragOver={e => { e.preventDefault(); setCtaDragging(slot) }}
                         onDragLeave={() => setCtaDragging(null)}
@@ -1116,7 +1116,7 @@ export default function AdminPage() {
                     </div>
                     {/* Mobile */}
                     <div className="space-y-1">
-                      <p className="text-[10px] text-gray-500">📱 <span className="text-orange-400">qualquer tamanho</span></p>
+                      <p className="text-[10px] text-gray-500">📱 <span className="text-orange-400">960 × 300px</span></p>
                       <div
                         onDragOver={e => { e.preventDefault(); setCtaMobileDragging(slot) }}
                         onDragLeave={() => setCtaMobileDragging(null)}
