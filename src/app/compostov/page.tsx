@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -80,15 +80,8 @@ export default function AdminPage() {
 
   // Banner principal
   const [banner, setBanner] = useState<Banner | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
-
-  // Carrossel extra (imagens adicionais do hero)
   const [extraBanners, setExtraBanners] = useState<Banner[]>([])
   const [extraUploading, setExtraUploading] = useState(false)
-  const [isExtraDragging, setIsExtraDragging] = useState(false)
   const [movingBanner, setMovingBanner] = useState<string | null>(null)
 
   // Próximos Jogos (carousel_banners)
@@ -294,7 +287,6 @@ const [onlineUsers, setOnlineUsers] = useState(0)
     const [first, ...rest] = data
     setBanner(first)
     setSelectedGameId(first.game_id)
-    if (first.image_url) setPreviewUrl(first.image_url)
     setExtraBanners(rest)
   }
 
@@ -424,43 +416,6 @@ const [onlineUsers, setOnlineUsers] = useState(0)
     return file.type || (file.name.toLowerCase().endsWith('.svg') ? 'image/svg+xml' : 'application/octet-stream')
   }
 
-  async function handleFile(file: File) {
-    if (!isImageFile(file)) return
-    setUploading(true)
-    const ext = file.name.split('.').pop()
-    const fileName = `banner-${Date.now()}.${ext}`
-    const contentType = getContentType(file)
-    const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(
-      (await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })).data!.path
-    )
-    setPreviewUrl(publicUrl)
-    setUploading(false)
-  }
-
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); setIsDragging(false)
-    const file = e.dataTransfer.files[0]; if (file) handleFile(file)
-  }, [])
-
-  async function save() {
-    if (!previewUrl) return
-    setSaving(true)
-    if (banner) {
-      await supabase.from('banner').update({
-        image_url: previewUrl,
-        game_id: selectedGameId,
-        updated_at: new Date().toISOString(),
-      }).eq('id', banner.id)
-    } else {
-      const { data } = await supabase.from('banner').insert({
-        image_url: previewUrl,
-        game_id: selectedGameId,
-      }).select().single()
-      if (data) setBanner(data)
-    }
-    setSaving(false)
-    alert('Banner publicado com sucesso!')
-  }
 
   // Carrossel extra: upload direto, salva como nova linha
   async function handleExtraFile(file: File) {
@@ -858,96 +813,47 @@ const [onlineUsers, setOnlineUsers] = useState(0)
               <h2 className="text-lg font-bold text-white">Banners</h2>
               <p className="text-gray-500 text-sm mt-0.5">Adicione uma ou mais imagens — quando houver mais de uma, o sistema rotaciona automaticamente.</p>
             </div>
-            <div className="flex gap-3 items-stretch">
-              <div
-                onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={onDrop}
-                onClick={() => document.getElementById('fileInput')?.click()}
-                className={`relative flex-1 border-2 border-dashed rounded-2xl overflow-hidden cursor-pointer transition-all ${isDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
-                style={{ minHeight: 200 }}
-              >
-                <input id="fileInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
-                {previewUrl ? (
-                  <img src={previewUrl} alt="Preview" className="w-full h-full object-cover absolute inset-0" />
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-2 p-6 h-full min-h-[200px]">
-                    <p className="text-white font-semibold">Arraste o banner aqui</p>
-                    <p className="text-gray-600 text-sm">ou clique para selecionar</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <input id="extraInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleExtraFile(e.target.files[0])} />
+              {[banner, ...extraBanners].filter(Boolean).map((b, i, arr) => {
+                const isMain = i === 0
+                const isMoving = movingBanner === b!.id
+                return (
+                  <div key={b!.id} className={`relative group rounded-xl overflow-hidden border bg-[#12121A] ${isMain ? 'border-orange-500/40' : 'border-[#2A2A3A]'}`} style={{ aspectRatio: '16/9' }}>
+                    <img src={b!.image_url} alt="" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all" />
+                    <button
+                      onClick={() => isMain ? deleteMainBanner() : deleteExtraBanner(b!.id)}
+                      className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-1.5 transition-all z-10"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="absolute top-1.5 right-1.5 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-all z-10">
+                      <button onClick={() => moveBanner(b!.id, 'up')} disabled={i === 0 || isMoving} className="bg-black/70 hover:bg-black/90 disabled:opacity-30 text-white rounded p-0.5 transition-all">
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => moveBanner(b!.id, 'down')} disabled={i === arr.length - 1 || isMoving} className="bg-black/70 hover:bg-black/90 disabled:opacity-30 text-white rounded p-0.5 transition-all">
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <span className={`absolute top-1.5 left-1.5 text-white text-xs font-bold px-1.5 py-0.5 rounded ${isMain ? 'bg-orange-500' : 'bg-black/70'}`}>
+                      #{i + 1}{isMain ? ' principal' : ''}
+                    </span>
                   </div>
-                )}
-                {uploading && (
-                  <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                    <p className="text-white font-bold text-lg">Enviando...</p>
-                  </div>
-                )}
-              </div>
+                )
+              })}
               <div
-                onDragOver={e => { e.preventDefault(); setIsExtraDragging(true) }}
-                onDragLeave={() => setIsExtraDragging(false)}
-                onDrop={e => { e.preventDefault(); setIsExtraDragging(false); const f = e.dataTransfer.files[0]; if (f) handleExtraFile(f) }}
                 onClick={() => document.getElementById('extraInput')?.click()}
-                className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl cursor-pointer transition-all w-28 shrink-0 ${isExtraDragging ? 'border-orange-500 bg-orange-500/10 text-orange-400' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A] text-gray-500'}`}
+                onDragOver={e => { e.preventDefault() }}
+                onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleExtraFile(f) }}
+                className="border-2 border-dashed border-[#2A2A3A] hover:border-orange-500/40 rounded-xl bg-[#12121A] cursor-pointer flex flex-col items-center justify-center gap-1 text-gray-500 hover:text-orange-400 transition-all"
+                style={{ aspectRatio: '16/9' }}
               >
-                <input id="extraInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleExtraFile(e.target.files[0])} />
-                {extraUploading
-                  ? <p className="text-white text-xs font-semibold text-center px-2">Enviando...</p>
-                  : <><Plus className="w-6 h-6" /><p className="text-xs text-center px-2">Adicionar mais imagens</p></>
-                }
+                <Plus className="w-6 h-6" />
+                <p className="text-xs text-center px-2">Adicionar banner</p>
               </div>
             </div>
-            {(banner?.image_url || extraBanners.length > 0) && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[banner, ...extraBanners].filter(Boolean).map((b, i, arr) => {
-                  const isMain = i === 0
-                  const isMoving = movingBanner === b!.id
-                  return (
-                    <div key={b!.id} className={`relative group rounded-xl overflow-hidden border bg-[#12121A] ${isMain ? 'border-orange-500/40' : 'border-[#2A2A3A]'}`} style={{ aspectRatio: '16/9' }}>
-                      <img src={b!.image_url} alt="" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all" />
-                      {/* Delete */}
-                      <button
-                        onClick={() => isMain ? deleteMainBanner() : deleteExtraBanner(b!.id)}
-                        className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-1.5 transition-all z-10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                      {/* Order arrows */}
-                      <div className="absolute top-1.5 right-1.5 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-all z-10">
-                        <button
-                          onClick={() => moveBanner(b!.id, 'up')}
-                          disabled={i === 0 || isMoving}
-                          className="bg-black/70 hover:bg-black/90 disabled:opacity-30 text-white rounded p-0.5 transition-all"
-                        >
-                          <ChevronUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => moveBanner(b!.id, 'down')}
-                          disabled={i === arr.length - 1 || isMoving}
-                          className="bg-black/70 hover:bg-black/90 disabled:opacity-30 text-white rounded p-0.5 transition-all"
-                        >
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <span className={`absolute top-1.5 left-1.5 text-white text-xs font-bold px-1.5 py-0.5 rounded ${isMain ? 'bg-orange-500' : 'bg-black/70'}`}>
-                        #{i + 1}{isMain ? ' principal' : ''}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-            {previewUrl && <p className="text-green-500 text-xs">Imagem carregada — clique em "Publicar" para salvar</p>}
           </div>
-
-          {/* Publicar banner */}
-          <button
-            onClick={save}
-            disabled={saving || uploading || !previewUrl}
-            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl transition-all text-lg"
-          >
-            {saving ? 'Publicando...' : 'Confirmar e publicar banner'}
-          </button>
 
           {/* Próximos Jogos */}
           <div className="space-y-4">
