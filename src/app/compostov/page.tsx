@@ -296,13 +296,11 @@ const [onlineUsers, setOnlineUsers] = useState(0)
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
     if (swapIdx < 0 || swapIdx >= all.length) return
     setMovingBanner(id)
-    const a = all[idx]
-    const b = all[swapIdx]
-    await Promise.all([
-      supabase.from('banner').update({ display_order: b.display_order }).eq('id', a.id),
-      supabase.from('banner').update({ display_order: a.display_order }).eq('id', b.id),
-    ])
-    await loadAllBanners()
+    const newOrder = [...all]
+    ;[newOrder[idx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[idx]]
+    await Promise.all(newOrder.map((b, i) =>
+      supabase.from('banner').update({ display_order: i }).eq('id', b!.id)
+    ))
     await loadAllBanners()
     setMovingBanner(null)
   }
@@ -427,7 +425,8 @@ const [onlineUsers, setOnlineUsers] = useState(0)
     const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
     if (error) { alert('Erro no upload: ' + error.message); setExtraUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
-    await supabase.from('banner').insert({ image_url: publicUrl, game_id: null, stream_id: banner?.stream_id ?? null })
+    const nextOrder = [banner, ...extraBanners].filter(Boolean).length
+    await supabase.from('banner').insert({ image_url: publicUrl, game_id: null, display_order: nextOrder })
     await loadAllBanners()
     setExtraUploading(false)
   }
