@@ -131,6 +131,7 @@ const [onlineUsers, setOnlineUsers] = useState(0)
   const [newSoopChannel, setNewSoopChannel] = useState('')
   const [newSoopBroadNo, setNewSoopBroadNo] = useState('')
   const [addingStream, setAddingStream] = useState(false)
+  const [editTitles, setEditTitles] = useState<Record<string, string>>({})
   const [editChannels, setEditChannels] = useState<Record<string, string>>({})
   const [editSources, setEditSources] = useState<Record<string, 'kick' | 'soop'>>({})
   const [editSoopChannels, setEditSoopChannels] = useState<Record<string, string>>({})
@@ -389,15 +390,17 @@ const [onlineUsers, setOnlineUsers] = useState(0)
   async function saveChannel(id: string) {
     const source = editSources[id] ?? 'kick'
     setSavingChannel(id)
+    const title = editTitles[id]?.trim()
+    const baseUpdate: Record<string, unknown> = title ? { title } : {}
     if (source === 'kick') {
       const channel = editChannels[id]?.trim().replace(/\s/g, '')
       if (!channel) { setSavingChannel(null); return }
-      await supabase.from('streams').update({ stream_source: 'kick', kick_channel: channel, soop_channel: null, soop_broad_no: null }).eq('id', id)
+      await supabase.from('streams').update({ ...baseUpdate, stream_source: 'kick', kick_channel: channel, soop_channel: null, soop_broad_no: null }).eq('id', id)
     } else {
       const soopChannel = editSoopChannels[id]?.trim().replace(/\s/g, '')
       const soopBroadNo = editSoopBroadNos[id]?.trim() || null
       if (!soopChannel) { setSavingChannel(null); return }
-      await supabase.from('streams').update({ stream_source: 'soop', kick_channel: null, soop_channel: soopChannel, soop_broad_no: soopBroadNo }).eq('id', id)
+      await supabase.from('streams').update({ ...baseUpdate, stream_source: 'soop', kick_channel: null, soop_channel: soopChannel, soop_broad_no: soopBroadNo }).eq('id', id)
     }
     await loadStreams()
     setSavingChannel(null)
@@ -1265,6 +1268,13 @@ const [onlineUsers, setOnlineUsers] = useState(0)
                       </div>
                       {isEditing && (
                         <div className="px-3 pb-3 pt-2 border-t border-[#2A2A3A] flex flex-wrap items-center gap-2">
+                          <input
+                            type="text"
+                            value={editTitles[s.id] ?? s.title}
+                            onChange={e => setEditTitles(prev => ({ ...prev, [s.id]: e.target.value }))}
+                            placeholder="Nome do jogo"
+                            className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500"
+                          />
                           <div className="flex rounded-lg overflow-hidden border border-[#2A2A3A]">
                             <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'kick' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Kick</button>
                             <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'soop' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Soop</button>
