@@ -1268,33 +1268,41 @@ const [onlineUsers, setOnlineUsers] = useState(0)
                         </div>
                       </div>
                       {isEditing && (
-                        <div className="px-3 pb-3 pt-2 border-t border-[#2A2A3A] flex flex-wrap items-center gap-2">
-                          <input
-                            type="text"
-                            value={editTitles[s.id] ?? s.title}
-                            onChange={e => setEditTitles(prev => ({ ...prev, [s.id]: e.target.value }))}
-                            placeholder="Nome do jogo"
-                            className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500"
-                          />
-                          <div className="flex rounded-lg overflow-hidden border border-[#2A2A3A]">
-                            <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'kick' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Kick</button>
-                            <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'soop' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Soop</button>
+                        <div className="px-3 pb-3 pt-2 border-t border-[#2A2A3A] space-y-2">
+                          <div>
+                            <p className="text-gray-500 text-xs mb-1">Nome da Transmissão</p>
+                            <input
+                              type="text"
+                              value={editTitles[s.id] ?? s.title}
+                              onChange={e => setEditTitles(prev => ({ ...prev, [s.id]: e.target.value }))}
+                              placeholder="Nome do jogo"
+                              className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500"
+                            />
                           </div>
-                          {currentSource === 'kick' ? (
-                            <input type="text" value={editChannels[s.id] ?? s.kick_channel ?? ''} onChange={e => setEditChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Canal da Kick"
-                              className="flex-1 min-w-36 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
-                          ) : (
-                            <>
-                              <input type="text" value={editSoopChannels[s.id] ?? s.soop_channel ?? ''} onChange={e => setEditSoopChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="ID do canal Soop (bjid)"
-                                className="flex-1 min-w-28 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
-                              <input type="text" value={editSoopBroadNos[s.id] ?? s.soop_broad_no ?? ''} onChange={e => setEditSoopBroadNos(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Nº broadcast"
-                                className="w-32 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
-                              <button onClick={() => detectSoopBroadcast(s.id)} disabled={detectingBroad === s.id || !editSoopChannels[s.id]}
-                                className="bg-[#2A2A3A] hover:bg-orange-500 disabled:opacity-40 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all">
-                                {detectingBroad === s.id ? '...' : 'Detectar'}
-                              </button>
-                            </>
-                          )}
+                          <div>
+                            <p className="text-gray-500 text-xs mb-1">ID do Canal</p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="flex rounded-lg overflow-hidden border border-[#2A2A3A]">
+                                <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'kick' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Kick</button>
+                                <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'soop' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Soop</button>
+                              </div>
+                              {currentSource === 'kick' ? (
+                                <input type="text" value={editChannels[s.id] ?? s.kick_channel ?? ''} onChange={e => setEditChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Canal da Kick"
+                                  className="flex-1 min-w-36 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                              ) : (
+                                <>
+                                  <input type="text" value={editSoopChannels[s.id] ?? s.soop_channel ?? ''} onChange={e => setEditSoopChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="ID do canal Soop (bjid)"
+                                    className="flex-1 min-w-28 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                                  <input type="text" value={editSoopBroadNos[s.id] ?? s.soop_broad_no ?? ''} onChange={e => setEditSoopBroadNos(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Nº broadcast"
+                                    className="w-32 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                                  <button onClick={() => detectSoopBroadcast(s.id)} disabled={detectingBroad === s.id || !editSoopChannels[s.id]}
+                                    className="bg-[#2A2A3A] hover:bg-orange-500 disabled:opacity-40 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all">
+                                    {detectingBroad === s.id ? '...' : 'Detectar'}
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
                           <button onClick={async () => { await saveChannel(s.id); setEditingStreamId(null) }} disabled={savingChannel === s.id}
                             className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-all">
                             {savingChannel === s.id ? 'Salvando...' : 'Salvar'}
