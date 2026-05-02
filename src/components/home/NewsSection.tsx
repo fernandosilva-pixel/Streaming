@@ -47,7 +47,7 @@ export default function NewsSection() {
             {featured?.image_url ? (
               <picture className="block w-full h-full">
                 {featured.mobile_image_url && <source media="(max-width: 767px)" srcSet={featured.mobile_image_url} />}
-                <img src={featured.image_url} alt="" className="w-full h-full object-contain bg-[#0B0B0F]" style={{ minHeight: 280 }} />
+                <img src={featured.image_url} alt="" className="w-full h-full object-cover" style={{ minHeight: 280 }} />
               </picture>
             ) : (
               <div className="h-full min-h-[280px] bg-gradient-to-br from-orange-500/10 via-[#1A1A26] to-[#12121A] flex items-center justify-center">
@@ -73,7 +73,7 @@ export default function NewsSection() {
                 {card?.image_url ? (
                   <picture className="block w-full">
                     {card.mobile_image_url && <source media="(max-width: 767px)" srcSet={card.mobile_image_url} />}
-                    <img src={card.image_url} alt="" className="w-full object-contain bg-[#0B0B0F]" style={{ height: 120 }} />
+                    <img src={card.image_url} alt="" className="w-full object-cover" style={{ height: 120 }} />
                   </picture>
                 ) : (
                   <div className="flex items-center justify-center bg-gradient-to-br from-orange-500/10 via-[#1A1A26] to-[#12121A]" style={{ height: 120 }}>
