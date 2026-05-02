@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Radio, Plus, Check, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown } from 'lucide-react'
+import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 type Fixture = {
@@ -105,9 +105,7 @@ export default function AdminPage() {
 
   // Auth / misc
   const [authChecked, setAuthChecked] = useState(false)
-  const [highlightedStreamId, setHighlightedStreamId] = useState<string | null>(null)
-  const [highlightingSave, setHighlightingSave] = useState(false)
-  const [onlineUsers, setOnlineUsers] = useState(0)
+const [onlineUsers, setOnlineUsers] = useState(0)
 
   // Notificações de novos cadastros
   const [toasts, setToasts] = useState<{ id: string; name: string; phone: string }[]>([])
@@ -295,7 +293,6 @@ export default function AdminPage() {
     if (data) {
       setBanner(data)
       setSelectedGameId(data.game_id)
-      setHighlightedStreamId(data.stream_id ?? null)
       if (data.image_url) setPreviewUrl(data.image_url)
     }
   }
@@ -409,18 +406,6 @@ export default function AdminPage() {
   async function deleteStream(id: string) {
     await supabase.from('streams').delete().eq('id', id)
     setStreams(prev => prev.filter(s => s.id !== id))
-    if (highlightedStreamId === id) {
-      setHighlightedStreamId(null)
-      if (banner) await supabase.from('banner').update({ stream_id: null }).eq('id', banner.id)
-    }
-  }
-
-  async function highlightStream(streamId: string) {
-    if (!banner) return
-    setHighlightingSave(true)
-    await supabase.from('banner').update({ stream_id: streamId }).eq('id', banner.id)
-    setHighlightedStreamId(streamId)
-    setHighlightingSave(false)
   }
 
   async function loadFixtures() {
@@ -1237,13 +1222,11 @@ export default function AdminPage() {
             ) : (
               <div className="space-y-2">
                 {streams.map(s => {
-                  const isHighlighted = highlightedStreamId === s.id
                   const isEditing = editingStreamId === s.id
                   const currentSource = editSources[s.id] ?? s.stream_source ?? 'kick'
                   return (
-                    <div key={s.id} className={`rounded-xl border overflow-hidden transition-all ${isHighlighted ? 'border-orange-500 bg-orange-500/5' : 'border-[#2A2A3A] bg-[#12121A]'}`}>
+                    <div key={s.id} className={`rounded-xl border overflow-hidden transition-all ${s.is_live ? 'border-red-500/40 bg-red-500/5' : 'border-[#2A2A3A] bg-[#12121A]'}`}>
                       <div className="flex flex-wrap items-center gap-2 p-3">
-                        {isHighlighted && <span className="text-[10px] bg-orange-500 text-white font-bold px-1.5 py-0.5 rounded shrink-0">LIVE</span>}
                         <p className="text-white text-sm font-semibold truncate flex-1 min-w-0">{s.title}</p>
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
                           <button
@@ -1271,10 +1254,6 @@ export default function AdminPage() {
                                 className="bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-2 py-1.5 text-sm w-16 focus:outline-none focus:border-orange-500" />
                             </div>
                           )}
-                          <button onClick={() => highlightStream(s.id)} disabled={isHighlighted || highlightingSave}
-                            className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${isHighlighted ? 'bg-orange-500/20 text-orange-400 cursor-default' : 'bg-[#2A2A3A] hover:bg-orange-500 text-gray-300 hover:text-white'}`}>
-                            {isHighlighted ? <><Check className="w-3 h-3" /> Destacado</> : 'Destacar'}
-                          </button>
                           <button onClick={() => setEditingStreamId(isEditing ? null : s.id)}
                             className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-[#2A2A3A] text-gray-400 hover:text-white hover:bg-[#3A3A4A] transition-all">
                             {isEditing ? <><X className="w-3 h-3" /> Fechar</> : <><Pencil className="w-3 h-3" /> Editar</>}
