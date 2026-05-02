@@ -34,7 +34,7 @@ export default function HeroBanner() {
   }, [])
 
   useEffect(() => {
-    supabase.from('banner').select('*').order('id').then(({ data }) => {
+    supabase.from('banner').select('*').order('display_order').then(({ data }) => {
       const list = (data ?? []).filter(b => b.image_url)
       setBanners(list)
       setLoading(false)

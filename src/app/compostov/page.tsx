@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Radio, Plus, Check, Pencil, X, Megaphone, ImageIcon, Users } from 'lucide-react'
+import { Trash2, Radio, Plus, Check, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 type Fixture = {
@@ -24,6 +24,7 @@ type Banner = {
   image_url: string
   game_id: number | null
   stream_id: string | null
+  display_order: number
 }
 
 type Stream = {
@@ -87,6 +88,7 @@ export default function AdminPage() {
   const [extraBanners, setExtraBanners] = useState<Banner[]>([])
   const [extraUploading, setExtraUploading] = useState(false)
   const [isExtraDragging, setIsExtraDragging] = useState(false)
+  const [movingBanner, setMovingBanner] = useState<string | null>(null)
 
   // Próximos Jogos (carousel_banners)
   const [carouselBanners, setCarouselBanners] = useState<{ id: string; image_url: string; mobile_image_url: string | null; display_order: number }[]>([])
@@ -290,9 +292,9 @@ export default function AdminPage() {
     img.src = '/favicon.ico'
   }
 
-  // Carrega o banner principal (primeira linha da tabela)
+  // Carrega o banner principal (primeiro por display_order)
   async function loadBanner() {
-    const { data } = await supabase.from('banner').select('*').order('id').limit(1).single()
+    const { data } = await supabase.from('banner').select('*').order('display_order').limit(1).single()
     if (data) {
       setBanner(data)
       setSelectedGameId(data.game_id)
@@ -303,9 +305,26 @@ export default function AdminPage() {
 
   // Carrega imagens extras do carrossel (todas as linhas depois da primeira)
   async function loadExtraBanners() {
-    const { data } = await supabase.from('banner').select('*').order('id')
+    const { data } = await supabase.from('banner').select('*').order('display_order')
     if (!data || data.length <= 1) { setExtraBanners([]); return }
     setExtraBanners(data.slice(1))
+  }
+
+  async function moveBanner(id: string, direction: 'up' | 'down') {
+    const all = [banner, ...extraBanners].filter(Boolean) as Banner[]
+    const idx = all.findIndex(b => b.id === id)
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= all.length) return
+    setMovingBanner(id)
+    const a = all[idx]
+    const b = all[swapIdx]
+    await Promise.all([
+      supabase.from('banner').update({ display_order: b.display_order }).eq('id', a.id),
+      supabase.from('banner').update({ display_order: a.display_order }).eq('id', b.id),
+    ])
+    await loadBanner()
+    await loadExtraBanners()
+    setMovingBanner(null)
   }
 
   async function loadStreams() {
@@ -907,28 +926,43 @@ export default function AdminPage() {
             </div>
             {(banner?.image_url || extraBanners.length > 0) && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {banner?.image_url && (
-                  <div className="relative group rounded-xl overflow-hidden border border-orange-500/40 bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
-                    <img src={banner.image_url} alt="" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
-                      <button onClick={deleteMainBanner} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
-                        <Trash2 className="w-4 h-4" />
+                {[banner, ...extraBanners].filter(Boolean).map((b, i, arr) => {
+                  const isMain = i === 0
+                  const isMoving = movingBanner === b!.id
+                  return (
+                    <div key={b!.id} className={`relative group rounded-xl overflow-hidden border bg-[#12121A] ${isMain ? 'border-orange-500/40' : 'border-[#2A2A3A]'}`} style={{ aspectRatio: '16/9' }}>
+                      <img src={b!.image_url} alt="" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all" />
+                      {/* Delete */}
+                      <button
+                        onClick={() => isMain ? deleteMainBanner() : deleteExtraBanner(b!.id)}
+                        className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-1.5 transition-all z-10"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
+                      {/* Order arrows */}
+                      <div className="absolute top-1.5 right-1.5 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-all z-10">
+                        <button
+                          onClick={() => moveBanner(b!.id, 'up')}
+                          disabled={i === 0 || isMoving}
+                          className="bg-black/70 hover:bg-black/90 disabled:opacity-30 text-white rounded p-0.5 transition-all"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => moveBanner(b!.id, 'down')}
+                          disabled={i === arr.length - 1 || isMoving}
+                          className="bg-black/70 hover:bg-black/90 disabled:opacity-30 text-white rounded p-0.5 transition-all"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <span className={`absolute top-1.5 left-1.5 text-white text-xs font-bold px-1.5 py-0.5 rounded ${isMain ? 'bg-orange-500' : 'bg-black/70'}`}>
+                        #{i + 1}{isMain ? ' principal' : ''}
+                      </span>
                     </div>
-                    <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">#1 principal</span>
-                  </div>
-                )}
-                {extraBanners.map((b, i) => (
-                  <div key={b.id} className="relative group rounded-xl overflow-hidden border border-[#2A2A3A] bg-[#12121A]" style={{ aspectRatio: '16/9' }}>
-                    <img src={b.image_url} alt="" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center">
-                      <button onClick={() => deleteExtraBanner(b.id)} className="opacity-0 group-hover:opacity-100 bg-red-600 hover:bg-red-500 text-white rounded-lg p-2 transition-all">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded">#{i + 2}</span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
             {previewUrl && <p className="text-green-500 text-xs">Imagem carregada — clique em "Publicar" para salvar</p>}
