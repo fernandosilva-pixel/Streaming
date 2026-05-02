@@ -610,6 +610,15 @@ export default function AdminPage() {
     setCtaLinkSaving(p => ({ ...p, [slot]: false }))
   }
 
+  async function deleteCtaImage(slot: number, type: 'desktop' | 'mobile') {
+    const field = type === 'mobile' ? 'mobile_image_url' : 'image_url'
+    const { error } = await ctaUpsert(slot, { [field]: null })
+    if (error) { alert('Erro ao remover imagem: ' + error.message); return }
+    if (type === 'mobile') setCtaMobileLocalPreviews(p => { const n = { ...p }; delete n[slot]; return n })
+    else setCtaLocalPreviews(p => { const n = { ...p }; delete n[slot]; return n })
+    await loadCtaCards()
+  }
+
   async function toggleWatchButton() {
     setTogglingWatch(true)
     const newValue = !showWatchButton
@@ -1020,6 +1029,7 @@ export default function AdminPage() {
                       <>
                         <img src={ctaLocalPreviews[0] || ctaCards.find(c => c.slot === 0)!.image_url!} alt="" className="w-full h-full object-cover" />
                         {ctaUploading === 0 && <div className="absolute inset-0 flex items-center justify-center bg-black/60"><p className="text-white text-sm font-bold">Enviando...</p></div>}
+                        <button onClick={e => { e.stopPropagation(); deleteCtaImage(0, 'desktop') }} className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/70 text-red-400 hover:text-red-300 hover:bg-black/90 transition-all z-10"><Trash2 className="w-3.5 h-3.5" /></button>
                       </>
                     ) : ctaUploading === 0 ? (
                       <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-sm font-bold">Enviando...</p></div>
@@ -1046,6 +1056,7 @@ export default function AdminPage() {
                       <>
                         <img src={ctaMobileLocalPreviews[0] || ctaCards.find(c => c.slot === 0)!.mobile_image_url!} alt="" className="w-full h-full object-cover" />
                         {ctaMobileUploading === 0 && <div className="absolute inset-0 flex items-center justify-center bg-black/60"><p className="text-white text-sm font-bold">Enviando...</p></div>}
+                        <button onClick={e => { e.stopPropagation(); deleteCtaImage(0, 'mobile') }} className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/70 text-red-400 hover:text-red-300 hover:bg-black/90 transition-all z-10"><Trash2 className="w-3.5 h-3.5" /></button>
                       </>
                     ) : ctaMobileUploading === 0 ? (
                       <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-sm font-bold">Enviando...</p></div>
@@ -1092,6 +1103,7 @@ export default function AdminPage() {
                           <>
                             <img src={ctaLocalPreviews[slot] || ctaCards.find(c => c.slot === slot)!.image_url!} alt="" className="w-full h-full object-cover" />
                             {ctaUploading === slot && <div className="absolute inset-0 flex items-center justify-center bg-black/60"><p className="text-white text-xs font-bold">Enviando...</p></div>}
+                            <button onClick={e => { e.stopPropagation(); deleteCtaImage(slot, 'desktop') }} className="absolute top-1 right-1 p-1 rounded-md bg-black/70 text-red-400 hover:text-red-300 hover:bg-black/90 transition-all z-10"><Trash2 className="w-3 h-3" /></button>
                           </>
                         ) : ctaUploading === slot ? (
                           <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-xs font-bold">Enviando...</p></div>
@@ -1118,6 +1130,7 @@ export default function AdminPage() {
                           <>
                             <img src={ctaMobileLocalPreviews[slot] || ctaCards.find(c => c.slot === slot)!.mobile_image_url!} alt="" className="w-full h-full object-cover" />
                             {ctaMobileUploading === slot && <div className="absolute inset-0 flex items-center justify-center bg-black/60"><p className="text-white text-xs font-bold">Enviando...</p></div>}
+                            <button onClick={e => { e.stopPropagation(); deleteCtaImage(slot, 'mobile') }} className="absolute top-1 right-1 p-1 rounded-md bg-black/70 text-red-400 hover:text-red-300 hover:bg-black/90 transition-all z-10"><Trash2 className="w-3 h-3" /></button>
                           </>
                         ) : ctaMobileUploading === slot ? (
                           <div className="absolute inset-0 flex items-center justify-center"><p className="text-white text-xs font-bold">Enviando...</p></div>

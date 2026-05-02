@@ -253,10 +253,8 @@ export default function JogoPage({ params }: Props) {
         <div className="xl:col-span-2 space-y-3">
           {/* Wrapper fullscreen — ref aqui fora do iframe */}
           <div ref={playerRef} className="relative">
-          <div className={!isFullscreen ? 'skew-frame' : ''}>
-          <div className={!isFullscreen ? 'skew-frame-inner' : ''}>
           <div
-            className="bg-black w-full"
+            className="rounded-xl border border-[#2A2A3A] bg-black w-full"
             style={isFullscreen
               ? { position: 'relative', height: '100vh', overflow: 'hidden' }
               : { position: 'relative', paddingTop: '56.25%', overflow: 'hidden' }
@@ -340,8 +338,6 @@ export default function JogoPage({ params }: Props) {
               />
             )}
           </div>
-          </div>
-          </div>
 
           {/* Title + fullscreen button — flush below the iframe */}
           <div className="flex items-center justify-center pt-3 relative">
@@ -369,18 +365,8 @@ export default function JogoPage({ params }: Props) {
 
         {/* Chat */}
         <div className="xl:col-span-1">
-          <div className="sticky top-20" style={{ height: 560, position: 'relative' }}>
-            {/* Borda paralelo­grama — desktop only, puramente visual */}
-            <div className="hidden xl:block pointer-events-none" style={{
-              position: 'absolute', inset: 0, zIndex: 2,
-              transform: 'skewX(-3deg)',
-              border: '1px solid #2A2A3A',
-              borderRadius: 16,
-            }} />
-            {/* Conteúdo — sem skew, perfeitamente centralizado */}
-            <div className="chat-border" style={{ height: '100%', background: '#0B0B0F', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-              <ChatBox streamId={stream.id} />
-            </div>
+          <div className="sticky top-20 rounded-xl overflow-hidden border border-[#2A2A3A] bg-[#0B0B0F]" style={{ height: 560 }}>
+            <ChatBox streamId={stream.id} />
           </div>
         </div>
       </div>
