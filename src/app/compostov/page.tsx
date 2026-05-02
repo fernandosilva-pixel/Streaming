@@ -442,7 +442,6 @@ const [onlineUsers, setOnlineUsers] = useState(0)
     if (!confirm('Remover o banner principal? A página inicial ficará sem banner.')) return
     await supabase.from('banner').delete().eq('id', banner.id)
     setBanner(null)
-    setPreviewUrl(null)
   }
 
   async function loadCarouselBanners() {
