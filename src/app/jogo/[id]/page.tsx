@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { use } from 'react'
 import ChatBox from '@/components/player/ChatBox'
 import PaymentModal from '@/components/player/PaymentModal'
+import NewsSection from '@/components/home/NewsSection'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -368,6 +369,11 @@ export default function JogoPage({ params }: Props) {
             <ChatBox streamId={stream.id} />
           </div>
         </div>
+      </div>
+
+      {/* Horizontal banner section — same as homepage */}
+      <div className="mt-6">
+        <NewsSection />
       </div>
     </div>
   )
