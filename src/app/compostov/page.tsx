@@ -187,8 +187,8 @@ const [onlineUsers, setOnlineUsers] = useState(0)
 
   useEffect(() => {
     if (authChecked) {
-      loadBanner()
-      loadExtraBanners()
+      loadAllBanners()
+      loadAllBanners()
       loadCarouselBanners()
       loadLogo()
       loadStreams()
@@ -288,21 +288,14 @@ const [onlineUsers, setOnlineUsers] = useState(0)
     img.src = '/favicon.ico'
   }
 
-  // Carrega o banner principal (primeiro por display_order)
-  async function loadBanner() {
-    const { data } = await supabase.from('banner').select('*').order('display_order').limit(1).single()
-    if (data) {
-      setBanner(data)
-      setSelectedGameId(data.game_id)
-      if (data.image_url) setPreviewUrl(data.image_url)
-    }
-  }
-
-  // Carrega imagens extras do carrossel (todas as linhas depois da primeira)
-  async function loadExtraBanners() {
+  async function loadAllBanners() {
     const { data } = await supabase.from('banner').select('*').order('display_order')
-    if (!data || data.length <= 1) { setExtraBanners([]); return }
-    setExtraBanners(data.slice(1))
+    if (!data || data.length === 0) { setBanner(null); setExtraBanners([]); return }
+    const [first, ...rest] = data
+    setBanner(first)
+    setSelectedGameId(first.game_id)
+    if (first.image_url) setPreviewUrl(first.image_url)
+    setExtraBanners(rest)
   }
 
   async function moveBanner(id: string, direction: 'up' | 'down') {
@@ -317,8 +310,8 @@ const [onlineUsers, setOnlineUsers] = useState(0)
       supabase.from('banner').update({ display_order: b.display_order }).eq('id', a.id),
       supabase.from('banner').update({ display_order: a.display_order }).eq('id', b.id),
     ])
-    await loadBanner()
-    await loadExtraBanners()
+    await loadAllBanners()
+    await loadAllBanners()
     setMovingBanner(null)
   }
 
@@ -480,7 +473,7 @@ const [onlineUsers, setOnlineUsers] = useState(0)
     if (error) { alert('Erro no upload: ' + error.message); setExtraUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
     await supabase.from('banner').insert({ image_url: publicUrl, game_id: null, stream_id: banner?.stream_id ?? null })
-    await loadExtraBanners()
+    await loadAllBanners()
     setExtraUploading(false)
   }
 
