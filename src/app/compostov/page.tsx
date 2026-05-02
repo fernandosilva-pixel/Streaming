@@ -389,16 +389,17 @@ const [onlineUsers, setOnlineUsers] = useState(0)
 
   async function saveChannel(id: string) {
     const source = editSources[id] ?? 'kick'
+    const current = streams.find(s => s.id === id)
     setSavingChannel(id)
     const title = editTitles[id]?.trim()
     const baseUpdate: Record<string, unknown> = title ? { title } : {}
     if (source === 'kick') {
-      const channel = editChannels[id]?.trim().replace(/\s/g, '')
+      const channel = editChannels[id]?.trim().replace(/\s/g, '') || current?.kick_channel || ''
       if (!channel) { setSavingChannel(null); return }
       await supabase.from('streams').update({ ...baseUpdate, stream_source: 'kick', kick_channel: channel, soop_channel: null, soop_broad_no: null }).eq('id', id)
     } else {
-      const soopChannel = editSoopChannels[id]?.trim().replace(/\s/g, '')
-      const soopBroadNo = editSoopBroadNos[id]?.trim() || null
+      const soopChannel = editSoopChannels[id]?.trim().replace(/\s/g, '') || current?.soop_channel || ''
+      const soopBroadNo = editSoopBroadNos[id]?.trim() || current?.soop_broad_no || null
       if (!soopChannel) { setSavingChannel(null); return }
       await supabase.from('streams').update({ ...baseUpdate, stream_source: 'soop', kick_channel: null, soop_channel: soopChannel, soop_broad_no: soopBroadNo }).eq('id', id)
     }
@@ -1280,13 +1281,13 @@ const [onlineUsers, setOnlineUsers] = useState(0)
                             <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'soop' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Soop</button>
                           </div>
                           {currentSource === 'kick' ? (
-                            <input type="text" value={editChannels[s.id] ?? ''} onChange={e => setEditChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Canal da Kick"
+                            <input type="text" value={editChannels[s.id] ?? s.kick_channel ?? ''} onChange={e => setEditChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Canal da Kick"
                               className="flex-1 min-w-36 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
                           ) : (
                             <>
-                              <input type="text" value={editSoopChannels[s.id] ?? ''} onChange={e => setEditSoopChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="ID do canal Soop (bjid)"
+                              <input type="text" value={editSoopChannels[s.id] ?? s.soop_channel ?? ''} onChange={e => setEditSoopChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="ID do canal Soop (bjid)"
                                 className="flex-1 min-w-28 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
-                              <input type="text" value={editSoopBroadNos[s.id] ?? ''} onChange={e => setEditSoopBroadNos(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Nº broadcast"
+                              <input type="text" value={editSoopBroadNos[s.id] ?? s.soop_broad_no ?? ''} onChange={e => setEditSoopBroadNos(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Nº broadcast"
                                 className="w-32 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
                               <button onClick={() => detectSoopBroadcast(s.id)} disabled={detectingBroad === s.id || !editSoopChannels[s.id]}
                                 className="bg-[#2A2A3A] hover:bg-orange-500 disabled:opacity-40 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all">
