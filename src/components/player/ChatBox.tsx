@@ -12,6 +12,17 @@ type Message = {
   created_at: string
 }
 
+const COLORS = [
+  '#ff6a00', '#00e5ff', '#69ff47', '#ffe900', '#ff4dff',
+  '#ff4444', '#4daaff', '#ff9500', '#00ffb3', '#c084fc',
+]
+
+function getUserColor(name: string) {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  return COLORS[Math.abs(hash) % COLORS.length]
+}
+
 export default function ChatBox({ streamId }: { streamId: string }) {
   const { user, showModal } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
@@ -79,34 +90,30 @@ export default function ChatBox({ streamId }: { streamId: string }) {
     await supabase.from('chat_messages').delete().eq('id', id)
   }
 
-  function formatTime(iso: string) {
-    return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-  }
-
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-[#1A1A26] px-4 py-2.5 border-b border-[#2A2A3A] shrink-0">
-        <p className="text-white text-sm font-bold text-center">Chat ao vivo</p>
+      <div className="bg-[#0f0f13] px-4 py-3 border-b border-[#2A2A3A] shrink-0">
+        <p className="text-white text-sm font-bold text-center tracking-wide">Chat da transmissão</p>
       </div>
 
-      <div ref={messagesRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
+      <div ref={messagesRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
         {messages.length === 0 && (
           <p className="text-gray-600 text-xs text-center mt-4">Nenhuma mensagem ainda. Seja o primeiro!</p>
         )}
         {messages.map(m => (
-          <div key={m.id} className="group text-sm leading-snug flex items-start gap-1.5">
-            <div className="flex-1 min-w-0">
-              <span className="text-orange-400 font-bold">{m.user_name}</span>
-              <span className="text-gray-600 text-[10px] ml-1.5">{formatTime(m.created_at)}</span>
-              <p className="text-gray-200 mt-0.5 break-words">{m.message}</p>
-            </div>
+          <div key={m.id} className="group text-sm leading-snug flex items-start gap-1 py-0.5">
+            <p className="flex-1 min-w-0 break-words">
+              <span className="font-bold" style={{ color: getUserColor(m.user_name) }}>{m.user_name}</span>
+              <span className="text-gray-400">: </span>
+              <span className="text-gray-100">{m.message}</span>
+            </p>
             {isAdmin && (
               <button
                 onClick={() => deleteMessage(m.id)}
                 className="shrink-0 mt-0.5 text-gray-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
                 title="Excluir mensagem"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-3 h-3" />
               </button>
             )}
           </div>
@@ -121,8 +128,8 @@ export default function ChatBox({ streamId }: { streamId: string }) {
               value={text}
               onChange={e => setText(e.target.value)}
               maxLength={200}
-              placeholder="Digite uma mensagem..."
-              className="flex-1 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
+              placeholder="Envie uma mensagem"
+              className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-lg px-3 py-2 text-sm placeholder-gray-500 focus:outline-none focus:border-orange-500"
             />
             <button
               type="submit"
@@ -136,7 +143,7 @@ export default function ChatBox({ streamId }: { streamId: string }) {
           <button
             type="button"
             onClick={() => showModal('login')}
-            className="block mx-auto text-gray-500 hover:text-orange-500 text-sm transition-colors py-2"
+            className="block w-full text-center text-gray-500 hover:text-orange-500 text-sm transition-colors py-2"
           >
             Entre para participar do chat
           </button>

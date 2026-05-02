@@ -241,16 +241,15 @@ export default function JogoPage({ params }: Props) {
         <span className="text-white text-sm font-medium">{stream.title}</span>
       </div>
 
-      {/* Hint badge — acima do grid para não desalinhar o chat */}
-      <div className="flex items-center justify-center mb-3">
-        <div className="animate-pulse" style={{ transform: 'skewX(-12deg)', background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,106,0,0.3)', borderRadius: 6, padding: '3px 14px' }}>
-          <span style={{ transform: 'skewX(12deg)', display: 'inline-block' }} className="text-orange-400 text-xs font-semibold">Som desativado? Coloque em tela cheia e aumente o volume.</span>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         {/* Player */}
         <div className="xl:col-span-2 space-y-3">
+          {/* Hint badge — centralizado acima do iframe */}
+          <div className="flex items-center justify-center">
+            <div className="animate-pulse" style={{ transform: 'skewX(-12deg)', background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,106,0,0.3)', borderRadius: 6, padding: '3px 14px' }}>
+              <span style={{ transform: 'skewX(12deg)', display: 'inline-block' }} className="text-orange-400 text-xs font-semibold">Som desativado? Coloque em tela cheia e aumente o volume.</span>
+            </div>
+          </div>
           {/* Wrapper fullscreen — ref aqui fora do iframe */}
           <div ref={playerRef} className="relative">
           <div
