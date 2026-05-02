@@ -142,7 +142,7 @@ export default function HeroBanner() {
                 aria-hidden
               />
               <span className="relative" style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>
-                {liveStreams.length === 1 ? 'Assistir Agora' : s.title}
+                {s.title}
               </span>
             </button>
           ))}
