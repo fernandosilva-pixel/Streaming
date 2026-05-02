@@ -35,6 +35,7 @@ type Stream = {
   soop_channel: string | null
   soop_broad_no: string | null
   is_active: boolean
+  is_live: boolean
   crop_enabled: boolean
   charge_enabled: boolean
   charge_amount: number
@@ -166,10 +167,6 @@ export default function AdminPage() {
   const [adminUsers, setAdminUsers] = useState<{ id: string; name: string; phone: string }[]>([])
   const [newAdminPhone, setNewAdminPhone] = useState('')
   const [addingAdmin, setAddingAdmin] = useState(false)
-
-  // Botão Assistir Agora
-  const [showWatchButton, setShowWatchButton] = useState(false)
-  const [togglingWatch, setTogglingWatch] = useState(false)
 
   // Aba ativa
   const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar'>('visual')
@@ -552,7 +549,6 @@ export default function AdminPage() {
     if (data) {
       setSettingsId(data.id)
       if (data.logo_url) setLogoUrl(data.logo_url)
-      setShowWatchButton(data.show_watch_button ?? false)
     }
   }
 
@@ -638,16 +634,10 @@ export default function AdminPage() {
     await loadCtaCards()
   }
 
-  async function toggleWatchButton() {
-    setTogglingWatch(true)
-    const newValue = !showWatchButton
-    if (settingsId) {
-      await supabase.from('site_settings').update({ show_watch_button: newValue }).eq('id', settingsId)
-    } else {
-      await supabase.from('site_settings').insert({ show_watch_button: newValue })
-    }
-    setShowWatchButton(newValue)
-    setTogglingWatch(false)
+  async function toggleLive(id: string, value: boolean) {
+    const { error } = await supabase.from('streams').update({ is_live: value }).eq('id', id)
+    if (error) { alert('Erro ao atualizar status ao vivo: ' + error.message); return }
+    setStreams(prev => prev.map(s => s.id === id ? { ...s, is_live: value } : s))
   }
 
   async function handleLogoFile(file: File) {
@@ -1198,23 +1188,6 @@ export default function AdminPage() {
       {activeTab === 'transmissao' && (
         <div className="space-y-10">
 
-          {/* Botão Assistir Agora */}
-          <div className="flex items-center justify-between p-4 bg-[#1A1A26] border border-[#2A2A3A] rounded-xl">
-            <div>
-              <p className="text-white font-bold text-sm">Botão "Assistir Agora"</p>
-              <p className="text-gray-500 text-xs mt-0.5">Exibe o botão pulsante no banner principal. Ligue apenas durante transmissões.</p>
-            </div>
-            <button
-              onClick={toggleWatchButton}
-              disabled={togglingWatch}
-              className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${showWatchButton ? 'bg-orange-500' : 'bg-[#2A2A3A]'}`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${showWatchButton ? 'translate-x-6' : 'translate-x-0'}`}
-              />
-            </button>
-          </div>
-
           {/* Transmissões */}
           <div className="space-y-4">
             <div>
@@ -1273,6 +1246,13 @@ export default function AdminPage() {
                         {isHighlighted && <span className="text-[10px] bg-orange-500 text-white font-bold px-1.5 py-0.5 rounded shrink-0">LIVE</span>}
                         <p className="text-white text-sm font-semibold truncate flex-1 min-w-0">{s.title}</p>
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => toggleLive(s.id, !s.is_live)}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.is_live ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-[#2A2A3A] text-gray-400 hover:bg-red-600/20 hover:text-red-400'}`}
+                            title={s.is_live ? 'Ao vivo — clique para desativar' : 'Ativar ao vivo'}
+                          >
+                            {s.is_live ? '🔴 Ao Vivo' : 'Ao Vivo OFF'}
+                          </button>
                           <button
                             onClick={() => {
                               if (s.charge_enabled) { toggleCharge(s.id, false) }

@@ -3,13 +3,17 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/contexts/AuthContext'
 
 type Banner = {
   id: string
   image_url: string
   game_id: number | null
   stream_id: string | null
+}
+
+type LiveStream = {
+  id: string
+  title: string
 }
 
 type GameData = {
@@ -20,16 +24,15 @@ type GameData = {
 
 export default function HeroBanner() {
   const router = useRouter()
-  const { showModal } = useAuth()
   const [banners, setBanners] = useState<Banner[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [game, setGame] = useState<GameData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showWatchButton, setShowWatchButton] = useState(false)
+  const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
 
   useEffect(() => {
-    supabase.from('site_settings').select('show_watch_button').single().then(({ data }) => {
-      if (data) setShowWatchButton(data.show_watch_button ?? false)
+    supabase.from('streams').select('id, title').eq('is_live', true).then(({ data }) => {
+      setLiveStreams(data ?? [])
     })
   }, [])
 
@@ -69,9 +72,6 @@ export default function HeroBanner() {
     return (
       <section className="w-full rounded-2xl border border-dashed border-[#2A2A3A] bg-[#12121A] flex flex-col items-center justify-center gap-6 h-48 sm:h-72 md:h-96 lg:h-[480px]">
         <p className="text-gray-600 text-sm">Nenhum banner configurado</p>
-        <button onClick={() => showModal()} className="animate-orange-pulse text-orange-500 font-bold border border-orange-500 rounded-full px-8 py-3 transition-all hover:bg-orange-500/10">
-          Assistir Agora
-        </button>
       </section>
     )
   }
@@ -123,28 +123,30 @@ export default function HeroBanner() {
         </section>
       </div>
 
-      {/* Botão Assistir Agora — visível só quando ligado no admin */}
-      {showWatchButton && (
-        <button
-          onClick={() => {
-            const streamId = banners[0]?.stream_id
-            if (streamId) router.push(`/jogo/${streamId}`)
-          }}
-          className="relative font-extrabold text-white uppercase tracking-wide px-8 py-3 transition-all group"
-          style={{ transform: 'skewX(-12deg)' }}
-        >
-          <span
-            className="absolute inset-0 rounded-md group-hover:brightness-110 backdrop-blur-sm animate-orange-pulse-inner"
-            style={{
-              background: 'linear-gradient(135deg, #FF6A00 0%, #FF8533 100%)',
-              boxShadow: '0 0 24px rgba(255,106,0,0.6), inset 0 1px 0 rgba(255,255,255,0.18)',
-            }}
-            aria-hidden
-          />
-          <span className="relative" style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>
-            Assistir Agora
-          </span>
-        </button>
+      {/* Botões por stream ao vivo */}
+      {liveStreams.length > 0 && (
+        <div className="flex flex-wrap gap-3 justify-center">
+          {liveStreams.map(s => (
+            <button
+              key={s.id}
+              onClick={() => router.push(`/jogo/${s.id}`)}
+              className="relative font-extrabold text-white uppercase tracking-wide px-8 py-3 transition-all group"
+              style={{ transform: 'skewX(-12deg)' }}
+            >
+              <span
+                className="absolute inset-0 rounded-md group-hover:brightness-110 backdrop-blur-sm animate-orange-pulse-inner"
+                style={{
+                  background: 'linear-gradient(135deg, #FF6A00 0%, #FF8533 100%)',
+                  boxShadow: '0 0 24px rgba(255,106,0,0.6), inset 0 1px 0 rgba(255,255,255,0.18)',
+                }}
+                aria-hidden
+              />
+              <span className="relative" style={{ display: 'inline-block', transform: 'skewX(12deg)' }}>
+                {liveStreams.length === 1 ? 'Assistir Agora' : s.title}
+              </span>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )
