@@ -108,6 +108,16 @@ export default function JogoPage({ params }: Props) {
     })
   }, [user, stream])
 
+  // Exit fullscreen when login/payment overlay needs to appear (overlay is outside native video fullscreen element)
+  useEffect(() => {
+    if (previewActive) return
+    const needsLogin = !user
+    const needsPayment = !!user && !!stream?.charge_enabled && !hasPaid && !checkingPayment && !isFreeAccess
+    if ((needsLogin || needsPayment) && document.fullscreenElement) {
+      document.exitFullscreen()
+    }
+  }, [user, stream, hasPaid, checkingPayment, isFreeAccess, previewActive])
+
   // 1-minute preview, separate timer for not-logged-in and logged-in-but-unpaid
   const previewKey = user ? `preview_payment_${id}_${user.phone}` : `preview_login_${id}`
 
