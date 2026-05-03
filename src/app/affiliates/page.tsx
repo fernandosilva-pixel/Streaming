@@ -188,8 +188,8 @@ export default function AffiliatesPage() {
 
   async function loadDashboard(code: string, s: AffiliateSession) {
     const [refRes, payRes] = await Promise.all([
-      supabase.from('referrals').select('*').eq('referral_code', code).order('registered_at', { ascending: false }),
-      supabase.from('payments').select('*').eq('referral_code', code).order('created_at', { ascending: false }),
+      supabase.from('referrals').select('*').eq('referral_code', code),
+      supabase.from('payments').select('*').eq('referral_code', code),
     ])
     const refs: Referral[] = refRes.data ?? []
     const pays: Payment[] = payRes.data ?? []

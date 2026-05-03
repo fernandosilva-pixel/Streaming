@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react'
 import QRCode from 'react-qr-code'
 import { Copy, Check, X } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 
 interface Props {
   streamId: string
@@ -84,13 +83,19 @@ export default function PaymentModal({ streamId, userPhone, userName, amount, pa
     setVerifying(true)
     setVerifyMsg('')
     const referralCode = localStorage.getItem('futzone_ref') ?? undefined
-    const { error } = await supabase.from('payments').insert({
-      stream_id: streamId,
-      user_phone: userPhone,
-      status: 'PAID',
-      referral_code: referralCode,
-    })
-    if (error) { setVerifyMsg('Erro ao registrar. Tente novamente.'); setVerifying(false); return }
+    try {
+      const res = await fetch('/api/pix/fixed-confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stream_id: streamId, user_phone: userPhone, referral_code: referralCode }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) { setVerifyMsg('Erro ao registrar. Tente novamente.'); setVerifying(false); return }
+    } catch {
+      setVerifyMsg('Erro ao conectar. Tente novamente.')
+      setVerifying(false)
+      return
+    }
     setPaid(true)
     setTimeout(onPaid, 1500)
   }

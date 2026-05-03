@@ -79,10 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Track referral if user came via affiliate link
     const refCode = localStorage.getItem('futzone_ref')
     if (refCode) {
-      void supabase.from('referrals').insert({
-        user_phone: digits,
-        user_name: name,
-        referral_code: refCode,
+      fetch('/api/affiliate/referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_phone: digits, user_name: name, referral_code: refCode }),
       })
     }
 
