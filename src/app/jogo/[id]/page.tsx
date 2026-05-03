@@ -389,12 +389,14 @@ export default function JogoPage({ params }: Props) {
                 <h1 className="text-white font-black text-xl">{stream.title}</h1>
               </div>
             </div>
-            <button
-              onClick={toggleFullscreen}
-              className="hidden md:flex absolute right-0 shrink-0 p-2 rounded-lg bg-[#12121A] border border-orange-500/50 text-orange-500 hover:bg-orange-500/10 transition-all animate-orange-pulse"
-            >
-              <Maximize className="w-4 h-4" />
-            </button>
+            {source !== 'hls' && (
+              <button
+                onClick={toggleFullscreen}
+                className="hidden md:flex absolute right-0 shrink-0 p-2 rounded-lg bg-[#12121A] border border-orange-500/50 text-orange-500 hover:bg-orange-500/10 transition-all animate-orange-pulse"
+              >
+                <Maximize className="w-4 h-4" />
+              </button>
+            )}
           </div>
           </div>
 

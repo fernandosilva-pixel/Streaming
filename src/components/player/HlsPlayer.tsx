@@ -26,9 +26,16 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
 
     import('hls.js').then(({ default: Hls }) => {
       if (!Hls.isSupported()) return
-      hls = new Hls({ enableWorker: false })
+      hls = new Hls({ enableWorker: false, liveSyncDurationCount: 3 })
       hls.loadSource(proxied)
       hls.attachMedia(video)
+
+      // Volta ao vivo ao dar play após pausa
+      video.addEventListener('play', () => {
+        if (hls && hls.liveSyncPosition != null) {
+          video.currentTime = hls.liveSyncPosition
+        }
+      })
     })
 
     return () => { hls?.destroy() }
