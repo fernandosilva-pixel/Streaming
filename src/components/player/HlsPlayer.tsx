@@ -65,14 +65,14 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
   }, [src])
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <>
       <video
         ref={videoRef}
         autoPlay
         controls
         playsInline
         className={className}
-        style={{ ...style, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+        style={style}
       />
       {errorMsg && (
         <div style={{
@@ -83,6 +83,6 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
           Erro HLS: {errorMsg}
         </div>
       )}
-    </div>
+    </>
   )
 }
