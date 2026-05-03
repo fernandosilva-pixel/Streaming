@@ -87,13 +87,18 @@ export default function AffiliatesPage() {
 
   useEffect(() => {
     const stored = localStorage.getItem(SESSION_KEY)
-    if (stored) {
-      const s: AffiliateSession = JSON.parse(stored)
-      setSession(s)
-      resolveState(s)
-    } else {
-      setPageState('login')
-    }
+    if (!stored) { setPageState('login'); return }
+
+    const cached: AffiliateSession = JSON.parse(stored)
+    // Always re-fetch from DB to pick up status changes (e.g. admin approval)
+    supabase.from('affiliates').select('name, phone, referral_code, status, clicks')
+      .eq('phone', cached.phone).single().then(({ data }) => {
+        if (!data) { localStorage.removeItem(SESSION_KEY); setPageState('login'); return }
+        const s: AffiliateSession = { phone: data.phone, name: data.name, referral_code: data.referral_code, status: data.status, clicks: data.clicks }
+        localStorage.setItem(SESSION_KEY, JSON.stringify(s))
+        setSession(s)
+        resolveState(s)
+      })
   }, [])
 
   function resolveState(s: AffiliateSession) {
