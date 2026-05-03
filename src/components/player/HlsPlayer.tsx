@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface HlsPlayerProps {
   src: string
@@ -10,14 +10,19 @@ interface HlsPlayerProps {
 
 export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
+    setErrorMsg(null)
 
     const proxied = `/api/hls-proxy?url=${encodeURIComponent(src)}`
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Use native HLS only on real Safari (not Chrome on macOS, which also reports HLS support
+    // but can't handle proxy-rewritten segment URLs correctly)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    if (isSafari && video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = proxied
       return
     }
@@ -25,18 +30,27 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
     let hls: import('hls.js').default | null = null
 
     import('hls.js').then(({ default: Hls }) => {
-      if (!Hls.isSupported()) return
+      if (!Hls.isSupported()) {
+        // Fallback for iOS / browsers without MSE
+        video.src = proxied
+        return
+      }
+
       hls = new Hls({ enableWorker: false, liveSyncDurationCount: 3 })
       hls.loadSource(proxied)
       hls.attachMedia(video)
 
-      // Chrome/Firefox: autoPlay attribute doesn't fire via MediaSource API — must call play() manually
-      // If autoplay with audio is blocked, fall back to muted autoplay
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         video.play().catch(() => {
           video.muted = true
           video.play().catch(() => {})
         })
+      })
+
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          setErrorMsg(`${data.type}: ${data.details}`)
+        }
       })
 
       // Volta ao vivo ao dar play após pausa
@@ -51,13 +65,24 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
   }, [src])
 
   return (
-    <video
-      ref={videoRef}
-      autoPlay
-      controls
-      playsInline
-      className={className}
-      style={style}
-    />
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <video
+        ref={videoRef}
+        autoPlay
+        controls
+        playsInline
+        className={className}
+        style={{ ...style, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+      />
+      {errorMsg && (
+        <div style={{
+          position: 'absolute', top: 8, left: 8, right: 8, zIndex: 50,
+          background: 'rgba(0,0,0,0.8)', color: '#f87171', fontSize: 12,
+          padding: '6px 10px', borderRadius: 6, fontFamily: 'monospace',
+        }}>
+          Erro HLS: {errorMsg}
+        </div>
+      )}
+    </div>
   )
 }
