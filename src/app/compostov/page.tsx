@@ -221,6 +221,11 @@ const [onlineUsers, setOnlineUsers] = useState(0)
     setAffiliatesList(prev => prev.map(a => a.id === id ? { ...a, status: 'rejected' } : a))
   }
 
+  async function deleteAffiliate(id: string) {
+    await supabase.from('affiliates').delete().eq('id', id)
+    setAffiliatesList(prev => prev.filter(a => a.id !== id))
+  }
+
   useEffect(() => { if (authChecked) loadFixtures() }, [date, authChecked])
 
   useEffect(() => {
@@ -1633,12 +1638,17 @@ const [onlineUsers, setOnlineUsers] = useState(0)
                         </td>
                         <td className="px-4 py-2.5 text-gray-300 font-bold">{a.clicks}</td>
                         <td className="px-4 py-2.5">
-                          {a.status !== 'approved' && (
-                            <button onClick={() => approveAffiliate(a.id)} className="text-green-400 hover:text-green-300 text-xs mr-2 transition-colors">Aprovar</button>
-                          )}
-                          {a.status !== 'rejected' && (
-                            <button onClick={() => rejectAffiliate(a.id)} className="text-red-400 hover:text-red-300 text-xs transition-colors">Recusar</button>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {a.status !== 'approved' && (
+                              <button onClick={() => approveAffiliate(a.id)} className="text-green-400 hover:text-green-300 text-xs transition-colors">Aprovar</button>
+                            )}
+                            {a.status !== 'rejected' && (
+                              <button onClick={() => rejectAffiliate(a.id)} className="text-red-400 hover:text-red-300 text-xs transition-colors">Recusar</button>
+                            )}
+                            <button onClick={() => deleteAffiliate(a.id)} className="text-gray-600 hover:text-red-400 transition-colors ml-1">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
