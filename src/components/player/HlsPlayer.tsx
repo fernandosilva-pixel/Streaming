@@ -15,8 +15,10 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
     const video = videoRef.current
     if (!video) return
 
+    const proxied = `/api/hls-proxy?url=${encodeURIComponent(src)}`
+
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = src
+      video.src = proxied
       return
     }
 
@@ -25,7 +27,7 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
     import('hls.js').then(({ default: Hls }) => {
       if (!Hls.isSupported()) return
       hls = new Hls()
-      hls.loadSource(src)
+      hls.loadSource(proxied)
       hls.attachMedia(video)
     })
 
