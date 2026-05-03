@@ -26,7 +26,7 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
 
     import('hls.js').then(({ default: Hls }) => {
       if (!Hls.isSupported()) return
-      hls = new Hls()
+      hls = new Hls({ enableWorker: false })
       hls.loadSource(proxied)
       hls.attachMedia(video)
     })
