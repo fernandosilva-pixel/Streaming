@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 
 export default function ReferralTracker() {
   useEffect(() => {
@@ -9,7 +8,7 @@ export default function ReferralTracker() {
     const ref = params.get('ref')
     if (ref) {
       localStorage.setItem('futzone_ref', ref)
-      void supabase.rpc('increment_affiliate_clicks', { code: ref })
+      fetch(`/api/affiliate/click?code=${encodeURIComponent(ref)}`)
     }
   }, [])
   return null
