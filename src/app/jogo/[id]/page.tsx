@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { use } from 'react'
 import ChatBox from '@/components/player/ChatBox'
 import PaymentModal from '@/components/player/PaymentModal'
+import HlsPlayer from '@/components/player/HlsPlayer'
 import NewsSection from '@/components/home/NewsSection'
 
 interface Props {
@@ -17,10 +18,12 @@ interface Props {
 type Stream = {
   id: string
   title: string
-  stream_source: 'kick' | 'soop'
+  stream_source: 'kick' | 'soop' | 'hls' | 'youtube'
   kick_channel: string | null
   soop_channel: string | null
   soop_broad_no: string | null
+  hls_url: string | null
+  youtube_url: string | null
   crop_enabled: boolean
   charge_enabled: boolean
   charge_amount: number
@@ -184,6 +187,40 @@ export default function JogoPage({ params }: Props) {
     const blurExtra: React.CSSProperties = blurred
       ? { filter: 'blur(18px)', transform: 'scale(1.08)' }
       : {}
+
+    if (source === 'youtube') {
+      if (!s.youtube_url) {
+        return (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0B0B0F]">
+            <p className="text-white font-bold">URL do YouTube não configurada</p>
+          </div>
+        )
+      }
+      return (
+        <iframe
+          src={`https://www.youtube.com/embed/${s.youtube_url}?autoplay=1`}
+          allowFullScreen
+          allow="autoplay; fullscreen"
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none', ...blurExtra }}
+        />
+      )
+    }
+
+    if (source === 'hls') {
+      if (!s.hls_url) {
+        return (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0B0B0F]">
+            <p className="text-white font-bold">URL HLS não configurada</p>
+          </div>
+        )
+      }
+      return (
+        <HlsPlayer
+          src={s.hls_url}
+          style={{ ...cropStyle, ...blurExtra }}
+        />
+      )
+    }
 
     if (source === 'soop') {
       if (soopLoading) {

@@ -30,10 +30,12 @@ type Banner = {
 type Stream = {
   id: string
   title: string
-  stream_source: 'kick' | 'soop'
+  stream_source: 'kick' | 'soop' | 'hls' | 'youtube'
   kick_channel: string | null
   soop_channel: string | null
   soop_broad_no: string | null
+  hls_url: string | null
+  youtube_url: string | null
   is_active: boolean
   is_live: boolean
   crop_enabled: boolean
@@ -119,16 +121,20 @@ const [onlineUsers, setOnlineUsers] = useState(0)
   // Streams
   const [streams, setStreams] = useState<Stream[]>([])
   const [newTitle, setNewTitle] = useState('')
-  const [newSource, setNewSource] = useState<'kick' | 'soop'>('kick')
+  const [newSource, setNewSource] = useState<'kick' | 'soop' | 'hls' | 'youtube'>('kick')
   const [newChannel, setNewChannel] = useState('')
   const [newSoopChannel, setNewSoopChannel] = useState('')
   const [newSoopBroadNo, setNewSoopBroadNo] = useState('')
+  const [newHlsUrl, setNewHlsUrl] = useState('')
+  const [newYoutubeUrl, setNewYoutubeUrl] = useState('')
   const [addingStream, setAddingStream] = useState(false)
   const [editTitles, setEditTitles] = useState<Record<string, string>>({})
   const [editChannels, setEditChannels] = useState<Record<string, string>>({})
-  const [editSources, setEditSources] = useState<Record<string, 'kick' | 'soop'>>({})
+  const [editSources, setEditSources] = useState<Record<string, 'kick' | 'soop' | 'hls' | 'youtube'>>({})
   const [editSoopChannels, setEditSoopChannels] = useState<Record<string, string>>({})
   const [editSoopBroadNos, setEditSoopBroadNos] = useState<Record<string, string>>({})
+  const [editHlsUrls, setEditHlsUrls] = useState<Record<string, string>>({})
+  const [editYoutubeUrls, setEditYoutubeUrls] = useState<Record<string, string>>({})
   const [editAmounts, setEditAmounts] = useState<Record<string, string>>({})
   const [savingChannel, setSavingChannel] = useState<string | null>(null)
   const [detectingBroad, setDetectingBroad] = useState<string | null>(null)
@@ -310,28 +316,50 @@ const [onlineUsers, setOnlineUsers] = useState(0)
     const list = data ?? []
     setStreams(list)
     const initial: Record<string, string> = {}
-    const initialSources: Record<string, 'kick' | 'soop'> = {}
+    const initialSources: Record<string, 'kick' | 'soop' | 'hls' | 'youtube'> = {}
     const initialSoopChannels: Record<string, string> = {}
     const initialSoopBroadNos: Record<string, string> = {}
+    const initialHlsUrls: Record<string, string> = {}
+    const initialYoutubeUrls: Record<string, string> = {}
     const initialAmounts: Record<string, string> = {}
     list.forEach((s: Stream) => {
       initial[s.id] = s.kick_channel ?? ''
       initialSources[s.id] = s.stream_source ?? 'kick'
       initialSoopChannels[s.id] = s.soop_channel ?? ''
       initialSoopBroadNos[s.id] = s.soop_broad_no ?? ''
+      initialHlsUrls[s.id] = s.hls_url ?? ''
+      initialYoutubeUrls[s.id] = s.youtube_url ?? ''
       initialAmounts[s.id] = String(s.charge_amount ?? '10.00')
     })
     setEditChannels(initial)
     setEditSources(initialSources)
     setEditSoopChannels(initialSoopChannels)
     setEditSoopBroadNos(initialSoopBroadNos)
+    setEditHlsUrls(initialHlsUrls)
+    setEditYoutubeUrls(initialYoutubeUrls)
     setEditAmounts(initialAmounts)
+  }
+
+  function extractYoutubeId(input: string): string {
+    const s = input.trim()
+    if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s
+    try {
+      const url = new URL(s)
+      if (url.hostname === 'youtu.be') return url.pathname.slice(1).split('?')[0]
+      if (url.pathname.startsWith('/live/')) return url.pathname.split('/live/')[1].split('?')[0]
+      if (url.pathname.startsWith('/embed/')) return url.pathname.split('/embed/')[1].split('?')[0]
+      return url.searchParams.get('v') ?? s
+    } catch {
+      return s
+    }
   }
 
   async function addStream() {
     if (!newTitle.trim()) return
     if (newSource === 'kick' && !newChannel.trim()) return
     if (newSource === 'soop' && !newSoopChannel.trim()) return
+    if (newSource === 'hls' && !newHlsUrl.trim()) return
+    if (newSource === 'youtube' && !newYoutubeUrl.trim()) return
     setAddingStream(true)
     const { error } = await supabase.from('streams').insert({
       title: newTitle.trim(),
@@ -339,9 +367,11 @@ const [onlineUsers, setOnlineUsers] = useState(0)
       kick_channel: newSource === 'kick' ? newChannel.trim().replace(/\s/g, '') : null,
       soop_channel: newSource === 'soop' ? newSoopChannel.trim().replace(/\s/g, '') : null,
       soop_broad_no: newSource === 'soop' && newSoopBroadNo.trim() ? newSoopBroadNo.trim() : null,
+      hls_url: newSource === 'hls' ? newHlsUrl.trim() : null,
+      youtube_url: newSource === 'youtube' ? extractYoutubeId(newYoutubeUrl) : null,
     })
     if (error) { alert('Erro ao adicionar transmissão: ' + error.message); setAddingStream(false); return }
-    setNewTitle(''); setNewChannel(''); setNewSoopChannel(''); setNewSoopBroadNo('')
+    setNewTitle(''); setNewChannel(''); setNewSoopChannel(''); setNewSoopBroadNo(''); setNewHlsUrl(''); setNewYoutubeUrl('')
     await loadStreams()
     setAddingStream(false)
   }
@@ -379,12 +409,20 @@ const [onlineUsers, setOnlineUsers] = useState(0)
     if (source === 'kick') {
       const channel = editChannels[id]?.trim().replace(/\s/g, '') || current?.kick_channel || ''
       if (!channel) { setSavingChannel(null); return }
-      await supabase.from('streams').update({ ...baseUpdate, stream_source: 'kick', kick_channel: channel, soop_channel: null, soop_broad_no: null }).eq('id', id)
-    } else {
+      await supabase.from('streams').update({ ...baseUpdate, stream_source: 'kick', kick_channel: channel, soop_channel: null, soop_broad_no: null, hls_url: null }).eq('id', id)
+    } else if (source === 'soop') {
       const soopChannel = editSoopChannels[id]?.trim().replace(/\s/g, '') || current?.soop_channel || ''
       const soopBroadNo = editSoopBroadNos[id]?.trim() || current?.soop_broad_no || null
       if (!soopChannel) { setSavingChannel(null); return }
-      await supabase.from('streams').update({ ...baseUpdate, stream_source: 'soop', kick_channel: null, soop_channel: soopChannel, soop_broad_no: soopBroadNo }).eq('id', id)
+      await supabase.from('streams').update({ ...baseUpdate, stream_source: 'soop', kick_channel: null, soop_channel: soopChannel, soop_broad_no: soopBroadNo, hls_url: null }).eq('id', id)
+    } else if (source === 'hls') {
+      const hlsUrl = editHlsUrls[id]?.trim() || current?.hls_url || ''
+      if (!hlsUrl) { setSavingChannel(null); return }
+      await supabase.from('streams').update({ ...baseUpdate, stream_source: 'hls', kick_channel: null, soop_channel: null, soop_broad_no: null, hls_url: hlsUrl, youtube_url: null }).eq('id', id)
+    } else {
+      const youtubeId = extractYoutubeId(editYoutubeUrls[id] ?? current?.youtube_url ?? '')
+      if (!youtubeId) { setSavingChannel(null); return }
+      await supabase.from('streams').update({ ...baseUpdate, stream_source: 'youtube', kick_channel: null, soop_channel: null, soop_broad_no: null, hls_url: null, youtube_url: youtubeId }).eq('id', id)
     }
     await loadStreams()
     setSavingChannel(null)
@@ -1096,21 +1134,29 @@ const [onlineUsers, setOnlineUsers] = useState(0)
                 <div className="flex rounded-xl overflow-hidden border border-[#2A2A3A]">
                   <button onClick={() => setNewSource('kick')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>Kick</button>
                   <button onClick={() => setNewSource('soop')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>Soop</button>
+                  <button onClick={() => setNewSource('hls')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'hls' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>HLS/VPS</button>
+                  <button onClick={() => setNewSource('youtube')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'youtube' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>YouTube</button>
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap">
                 {newSource === 'kick' ? (
                   <input type="text" placeholder="Canal da Kick (ex: futzone_fla)" value={newChannel} onChange={e => setNewChannel(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
                     className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
-                ) : (
+                ) : newSource === 'soop' ? (
                   <>
                     <input type="text" placeholder="ID do canal Soop" value={newSoopChannel} onChange={e => setNewSoopChannel(e.target.value)}
                       className="flex-1 min-w-36 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
                     <input type="text" placeholder="Nº do broadcast (opcional)" value={newSoopBroadNo} onChange={e => setNewSoopBroadNo(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
                       className="w-52 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
                   </>
+                ) : newSource === 'hls' ? (
+                  <input type="text" placeholder="URL HLS (ex: http://ip/hls/chave.m3u8)" value={newHlsUrl} onChange={e => setNewHlsUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
+                    className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                ) : (
+                  <input type="text" placeholder="URL do YouTube (ex: youtube.com/watch?v=...)" value={newYoutubeUrl} onChange={e => setNewYoutubeUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
+                    className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
                 )}
-                <button onClick={addStream} disabled={addingStream || !newTitle.trim() || (newSource === 'kick' ? !newChannel.trim() : !newSoopChannel.trim())}
+                <button onClick={addStream} disabled={addingStream || !newTitle.trim() || (newSource === 'kick' ? !newChannel.trim() : newSource === 'soop' ? !newSoopChannel.trim() : newSource === 'hls' ? !newHlsUrl.trim() : !newYoutubeUrl.trim())}
                   className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm">
                   <Plus className="w-4 h-4" />{addingStream ? 'Adicionando...' : 'Adicionar'}
                 </button>
@@ -1182,11 +1228,13 @@ const [onlineUsers, setOnlineUsers] = useState(0)
                               <div className="flex rounded-lg overflow-hidden border border-[#2A2A3A]">
                                 <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'kick' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Kick</button>
                                 <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'soop' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Soop</button>
+                                <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'hls' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'hls' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>HLS/VPS</button>
+                                <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'youtube' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'youtube' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>YouTube</button>
                               </div>
                               {currentSource === 'kick' ? (
                                 <input type="text" value={editChannels[s.id] ?? s.kick_channel ?? ''} onChange={e => setEditChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Canal da Kick"
                                   className="flex-1 min-w-36 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
-                              ) : (
+                              ) : currentSource === 'soop' ? (
                                 <>
                                   <input type="text" value={editSoopChannels[s.id] ?? s.soop_channel ?? ''} onChange={e => setEditSoopChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="ID do canal Soop (bjid)"
                                     className="flex-1 min-w-28 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
@@ -1197,6 +1245,12 @@ const [onlineUsers, setOnlineUsers] = useState(0)
                                     {detectingBroad === s.id ? '...' : 'Detectar'}
                                   </button>
                                 </>
+                              ) : currentSource === 'hls' ? (
+                                <input type="text" value={editHlsUrls[s.id] ?? s.hls_url ?? ''} onChange={e => setEditHlsUrls(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="URL HLS (ex: http://ip/hls/chave.m3u8)"
+                                  className="flex-1 min-w-48 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                              ) : (
+                                <input type="text" value={editYoutubeUrls[s.id] ?? s.youtube_url ?? ''} onChange={e => setEditYoutubeUrls(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="URL do YouTube (ex: youtube.com/watch?v=...)"
+                                  className="flex-1 min-w-48 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
                               )}
                             </div>
                           </div>
