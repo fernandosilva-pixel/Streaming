@@ -303,12 +303,12 @@ export default function JogoPage({ params }: Props) {
               : renderPlayer(stream, isBlurred)
             }
 
-            {/* Overlays: desktop blocks entire iframe, mobile blocks only top strip */}
-            {!isBlurred && !needsPayment && (
+            {/* Overlays: desktop blocks entire iframe, mobile blocks only top strip — not needed for HLS (native video element) */}
+            {!isBlurred && !needsPayment && source !== 'hls' && (
               <>
                 {/* Mobile: only top strip (channel name link) */}
                 <div className="absolute top-0 left-0 right-0 z-10 md:hidden" style={{ height: 48 }} />
-                {/* Desktop: full overlay — all Kick links/branding blocked */}
+                {/* Desktop: full overlay — all Kick/Soop/YouTube links/branding blocked */}
                 <div className="absolute inset-0 z-10 hidden md:block" />
               </>
             )}
