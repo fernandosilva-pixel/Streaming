@@ -31,10 +31,11 @@ export default function PaymentModal({ streamId, userPhone, userName, amount, pa
     if (paymentMethod !== 'bspay') return
     async function createPayment() {
       try {
+        const referralCode = localStorage.getItem('futzone_ref') ?? undefined
         const res = await fetch('/api/pix/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stream_id: streamId, user_phone: userPhone, user_name: userName, amount: Number(amount) }),
+          body: JSON.stringify({ stream_id: streamId, user_phone: userPhone, user_name: userName, amount: Number(amount), referral_code: referralCode }),
         })
         const data = await res.json()
         if (!res.ok) { setError(`Erro: ${data.detail ?? data.error ?? JSON.stringify(data)}`); return }
@@ -82,10 +83,12 @@ export default function PaymentModal({ streamId, userPhone, userName, amount, pa
   async function handleFixedQrPaid() {
     setVerifying(true)
     setVerifyMsg('')
+    const referralCode = localStorage.getItem('futzone_ref') ?? undefined
     const { error } = await supabase.from('payments').insert({
       stream_id: streamId,
       user_phone: userPhone,
       status: 'PAID',
+      referral_code: referralCode,
     })
     if (error) { setVerifyMsg('Erro ao registrar. Tente novamente.'); setVerifying(false); return }
     setPaid(true)

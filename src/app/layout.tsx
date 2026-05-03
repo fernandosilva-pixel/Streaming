@@ -5,6 +5,7 @@ import Footer from '@/components/layout/Footer';
 import { AuthProvider } from '@/contexts/AuthContext';
 import AuthModal from '@/components/auth/AuthModal'
 import PresenceTracker from '@/components/analytics/PresenceTracker';
+import ReferralTracker from '@/components/analytics/ReferralTracker';
 import PopupBanner from '@/components/common/PopupBanner';
 
 export const metadata: Metadata = {
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
           <AuthModal />
           <PresenceTracker />
+          <ReferralTracker />
           <PopupBanner />
         </AuthProvider>
       </body>

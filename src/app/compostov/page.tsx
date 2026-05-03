@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown } from 'lucide-react'
+import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown, UserCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 type Fixture = {
@@ -167,7 +167,12 @@ const [onlineUsers, setOnlineUsers] = useState(0)
   const [addingAdmin, setAddingAdmin] = useState(false)
 
   // Aba ativa
-  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar'>('visual')
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados'>('visual')
+
+  // Afiliados
+  type AffiliateRecord = { id: string; name: string; phone: string; referral_code: string | null; status: string; clicks: number; created_at: string }
+  const [affiliatesList, setAffiliatesList] = useState<AffiliateRecord[]>([])
+  const [affiliatesLoading, setAffiliatesLoading] = useState(false)
 
   // Modal de método de pagamento
   const [chargeModal, setChargeModal] = useState<{ id: string } | null>(null)
@@ -195,8 +200,26 @@ const [onlineUsers, setOnlineUsers] = useState(0)
       loadAdminUsers()
       loadActivePopup()
       loadCtaCards()
+      loadAffiliates()
     }
   }, [authChecked])
+
+  async function loadAffiliates() {
+    setAffiliatesLoading(true)
+    const { data } = await supabase.from('affiliates').select('*').order('created_at', { ascending: false })
+    setAffiliatesList(data ?? [])
+    setAffiliatesLoading(false)
+  }
+
+  async function approveAffiliate(id: string) {
+    await supabase.from('affiliates').update({ status: 'approved' }).eq('id', id)
+    setAffiliatesList(prev => prev.map(a => a.id === id ? { ...a, status: 'approved' } : a))
+  }
+
+  async function rejectAffiliate(id: string) {
+    await supabase.from('affiliates').update({ status: 'rejected' }).eq('id', id)
+    setAffiliatesList(prev => prev.map(a => a.id === id ? { ...a, status: 'rejected' } : a))
+  }
 
   useEffect(() => { if (authChecked) loadFixtures() }, [date, authChecked])
 
@@ -799,6 +822,7 @@ const [onlineUsers, setOnlineUsers] = useState(0)
           { id: 'transmissao', label: 'Transmissão', icon: <Radio className="w-4 h-4" /> },
           { id: 'acesso', label: 'Acesso Gratuito', icon: <Users className="w-4 h-4" /> },
           { id: 'notificar', label: 'Notificar', icon: <Megaphone className="w-4 h-4" /> },
+          { id: 'afiliados', label: 'Afiliados', icon: <UserCheck className="w-4 h-4" /> },
         ] as const).map(tab => (
           <button
             key={tab.id}
@@ -1523,6 +1547,105 @@ const [onlineUsers, setOnlineUsers] = useState(0)
             >
               {sendingPopup ? 'Enviando...' : 'Exibir para todos'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── ABA: AFILIADOS ── */}
+      {activeTab === 'afiliados' && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-lg font-bold text-white">Afiliados</h2>
+            <p className="text-gray-500 text-sm mt-0.5">Gerencie candidaturas e acompanhe o desempenho dos influenciadores.</p>
+          </div>
+
+          {affiliatesLoading && <p className="text-gray-500 text-sm">Carregando...</p>}
+
+          {/* Pending */}
+          {affiliatesList.filter(a => a.status === 'pending').length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse inline-block" />
+                Aguardando aprovação ({affiliatesList.filter(a => a.status === 'pending').length})
+              </h3>
+              <div className="space-y-2">
+                {affiliatesList.filter(a => a.status === 'pending').map(a => (
+                  <div key={a.id} className="flex items-center justify-between gap-3 bg-[#12121A] border border-orange-500/20 rounded-xl px-4 py-3">
+                    <div>
+                      <p className="text-white font-semibold text-sm">{a.name}</p>
+                      <p className="text-gray-500 text-xs">{a.phone}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => approveAffiliate(a.id)}
+                        className="bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        Aprovar
+                      </button>
+                      <button
+                        onClick={() => rejectAffiliate(a.id)}
+                        className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        Recusar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* All affiliates */}
+          <div className="space-y-2">
+            <h3 className="text-white font-semibold text-sm">Todos os afiliados ({affiliatesList.length})</h3>
+            {affiliatesList.length === 0 && !affiliatesLoading && (
+              <p className="text-gray-600 text-sm py-6 text-center bg-[#12121A] border border-[#2A2A3A] rounded-xl">Nenhum afiliado cadastrado ainda.</p>
+            )}
+            {affiliatesList.length > 0 && (
+              <div className="overflow-x-auto rounded-xl border border-[#2A2A3A]">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[#2A2A3A] bg-[#12121A]">
+                      <th className="text-left text-gray-500 font-medium px-4 py-2.5">Nome</th>
+                      <th className="text-left text-gray-500 font-medium px-4 py-2.5">Telefone</th>
+                      <th className="text-left text-gray-500 font-medium px-4 py-2.5">Status</th>
+                      <th className="text-left text-gray-500 font-medium px-4 py-2.5">Link</th>
+                      <th className="text-left text-gray-500 font-medium px-4 py-2.5">Cliques</th>
+                      <th className="text-left text-gray-500 font-medium px-4 py-2.5">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {affiliatesList.map((a, i) => (
+                      <tr key={a.id} className={`border-b border-[#1A1A26] ${i % 2 === 0 ? 'bg-[#0B0B0F]' : 'bg-[#12121A]'}`}>
+                        <td className="px-4 py-2.5 text-white font-medium">{a.name}</td>
+                        <td className="px-4 py-2.5 text-gray-400">{a.phone}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            a.status === 'approved' ? 'bg-green-500/10 text-green-400' :
+                            a.status === 'rejected' ? 'bg-red-500/10 text-red-400' :
+                            'bg-orange-500/10 text-orange-400'
+                          }`}>
+                            {a.status === 'approved' ? 'Aprovado' : a.status === 'rejected' ? 'Recusado' : 'Pendente'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-orange-400 font-mono text-xs">
+                          {a.referral_code ? `?ref=${a.referral_code}` : <span className="text-gray-600">—</span>}
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-300 font-bold">{a.clicks}</td>
+                        <td className="px-4 py-2.5">
+                          {a.status !== 'approved' && (
+                            <button onClick={() => approveAffiliate(a.id)} className="text-green-400 hover:text-green-300 text-xs mr-2 transition-colors">Aprovar</button>
+                          )}
+                          {a.status !== 'rejected' && (
+                            <button onClick={() => rejectAffiliate(a.id)} className="text-red-400 hover:text-red-300 text-xs transition-colors">Recusar</button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}

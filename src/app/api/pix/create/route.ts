@@ -7,7 +7,7 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
-  const { stream_id, user_phone, user_name, amount } = await req.json()
+  const { stream_id, user_phone, user_name, amount, referral_code } = await req.json()
 
   const external_id = `${stream_id}-${user_phone}-${Date.now()}`
   const proto = req.headers.get('x-forwarded-proto') ?? (process.env.NODE_ENV === 'production' ? 'https' : 'http')
@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
     amount,
     status: 'PENDING',
     qrcode: qrcode ?? '',
+    referral_code: referral_code ?? null,
   })
 
   if (insertError) {

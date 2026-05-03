@@ -76,6 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) throw new Error(error.message)
 
+    // Track referral if user came via affiliate link
+    const refCode = localStorage.getItem('futzone_ref')
+    if (refCode) {
+      void supabase.from('referrals').insert({
+        user_phone: digits,
+        user_name: name,
+        referral_code: refCode,
+      })
+    }
+
     const newUser = { name, phone: digits }
     localStorage.setItem('futzone_user', JSON.stringify(newUser))
     setUser(newUser)
