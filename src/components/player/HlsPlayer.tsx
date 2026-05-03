@@ -30,6 +30,11 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
       hls.loadSource(proxied)
       hls.attachMedia(video)
 
+      // Chrome/Firefox: autoPlay attribute doesn't fire via MediaSource API — must call play() manually
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(() => {})
+      })
+
       // Volta ao vivo ao dar play após pausa
       video.addEventListener('play', () => {
         if (hls && hls.liveSyncPosition != null) {
