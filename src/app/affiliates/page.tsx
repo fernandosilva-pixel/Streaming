@@ -115,6 +115,13 @@ export default function AffiliatesPage() {
     resolveState(s)
   }
 
+  // Auto-refresh dashboard every 30s when approved
+  useEffect(() => {
+    if (pageState !== 'approved' || !session?.referral_code) return
+    const interval = setInterval(() => loadDashboard(session.referral_code!, session), 30_000)
+    return () => clearInterval(interval)
+  }, [pageState, session?.referral_code])
+
   function logout() {
     localStorage.removeItem(SESSION_KEY)
     setSession(null)
