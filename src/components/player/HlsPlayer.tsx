@@ -31,8 +31,12 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
       hls.attachMedia(video)
 
       // Chrome/Firefox: autoPlay attribute doesn't fire via MediaSource API — must call play() manually
+      // If autoplay with audio is blocked, fall back to muted autoplay
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(() => {})
+        video.play().catch(() => {
+          video.muted = true
+          video.play().catch(() => {})
+        })
       })
 
       // Volta ao vivo ao dar play após pausa
