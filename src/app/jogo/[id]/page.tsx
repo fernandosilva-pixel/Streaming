@@ -139,14 +139,22 @@ export default function JogoPage({ params }: Props) {
       })
   }, [user?.phone, id, stream?.charge_enabled])
 
-  // Force refresh from admin via Supabase Realtime broadcast
+  // Force refresh from admin via Postgres Changes on streams table
   useEffect(() => {
-    const channel = supabase.channel('admin_broadcast')
-    channel.on('broadcast', { event: 'force_refresh' }, () => {
-      window.location.reload()
-    }).subscribe()
+    const channel = supabase
+      .channel(`stream-refresh-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'streams', filter: `id=eq.${id}` },
+        (payload: { new: { force_refresh_at?: string }; old?: { force_refresh_at?: string } }) => {
+          if (payload.new.force_refresh_at !== payload.old?.force_refresh_at) {
+            window.location.reload()
+          }
+        }
+      )
+      .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [id])
 
   // 2m30s preview, separate timer for not-logged-in and logged-in-but-unpaid
   const previewKey = user ? `preview_payment_${id}_${user.phone}` : `preview_login_${id}`

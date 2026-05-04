@@ -644,10 +644,7 @@ const [onlineUsers, setOnlineUsers] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   async function forceRefreshViewers() {
     setRefreshing(true)
-    const channel = supabase.channel('admin_broadcast')
-    await new Promise<void>(resolve => channel.subscribe(status => { if (status === 'SUBSCRIBED') resolve() }))
-    await channel.send({ type: 'broadcast', event: 'force_refresh', payload: {} })
-    supabase.removeChannel(channel)
+    await supabase.from('streams').update({ force_refresh_at: new Date().toISOString() }).eq('is_live', true)
     setRefreshing(false)
   }
 
