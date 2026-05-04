@@ -16,13 +16,21 @@ export default function PresenceTracker() {
       sessionStorage.setItem('futzone_sid', sid)
     }
 
+    const stored = localStorage.getItem('futzone_user')
+    const userInfo = stored ? JSON.parse(stored) as { name: string; phone: string } : null
+
     const channel = supabase.channel('site-presence', {
       config: { presence: { key: sid } },
     })
 
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await channel.track({ at: Date.now() })
+        await channel.track({
+          at: Date.now(),
+          page: pathname,
+          name: userInfo?.name ?? null,
+          phone: userInfo?.phone ?? null,
+        })
       }
     })
 

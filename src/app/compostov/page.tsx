@@ -100,7 +100,9 @@ export default function AdminPage() {
 
   // Auth / misc
   const [authChecked, setAuthChecked] = useState(false)
-const [onlineUsers, setOnlineUsers] = useState(0)
+  const [onlineUsers, setOnlineUsers] = useState(0)
+  const [onlineList, setOnlineList] = useState<{ name: string | null; phone: string | null; page: string }[]>([])
+  const [showOnlineList, setShowOnlineList] = useState(false)
 
   // Notificações de novos cadastros
   const [toasts, setToasts] = useState<{ id: string; name: string; phone: string }[]>([])
@@ -255,7 +257,10 @@ const [onlineUsers, setOnlineUsers] = useState(0)
   useEffect(() => {
     const channel = supabase.channel('site-presence')
     channel.on('presence', { event: 'sync' }, () => {
-      setOnlineUsers(Object.keys(channel.presenceState()).length)
+      const state = channel.presenceState<{ name: string | null; phone: string | null; page: string }>()
+      const entries = Object.values(state).flat()
+      setOnlineUsers(entries.length)
+      setOnlineList(entries.map(e => ({ name: e.name, phone: e.phone, page: e.page })))
     }).subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
@@ -844,10 +849,34 @@ const [onlineUsers, setOnlineUsers] = useState(0)
           <p className="text-gray-500 text-sm mt-1">Gerencie o site</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-[#12121A] border border-[#2A2A3A] px-4 py-2 rounded-xl">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
-            <span className="text-white font-bold text-sm tabular-nums">{onlineUsers}</span>
-            <span className="text-gray-500 text-sm">online agora</span>
+          <div className="relative">
+            <button
+              onClick={() => setShowOnlineList(p => !p)}
+              className="flex items-center gap-2 bg-[#12121A] border border-[#2A2A3A] px-4 py-2 rounded-xl hover:border-green-500/50 transition-colors"
+            >
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+              <span className="text-white font-bold text-sm tabular-nums">{onlineUsers}</span>
+              <span className="text-gray-500 text-sm">online agora</span>
+            </button>
+            {showOnlineList && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-[#12121A] border border-[#2A2A3A] rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="px-4 py-2 border-b border-[#2A2A3A] flex items-center justify-between">
+                  <span className="text-white text-sm font-bold">Usuários online</span>
+                  <button onClick={() => setShowOnlineList(false)} className="text-gray-500 hover:text-white text-xs">✕</button>
+                </div>
+                <div className="max-h-72 overflow-y-auto divide-y divide-[#2A2A3A]">
+                  {onlineList.length === 0 ? (
+                    <p className="text-gray-500 text-sm px-4 py-3">Nenhum usuário.</p>
+                  ) : onlineList.map((u, i) => (
+                    <div key={i} className="px-4 py-2.5">
+                      <p className="text-white text-sm font-semibold">{u.name ?? 'Visitante'}</p>
+                      {u.phone && <p className="text-gray-500 text-xs">{u.phone}</p>}
+                      <p className="text-gray-600 text-xs truncate">{u.page}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <button onClick={handleLogout} className="text-gray-500 hover:text-white text-sm border border-[#2A2A3A] hover:border-orange-500/50 px-4 py-2 rounded-xl transition-all">
             Sair
