@@ -176,6 +176,7 @@ const [onlineUsers, setOnlineUsers] = useState(0)
   const [dashRegistrations, setDashRegistrations] = useState<DashRegistration[]>([])
   const [dashPayments, setDashPayments] = useState<DashPayment[]>([])
   const [dashStreamFilter, setDashStreamFilter] = useState<string>('all')
+  const [dashDateFilter, setDashDateFilter] = useState<string>('all')
 
   async function loadAdminDashboard() {
     setDashLoading(true)
@@ -1802,58 +1803,86 @@ const [onlineUsers, setOnlineUsers] = useState(0)
             )
           })()}
 
-          {/* Filtro por live */}
-          <div className="flex items-center gap-2">
-            <p className="text-gray-500 text-sm shrink-0">Filtrar por live:</p>
-            <select
-              value={dashStreamFilter}
-              onChange={e => setDashStreamFilter(e.target.value)}
-              className="bg-[#1A1A26] border border-[#2A2A3A] text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-orange-500"
-            >
-              <option value="all">Todas</option>
-              {streams.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-            </select>
+          {/* Filtros */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <p className="text-gray-500 text-sm shrink-0">Data:</p>
+              <div className="flex rounded-xl overflow-hidden border border-[#2A2A3A]">
+                {(['all', 'today', 'yesterday', 'week'] as const).map(opt => (
+                  <button
+                    key={opt}
+                    onClick={() => setDashDateFilter(opt)}
+                    className={`px-3 py-1.5 text-xs font-bold transition-all ${dashDateFilter === opt ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}
+                  >
+                    {opt === 'all' ? 'Tudo' : opt === 'today' ? 'Hoje' : opt === 'yesterday' ? 'Ontem' : 'Semana'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-gray-500 text-sm shrink-0">Live:</p>
+              <select
+                value={dashStreamFilter}
+                onChange={e => setDashStreamFilter(e.target.value)}
+                className="bg-[#1A1A26] border border-[#2A2A3A] text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-orange-500"
+              >
+                <option value="all">Todas</option>
+                {streams.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+              </select>
+            </div>
           </div>
 
           {dashLoading ? (
             <p className="text-gray-500 text-sm">Carregando...</p>
-          ) : (
-            <div className="space-y-6">
-              {/* Cadastros */}
-              <div className="space-y-2">
-                <h3 className="text-white font-semibold text-sm">Cadastros recentes ({dashRegistrations.length})</h3>
-                <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-[#2A2A3A]">
-                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">#</th>
-                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Nome</th>
-                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Telefone</th>
-                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Data</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dashRegistrations.length === 0 ? (
-                          <tr><td colSpan={4} className="text-center text-gray-600 py-6 px-4">Nenhum cadastro</td></tr>
-                        ) : dashRegistrations.map((r, i) => (
-                          <tr key={r.id ?? i} className="border-b border-[#1A1A26] last:border-0">
-                            <td className="px-4 py-2.5 text-gray-600">{dashRegistrations.length - i}</td>
-                            <td className="px-4 py-2.5 text-white font-medium">{r.name}</td>
-                            <td className="px-4 py-2.5 text-gray-400">{r.phone}</td>
-                            <td className="px-4 py-2.5 text-gray-500 text-xs">{r.created_at ? new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+          ) : (() => {
+              const now = new Date()
+              const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+              const matchDate = (dateStr?: string) => {
+                if (dashDateFilter === 'all' || !dateStr) return true
+                const d = new Date(dateStr)
+                if (dashDateFilter === 'today') return d >= startOf(now)
+                if (dashDateFilter === 'yesterday') { const y = startOf(new Date(now.getTime() - 86400000)); return d >= y && d < startOf(now) }
+                if (dashDateFilter === 'week') return d >= new Date(now.getTime() - 7 * 86400000)
+                return true
+              }
+              const filteredRegs = dashRegistrations.filter(r => matchDate(r.created_at))
+              const filteredPays = dashPayments
+                .filter(p => dashStreamFilter === 'all' || p.stream_id === dashStreamFilter)
+                .filter(p => matchDate(p.created_at))
+              return (
+                <div className="space-y-6">
+                  {/* Cadastros */}
+                  <div className="space-y-2">
+                    <h3 className="text-white font-semibold text-sm">Cadastros ({filteredRegs.length})</h3>
+                    <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-[#2A2A3A]">
+                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">#</th>
+                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Nome</th>
+                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Telefone</th>
+                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Data</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredRegs.length === 0 ? (
+                              <tr><td colSpan={4} className="text-center text-gray-600 py-6 px-4">Nenhum cadastro</td></tr>
+                            ) : filteredRegs.map((r, i) => (
+                              <tr key={r.id ?? i} className="border-b border-[#1A1A26] last:border-0">
+                                <td className="px-4 py-2.5 text-gray-600">{filteredRegs.length - i}</td>
+                                <td className="px-4 py-2.5 text-white font-medium">{r.name}</td>
+                                <td className="px-4 py-2.5 text-gray-400">{r.phone}</td>
+                                <td className="px-4 py-2.5 text-gray-500 text-xs">{r.created_at ? new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Pagamentos */}
-              {(() => {
-                const filteredPays = dashStreamFilter === 'all' ? dashPayments : dashPayments.filter(p => p.stream_id === dashStreamFilter)
-                return (
+                  {/* Pagamentos */}
                   <div className="space-y-2">
                     <h3 className="text-white font-semibold text-sm">QR Gerados & Pagamentos ({filteredPays.length})</h3>
                     <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
@@ -1892,10 +1921,9 @@ const [onlineUsers, setOnlineUsers] = useState(0)
                       </div>
                     </div>
                   </div>
-                )
-              })()}
-            </div>
-          )}
+                </div>
+              )
+            })()}
         </div>
       )}
 
