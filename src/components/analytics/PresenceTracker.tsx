@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
 
 export default function PresenceTracker() {
   useEffect(() => {
+    if (window.location.pathname.startsWith('/compostov')) return
+
     let sid = sessionStorage.getItem('futzone_sid')
     if (!sid) {
       sid = crypto.randomUUID()
