@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { use } from 'react'
 import ChatBox from '@/components/player/ChatBox'
 import PaymentModal from '@/components/player/PaymentModal'
+import CombinedModal from '@/components/player/CombinedModal'
 import HlsPlayer from '@/components/player/HlsPlayer'
 import NewsSection from '@/components/home/NewsSection'
 
@@ -33,7 +34,7 @@ type Stream = {
 
 export default function JogoPage({ params }: Props) {
   const { id } = use(params)
-  const { user, showModal } = useAuth()
+  const { user, showModal, loginDirect } = useAuth()
   const [stream, setStream] = useState<Stream | null>(null)
   const [loading, setLoading] = useState(true)
   const [hasPaid, setHasPaid] = useState(false)
@@ -369,8 +370,8 @@ export default function JogoPage({ params }: Props) {
             )}
 
 
-            {/* Login overlay */}
-            {needsLogin && (
+            {/* Login overlay — free stream: show auth modal. Paid stream: CombinedModal handles it outside player */}
+            {needsLogin && !stream.charge_enabled && (
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/50">
                 <div className="w-14 h-14 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
                   <Lock className="w-6 h-6 text-orange-500" />
@@ -427,6 +428,18 @@ export default function JogoPage({ params }: Props) {
                 fixedQrUrl={stream.fixed_qr_url}
                 onPaid={() => { setHasPaid(true); setPaymentModalOpen(false) }}
                 onClose={() => setPaymentModalOpen(false)}
+              />
+            )}
+
+            {/* Combined modal for non-logged-in users on paid streams */}
+            {needsLogin && stream.charge_enabled && (
+              <CombinedModal
+                streamId={stream.id}
+                amount={stream.charge_amount}
+                paymentMethod={stream.payment_method ?? 'bspay'}
+                fixedQrUrl={stream.fixed_qr_url}
+                onSuccess={(userObj) => { loginDirect(userObj); setHasPaid(true) }}
+                onClose={() => {}}
               />
             )}
           </div>

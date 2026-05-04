@@ -17,6 +17,7 @@ type AuthContextType = {
   modalInitialView: 'login' | 'register'
   login: (phone: string, password: string) => Promise<boolean>
   register: (name: string, phone: string, password: string) => Promise<void>
+  loginDirect: (userObj: SiteUser) => void
   logout: () => void
 }
 
@@ -92,13 +93,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setModalVisible(false)
   }
 
+  function loginDirect(userObj: SiteUser) {
+    localStorage.setItem('futzone_user', JSON.stringify(userObj))
+    setUser(userObj)
+  }
+
   function logout() {
     localStorage.removeItem('futzone_user')
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, initialized, showModal, hideModal, modalVisible, modalInitialView, login, register, logout }}>
+    <AuthContext.Provider value={{ user, initialized, showModal, hideModal, modalVisible, modalInitialView, login, register, loginDirect, logout }}>
       {children}
     </AuthContext.Provider>
   )
