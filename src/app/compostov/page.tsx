@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown, UserCheck } from 'lucide-react'
+import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown, UserCheck, BarChart2, RefreshCw } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 type Fixture = {
@@ -167,7 +167,30 @@ const [onlineUsers, setOnlineUsers] = useState(0)
   const [addingAdmin, setAddingAdmin] = useState(false)
 
   // Aba ativa
-  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados'>('visual')
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard'>('visual')
+
+  // Dashboard
+  type DashRegistration = { id?: string; name: string; phone: string; created_at?: string }
+  type DashPayment = { id: string; stream_id: string; user_phone: string; amount?: number; status: string; referral_code?: string | null; created_at?: string }
+  const [dashLoading, setDashLoading] = useState(false)
+  const [dashRegistrations, setDashRegistrations] = useState<DashRegistration[]>([])
+  const [dashPayments, setDashPayments] = useState<DashPayment[]>([])
+  const [dashStreamFilter, setDashStreamFilter] = useState<string>('all')
+
+  async function loadAdminDashboard() {
+    setDashLoading(true)
+    const [regRes, payRes] = await Promise.all([
+      supabase.from('registrations').select('*').limit(200),
+      supabase.from('payments').select('*').limit(500),
+    ])
+    setDashRegistrations((regRes.data ?? []).reverse())
+    setDashPayments((payRes.data ?? []).reverse())
+    setDashLoading(false)
+  }
+
+  useEffect(() => {
+    if (activeTab === 'dashboard') loadAdminDashboard()
+  }, [activeTab])
 
   // Afiliados
   type AffiliateRecord = { id: string; name: string; phone: string; referral_code: string | null; status: string; clicks: number; created_at: string }
@@ -839,6 +862,7 @@ const [onlineUsers, setOnlineUsers] = useState(0)
           { id: 'acesso', label: 'Acesso Gratuito', icon: <Users className="w-4 h-4" /> },
           { id: 'notificar', label: 'Notificar', icon: <Megaphone className="w-4 h-4" /> },
           { id: 'afiliados', label: 'Afiliados', icon: <UserCheck className="w-4 h-4" /> },
+          { id: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
         ] as const).map(tab => (
           <button
             key={tab.id}
@@ -1735,6 +1759,143 @@ const [onlineUsers, setOnlineUsers] = useState(0)
               {chargeModalSaving ? 'Salvando...' : 'Confirmar'}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── ABA: DASHBOARD ── */}
+      {activeTab === 'dashboard' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <BarChart2 className="w-5 h-5 text-orange-500" />
+                Dashboard
+              </h2>
+              <p className="text-gray-500 text-sm mt-0.5">Cadastros, QR gerados e pagamentos de todas as lives.</p>
+            </div>
+            <button onClick={loadAdminDashboard} disabled={dashLoading} className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${dashLoading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </button>
+          </div>
+
+          {/* Stats */}
+          {(() => {
+            const filteredPays = dashStreamFilter === 'all' ? dashPayments : dashPayments.filter(p => p.stream_id === dashStreamFilter)
+            const qrCount = filteredPays.length
+            const paidCount = filteredPays.filter(p => p.status === 'PAID').length
+            const revenue = filteredPays.filter(p => p.status === 'PAID').reduce((s, p) => s + (p.amount ?? 0), 0)
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: 'Cadastros', value: dashRegistrations.length, color: 'blue' },
+                  { label: 'QR Gerados', value: qrCount, color: 'orange' },
+                  { label: 'Pagamentos', value: paidCount, color: 'green' },
+                  { label: 'Receita', value: `R$ ${revenue.toFixed(2).replace('.', ',')}`, color: 'purple', raw: true },
+                ].map(({ label, value, color, raw }) => (
+                  <div key={label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
+                    <p className={`text-2xl font-black text-white`}>{raw ? value : Number(value).toLocaleString('pt-BR')}</p>
+                    <p className="text-gray-500 text-xs mt-0.5">{label}</p>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          {/* Filtro por live */}
+          <div className="flex items-center gap-2">
+            <p className="text-gray-500 text-sm shrink-0">Filtrar por live:</p>
+            <select
+              value={dashStreamFilter}
+              onChange={e => setDashStreamFilter(e.target.value)}
+              className="bg-[#1A1A26] border border-[#2A2A3A] text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-orange-500"
+            >
+              <option value="all">Todas</option>
+              {streams.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+            </select>
+          </div>
+
+          {dashLoading ? (
+            <p className="text-gray-500 text-sm">Carregando...</p>
+          ) : (
+            <div className="space-y-6">
+              {/* Cadastros */}
+              <div className="space-y-2">
+                <h3 className="text-white font-semibold text-sm">Cadastros recentes ({dashRegistrations.length})</h3>
+                <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[#2A2A3A]">
+                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">#</th>
+                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Nome</th>
+                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Telefone</th>
+                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Data</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dashRegistrations.length === 0 ? (
+                          <tr><td colSpan={4} className="text-center text-gray-600 py-6 px-4">Nenhum cadastro</td></tr>
+                        ) : dashRegistrations.map((r, i) => (
+                          <tr key={r.id ?? i} className="border-b border-[#1A1A26] last:border-0">
+                            <td className="px-4 py-2.5 text-gray-600">{dashRegistrations.length - i}</td>
+                            <td className="px-4 py-2.5 text-white font-medium">{r.name}</td>
+                            <td className="px-4 py-2.5 text-gray-400">{r.phone}</td>
+                            <td className="px-4 py-2.5 text-gray-500 text-xs">{r.created_at ? new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pagamentos */}
+              {(() => {
+                const filteredPays = dashStreamFilter === 'all' ? dashPayments : dashPayments.filter(p => p.stream_id === dashStreamFilter)
+                return (
+                  <div className="space-y-2">
+                    <h3 className="text-white font-semibold text-sm">QR Gerados & Pagamentos ({filteredPays.length})</h3>
+                    <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-[#2A2A3A]">
+                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Telefone</th>
+                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Live</th>
+                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Valor</th>
+                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Status</th>
+                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Data</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredPays.length === 0 ? (
+                              <tr><td colSpan={5} className="text-center text-gray-600 py-6 px-4">Nenhum pagamento</td></tr>
+                            ) : filteredPays.map((p, i) => {
+                              const streamTitle = streams.find(s => s.id === p.stream_id)?.title ?? p.stream_id?.slice(0, 8) ?? '—'
+                              return (
+                                <tr key={p.id ?? i} className="border-b border-[#1A1A26] last:border-0">
+                                  <td className="px-4 py-2.5 text-gray-300">{p.user_phone}</td>
+                                  <td className="px-4 py-2.5 text-gray-400 max-w-32 truncate">{streamTitle}</td>
+                                  <td className="px-4 py-2.5 text-white font-medium">{p.amount != null ? `R$ ${Number(p.amount).toFixed(2).replace('.', ',')}` : '—'}</td>
+                                  <td className="px-4 py-2.5">
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.status === 'PAID' ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+                                      {p.status === 'PAID' ? 'Pago' : 'Pendente'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-gray-500 text-xs">{p.created_at ? new Date(p.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          )}
         </div>
       )}
 
