@@ -27,6 +27,13 @@ function fmt(v: string) {
 export default function CombinedModal({ streamId, amount, paymentMethod, fixedQrUrl, onSuccess, onClose }: Props) {
   const [step, setStep] = useState<Step>('credentials')
   const [mode, setMode] = useState<Mode>('register')
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.from('site_settings').select('logo_url').single().then(({ data }) => {
+      if (data?.logo_url) setLogoUrl(data.logo_url)
+    })
+  }, [])
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -188,9 +195,17 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
           </div>
         ) : step === 'credentials' ? (
           <div className="space-y-5">
-            <div>
-              <h2 className="text-xl font-black text-white">Assistir ao vivo</h2>
-              <p className="text-gray-500 text-sm mt-1">R$ {amount.toFixed(2).replace('.', ',')} via PIX • acesso imediato</p>
+            <div className="text-center space-y-3">
+              {logoUrl && (
+                <img src={logoUrl} alt="FutZone" className="h-10 object-contain mx-auto" />
+              )}
+              <h2 className="text-2xl font-black text-white">Liberar Jogo Completo</h2>
+              <div className="inline-flex items-baseline gap-1.5 bg-orange-500/10 border border-orange-500/30 rounded-xl px-5 py-2">
+                <span className="text-orange-400 text-sm font-semibold">R$</span>
+                <span className="text-orange-400 text-3xl font-black">{amount.toFixed(2).replace('.', ',')}</span>
+                <span className="text-orange-400/70 text-sm">via PIX</span>
+              </div>
+              <p className="text-gray-500 text-xs">Acesso imediato após confirmação</p>
             </div>
 
             {/* Mode toggle */}
@@ -246,9 +261,10 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
           </div>
         ) : (
           <div className="space-y-5">
-            <div>
+            <div className="text-center space-y-1">
+              {logoUrl && <img src={logoUrl} alt="FutZone" className="h-8 object-contain mx-auto mb-2" />}
               <h2 className="text-xl font-black text-white">Pague via PIX</h2>
-              <p className="text-gray-500 text-sm mt-1">R$ {amount.toFixed(2).replace('.', ',')} • após confirmação o acesso é liberado</p>
+              <p className="text-gray-500 text-sm">R$ {amount.toFixed(2).replace('.', ',')} • acesso imediato após confirmação</p>
             </div>
 
             {paymentMethod === 'fixed_qr' ? (
