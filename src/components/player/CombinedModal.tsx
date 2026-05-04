@@ -107,6 +107,14 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
 
       setCurrentUser(userObj)
 
+      // Check free access
+      const { data: freeAccess } = await supabase.from('free_access').select('id').eq('user_phone', userObj.phone).maybeSingle()
+      if (freeAccess) {
+        setFormLoading(false)
+        onSuccess(userObj)
+        return
+      }
+
       if (paymentMethod === 'fixed_qr') {
         setStep('qr')
         setFormLoading(false)
@@ -255,7 +263,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
                 disabled={formLoading}
                 className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-black rounded-xl py-3 transition-all"
               >
-                {formLoading ? 'Aguarde...' : paymentMethod === 'fixed_qr' ? 'Ver QR Code →' : 'Gerar PIX →'}
+                {formLoading ? 'Aguarde...' : 'Avançar →'}
               </button>
             </form>
           </div>
