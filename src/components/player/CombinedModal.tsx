@@ -263,8 +263,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
           <div className="space-y-5">
             <div className="text-center space-y-1">
               {logoUrl && <img src={logoUrl} alt="FutZone" className="h-8 object-contain mx-auto mb-2" />}
-              <h2 className="text-xl font-black text-white">Pague via PIX</h2>
-              <p className="text-gray-500 text-sm">R$ {amount.toFixed(2).replace('.', ',')} • acesso imediato após confirmação</p>
+              <p className="text-gray-500 text-sm">Acesso imediato após confirmação</p>
             </div>
 
             {paymentMethod === 'fixed_qr' ? (
