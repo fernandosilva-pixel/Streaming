@@ -644,7 +644,7 @@ const [onlineUsers, setOnlineUsers] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   async function forceRefreshViewers() {
     setRefreshing(true)
-    await supabase.from('streams').update({ force_refresh_at: new Date().toISOString() }).eq('is_live', true)
+    await supabase.from('streams').update({ force_refresh_at: new Date().toISOString() }).neq('id', '')
     setRefreshing(false)
   }
 

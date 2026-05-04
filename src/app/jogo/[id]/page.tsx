@@ -139,21 +139,16 @@ export default function JogoPage({ params }: Props) {
       })
   }, [user?.phone, id, stream?.charge_enabled])
 
-  // Force refresh from admin via Postgres Changes on streams table
+  // Poll for admin-triggered force refresh every 5s
   useEffect(() => {
-    const channel = supabase
-      .channel(`stream-refresh-${id}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'streams', filter: `id=eq.${id}` },
-        (payload: { new: { force_refresh_at?: string }; old?: { force_refresh_at?: string } }) => {
-          if (payload.new.force_refresh_at !== payload.old?.force_refresh_at) {
-            window.location.reload()
-          }
-        }
-      )
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    let lastRefreshAt: string | null = null
+    const interval = setInterval(async () => {
+      const { data } = await supabase.from('streams').select('force_refresh_at').eq('id', id).single()
+      const val = data?.force_refresh_at ?? null
+      if (lastRefreshAt === null) { lastRefreshAt = val; return }
+      if (val && val !== lastRefreshAt) window.location.reload()
+    }, 5000)
+    return () => clearInterval(interval)
   }, [id])
 
   // 2m30s preview, separate timer for not-logged-in and logged-in-but-unpaid
