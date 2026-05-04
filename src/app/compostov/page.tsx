@@ -179,6 +179,8 @@ export default function AdminPage() {
   const [dashPayments, setDashPayments] = useState<DashPayment[]>([])
   const [dashStreamFilter, setDashStreamFilter] = useState<string>('all')
   const [dashDateFilter, setDashDateFilter] = useState<string>('all')
+  const [regLimit, setRegLimit] = useState(5)
+  const [payLimit, setPayLimit] = useState(5)
 
   async function loadAdminDashboard() {
     setDashLoading(true)
@@ -1918,7 +1920,7 @@ export default function AdminPage() {
                           <tbody>
                             {filteredRegs.length === 0 ? (
                               <tr><td colSpan={4} className="text-center text-gray-600 py-6 px-4">Nenhum cadastro</td></tr>
-                            ) : filteredRegs.map((r, i) => (
+                            ) : filteredRegs.slice(0, regLimit).map((r, i) => (
                               <tr key={r.id ?? i} className="border-b border-[#1A1A26] last:border-0">
                                 <td className="px-4 py-2.5 text-gray-600">{filteredRegs.length - i}</td>
                                 <td className="px-4 py-2.5 text-white font-medium">{r.name}</td>
@@ -1929,6 +1931,11 @@ export default function AdminPage() {
                           </tbody>
                         </table>
                       </div>
+                      {filteredRegs.length > regLimit && (
+                        <button onClick={() => setRegLimit(n => n + 10)} className="w-full py-2.5 text-orange-400 hover:text-orange-300 text-xs font-semibold border-t border-[#2A2A3A] transition-colors">
+                          Ver mais ({filteredRegs.length - regLimit} restantes)
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1950,7 +1957,7 @@ export default function AdminPage() {
                           <tbody>
                             {filteredPays.length === 0 ? (
                               <tr><td colSpan={5} className="text-center text-gray-600 py-6 px-4">Nenhum pagamento</td></tr>
-                            ) : filteredPays.map((p, i) => {
+                            ) : filteredPays.slice(0, payLimit).map((p, i) => {
                               const streamTitle = streams.find(s => s.id === p.stream_id)?.title ?? p.stream_id?.slice(0, 8) ?? '—'
                               return (
                                 <tr key={p.id ?? i} className="border-b border-[#1A1A26] last:border-0">
@@ -1969,6 +1976,11 @@ export default function AdminPage() {
                           </tbody>
                         </table>
                       </div>
+                      {filteredPays.length > payLimit && (
+                        <button onClick={() => setPayLimit(n => n + 10)} className="w-full py-2.5 text-orange-400 hover:text-orange-300 text-xs font-semibold border-t border-[#2A2A3A] transition-colors">
+                          Ver mais ({filteredPays.length - payLimit} restantes)
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
