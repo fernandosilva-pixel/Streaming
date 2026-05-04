@@ -644,7 +644,11 @@ const [onlineUsers, setOnlineUsers] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   async function forceRefreshViewers() {
     setRefreshing(true)
-    await supabase.from('streams').update({ force_refresh_at: new Date().toISOString() }).neq('id', '')
+    const { error, count } = await supabase.from('streams')
+      .update({ force_refresh_at: new Date().toISOString() }, { count: 'exact' })
+      .neq('id', '')
+    console.log('[force-refresh] error:', error?.message, '| rows updated:', count)
+    if (error) alert('Erro ao enviar: ' + error.message)
     setRefreshing(false)
   }
 
