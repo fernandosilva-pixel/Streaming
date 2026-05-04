@@ -1,11 +1,14 @@
 'use client'
 
 import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 export default function PresenceTracker() {
+  const pathname = usePathname()
+
   useEffect(() => {
-    if (window.location.pathname.startsWith('/compostov')) return
+    if (pathname.startsWith('/compostov')) return
 
     let sid = sessionStorage.getItem('futzone_sid')
     if (!sid) {
@@ -24,7 +27,7 @@ export default function PresenceTracker() {
     })
 
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [pathname])
 
   return null
 }
