@@ -50,6 +50,10 @@ export default function JogoPage({ params }: Props) {
 
   const playerRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const userRef = useRef(user)
+  const streamRef = useRef(stream)
+  useEffect(() => { userRef.current = user }, [user])
+  useEffect(() => { streamRef.current = stream }, [stream])
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement)
@@ -118,7 +122,33 @@ export default function JogoPage({ params }: Props) {
     }
   }, [user, stream, hasPaid, checkingPayment, isFreeAccess, previewActive])
 
-  // 1-minute preview, separate timer for not-logged-in and logged-in-but-unpaid
+  // Block preview for logged-in users who already used it (cross-browser)
+  useEffect(() => {
+    if (!user || !stream || !stream.charge_enabled) return
+    supabase.from('preview_used')
+      .select('user_phone')
+      .eq('user_phone', user.phone)
+      .eq('stream_id', id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setPreviewActive(false)
+          setPreviewSeconds(0)
+          sessionStorage.setItem(`preview_payment_${id}_${user.phone}`, '0')
+        }
+      })
+  }, [user?.phone, id, stream?.charge_enabled])
+
+  // Force refresh from admin via Supabase Realtime broadcast
+  useEffect(() => {
+    const channel = supabase.channel('admin_broadcast')
+    channel.on('broadcast', { event: 'force_refresh' }, () => {
+      window.location.reload()
+    }).subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  // 2m30s preview, separate timer for not-logged-in and logged-in-but-unpaid
   const previewKey = user ? `preview_payment_${id}_${user.phone}` : `preview_login_${id}`
 
   useEffect(() => {
@@ -147,6 +177,16 @@ export default function JogoPage({ params }: Props) {
         clearInterval(interval)
         setPreviewActive(false)
         setPreviewSeconds(0)
+        // Persist for logged-in users so other browsers also block
+        const u = userRef.current
+        const s = streamRef.current
+        if (u && s?.charge_enabled) {
+          fetch('/api/preview/use', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_phone: u.phone, stream_id: id }),
+          })
+        }
       } else {
         setPreviewSeconds(left)
       }

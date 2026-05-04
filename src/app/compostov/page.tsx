@@ -641,6 +641,16 @@ const [onlineUsers, setOnlineUsers] = useState(0)
     setStreams(prev => prev.map(s => s.id === id ? { ...s, is_live: value } : s))
   }
 
+  const [refreshing, setRefreshing] = useState(false)
+  async function forceRefreshViewers() {
+    setRefreshing(true)
+    const channel = supabase.channel('admin_broadcast')
+    await new Promise<void>(resolve => channel.subscribe(status => { if (status === 'SUBSCRIBED') resolve() }))
+    await channel.send({ type: 'broadcast', event: 'force_refresh', payload: {} })
+    supabase.removeChannel(channel)
+    setRefreshing(false)
+  }
+
   async function handleLogoFile(file: File) {
     if (!isImageFile(file)) return
     setLogoUploading(true); setLogoSaved(false)
@@ -1156,6 +1166,13 @@ const [onlineUsers, setOnlineUsers] = useState(0)
                 <strong>Trocou de canal?</strong> Use o botão <strong>Editar</strong> na stream existente — não crie uma nova. Criar uma nova stream gera um ID diferente e usuários que já pagaram precisarão pagar novamente.
               </p>
             </div>
+            <button
+              onClick={forceRefreshViewers}
+              disabled={refreshing}
+              className="flex items-center gap-2 bg-blue-600/20 hover:bg-blue-600/30 disabled:opacity-50 border border-blue-500/30 text-blue-400 font-bold px-4 py-2.5 rounded-xl transition-all text-sm"
+            >
+              {refreshing ? 'Enviando...' : '↺ Recarregar todos os espectadores'}
+            </button>
             <div className="space-y-2">
               <div className="flex gap-2 flex-wrap">
                 <input type="text" placeholder="Nome do jogo (ex: Flamengo x Corinthians)" value={newTitle} onChange={e => setNewTitle(e.target.value)}
