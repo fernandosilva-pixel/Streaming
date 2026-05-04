@@ -141,12 +141,13 @@ export default function JogoPage({ params }: Props) {
 
   // Poll for admin-triggered force refresh every 5s
   useEffect(() => {
+    let initialized = false
     let lastRefreshAt: string | null = null
     const interval = setInterval(async () => {
       const { data } = await supabase.from('streams').select('force_refresh_at').eq('id', id).single()
       const val = data?.force_refresh_at ?? null
-      if (lastRefreshAt === null) { lastRefreshAt = val; return }
-      if (val && val !== lastRefreshAt) window.location.reload()
+      if (!initialized) { initialized = true; lastRefreshAt = val; return }
+      if (val !== lastRefreshAt) window.location.reload()
     }, 5000)
     return () => clearInterval(interval)
   }, [id])
