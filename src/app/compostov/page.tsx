@@ -858,25 +858,46 @@ export default function AdminPage() {
               <span className="text-white font-bold text-sm tabular-nums">{onlineUsers}</span>
               <span className="text-gray-500 text-sm">online agora</span>
             </button>
-            {showOnlineList && (
-              <div className="absolute right-0 top-full mt-2 w-72 bg-[#12121A] border border-[#2A2A3A] rounded-xl shadow-2xl z-50 overflow-hidden">
-                <div className="px-4 py-2 border-b border-[#2A2A3A] flex items-center justify-between">
-                  <span className="text-white text-sm font-bold">Usuários online</span>
-                  <button onClick={() => setShowOnlineList(false)} className="text-gray-500 hover:text-white text-xs">✕</button>
-                </div>
-                <div className="max-h-72 overflow-y-auto divide-y divide-[#2A2A3A]">
-                  {onlineList.length === 0 ? (
-                    <p className="text-gray-500 text-sm px-4 py-3">Nenhum usuário.</p>
-                  ) : onlineList.map((u, i) => (
-                    <div key={i} className="px-4 py-2.5">
-                      <p className="text-white text-sm font-semibold">{u.name ?? 'Visitante'}</p>
-                      {u.phone && <p className="text-gray-500 text-xs">{u.phone}</p>}
-                      <p className="text-gray-600 text-xs truncate">{u.page}</p>
+            {showOnlineList && (() => {
+              const watching = onlineList.filter(u => u.name && u.page?.startsWith('/jogo/'))
+              const visitors = onlineList.filter(u => !u.name)
+              return (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-[#12121A] border border-[#2A2A3A] rounded-xl shadow-2xl z-50 overflow-hidden">
+                  <div className="px-4 py-2 border-b border-[#2A2A3A] flex items-center justify-between">
+                    <span className="text-white text-sm font-bold">Usuários online</span>
+                    <button onClick={() => setShowOnlineList(false)} className="text-gray-500 hover:text-white text-xs">✕</button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    <div className="px-4 py-2 bg-green-500/5 border-b border-[#2A2A3A] flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                      <span className="text-green-400 text-xs font-bold uppercase tracking-wide">Assistindo ({watching.length})</span>
                     </div>
-                  ))}
+                    {watching.length === 0
+                      ? <p className="text-gray-600 text-xs px-4 py-2.5">Ninguém assistindo agora.</p>
+                      : watching.map((u, i) => (
+                        <div key={i} className="px-4 py-2.5 border-b border-[#2A2A3A]">
+                          <p className="text-white text-sm font-semibold">{u.name}</p>
+                          {u.phone && <p className="text-gray-500 text-xs">{u.phone}</p>}
+                        </div>
+                      ))
+                    }
+                    <div className="px-4 py-2 bg-[#1A1A26] border-b border-[#2A2A3A] flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+                      <span className="text-gray-400 text-xs font-bold uppercase tracking-wide">Visitantes ({visitors.length})</span>
+                    </div>
+                    {visitors.length === 0
+                      ? <p className="text-gray-600 text-xs px-4 py-2.5">Nenhum visitante.</p>
+                      : visitors.map((u, i) => (
+                        <div key={i} className="px-4 py-2.5 border-b border-[#2A2A3A]">
+                          <p className="text-gray-400 text-sm">Visitante</p>
+                          <p className="text-gray-600 text-xs truncate">{u.page || '—'}</p>
+                        </div>
+                      ))
+                    }
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
           <button onClick={handleLogout} className="text-gray-500 hover:text-white text-sm border border-[#2A2A3A] hover:border-orange-500/50 px-4 py-2 rounded-xl transition-all">
             Sair
