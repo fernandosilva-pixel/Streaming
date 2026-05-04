@@ -352,8 +352,8 @@ export default function JogoPage({ params }: Props) {
               : { position: 'relative', paddingTop: '56.25%', overflow: 'hidden' }
             }
           >
-            {/* Player — hidden when payment required (stops video and audio completely) */}
-            {needsPayment
+            {/* Player — hidden when login or payment required (stops video and audio completely) */}
+            {needsPayment || needsLogin
               ? <div className="absolute inset-0 bg-black" />
               : renderPlayer(stream, isBlurred)
             }
