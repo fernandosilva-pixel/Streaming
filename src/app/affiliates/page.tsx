@@ -343,18 +343,15 @@ export default function AffiliatesPage() {
           <div className="space-y-3">
             <div>
               <label className="text-white/50 text-xs font-medium block mb-1.5 uppercase tracking-wide">Seu apelido</label>
-              <div className="flex items-center gap-2 rounded-xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <span className="text-gray-500 text-sm shrink-0">{origin}?ref=</span>
-                <input
-                  type="text"
-                  value={linkSlug}
-                  onChange={e => setLinkSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                  placeholder="meuapelido"
-                  className="flex-1 bg-transparent text-white focus:outline-none"
-                  style={{ fontSize: 16 }}
-                />
-              </div>
-              {linkSlug && <p className="text-gray-500 text-xs mt-1">Seu link: <span className="text-orange-400">{origin}?ref={linkSlug}</span></p>}
+              <input
+                type="text"
+                value={linkSlug}
+                onChange={e => setLinkSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                placeholder="meuapelido"
+                className={inputClass}
+                style={inputStyle}
+              />
+              {linkSlug && <p className="text-gray-500 text-xs mt-1.5 break-all">Seu link: <span className="text-orange-400">{origin}?ref={linkSlug}</span></p>}
             </div>
             {linkError && <p className="text-red-400 text-sm">{linkError}</p>}
             <button onClick={createLink} disabled={linkSaving || linkSlug.length < 3} className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all">
