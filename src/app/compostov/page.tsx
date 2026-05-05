@@ -675,12 +675,14 @@ export default function AdminPage() {
   const [refreshing, setRefreshing] = useState(false)
   async function forceRefreshViewers() {
     setRefreshing(true)
-    const { error, count } = await supabase.from('streams')
-      .update({ force_refresh_at: new Date().toISOString() }, { count: 'exact' })
-      .not('id', 'is', null)
-    console.log('[force-refresh] error:', error?.message, '| rows updated:', count)
-    if (error) alert('Erro ao enviar: ' + error.message)
-    setRefreshing(false)
+    const channel = supabase.channel('force-refresh')
+    await channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.send({ type: 'broadcast', event: 'reload', payload: {} })
+        await supabase.removeChannel(channel)
+        setRefreshing(false)
+      }
+    })
   }
 
   async function handleLogoFile(file: File) {

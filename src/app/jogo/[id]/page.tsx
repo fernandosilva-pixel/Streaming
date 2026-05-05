@@ -140,19 +140,12 @@ export default function JogoPage({ params }: Props) {
       })
   }, [user?.phone, id, stream?.charge_enabled])
 
-  // Poll for admin-triggered force refresh every 5s
+  // Listen for admin-triggered force refresh via broadcast
   useEffect(() => {
-    let initialized = false
-    let lastRefreshAt: string | null = null
-    const interval = setInterval(async () => {
-      const { data, error } = await supabase.from('streams').select('force_refresh_at').eq('id', id).single()
-      const val = data?.force_refresh_at ?? null
-      console.log('[refresh-poll] id:', id, '| val:', val, '| last:', lastRefreshAt, '| initialized:', initialized, '| error:', error?.message)
-      if (!initialized) { initialized = true; lastRefreshAt = val; return }
-      if (val !== lastRefreshAt) { console.log('[refresh-poll] RELOADING'); window.location.reload() }
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [id])
+    const channel = supabase.channel('force-refresh')
+    channel.on('broadcast', { event: 'reload' }, () => window.location.reload()).subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   // 2m30s preview, separate timer for not-logged-in and logged-in-but-unpaid
   const previewKey = user ? `preview_payment_${id}_${user.phone}` : `preview_login_${id}`
