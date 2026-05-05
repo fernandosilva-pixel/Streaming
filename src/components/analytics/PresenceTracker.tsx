@@ -8,7 +8,7 @@ export default function PresenceTracker() {
   const pathname = usePathname()
 
   useEffect(() => {
-    if (pathname.startsWith('/compostov')) return
+    if (!pathname.startsWith('/jogo/')) return
 
     let sid = sessionStorage.getItem('futzone_sid')
     if (!sid) {
