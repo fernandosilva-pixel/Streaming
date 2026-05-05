@@ -140,17 +140,18 @@ export default function JogoPage({ params }: Props) {
       })
   }, [user?.phone, id, stream?.charge_enabled])
 
-  // Poll for admin-triggered force refresh every 10s
+  // Poll for admin-triggered force refresh every 15s
   useEffect(() => {
-    let initialized = false
-    let lastRefreshAt: string | null = null
+    let lastRefreshAt: string | null | undefined = undefined
+    supabase.from('streams').select('force_refresh_at').eq('id', id).single().then(({ data }) => {
+      lastRefreshAt = data?.force_refresh_at ?? null
+    })
     const interval = setInterval(async () => {
-      const { data, error } = await supabase.from('streams').select('force_refresh_at').eq('id', id).single()
+      const { data } = await supabase.from('streams').select('force_refresh_at').eq('id', id).single()
       const val = data?.force_refresh_at ?? null
-      console.log('[refresh-poll] val:', val, '| last:', lastRefreshAt, '| initialized:', initialized, '| error:', error?.message)
-      if (!initialized) { initialized = true; lastRefreshAt = val; return }
-      if (val !== lastRefreshAt) { console.log('[refresh-poll] RELOADING'); window.location.reload() }
-    }, 10000)
+      if (lastRefreshAt === undefined) return
+      if (val !== lastRefreshAt) window.location.reload()
+    }, 15000)
     return () => clearInterval(interval)
   }, [id])
 
