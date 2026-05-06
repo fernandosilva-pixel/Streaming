@@ -200,6 +200,8 @@ export default function AdminPage() {
   type AffiliateRecord = { id: string; name: string; phone: string; referral_code: string | null; status: string; clicks: number; created_at: string }
   const [affiliatesList, setAffiliatesList] = useState<AffiliateRecord[]>([])
   const [affiliatesLoading, setAffiliatesLoading] = useState(false)
+  const [affiliateStats, setAffiliateStats] = useState<Record<string, { registrations: number; qrGenerated: number; qrPaid: number }>>({})
+
 
   // Modal de método de pagamento
   const [chargeModal, setChargeModal] = useState<{ id: string } | null>(null)
@@ -233,8 +235,25 @@ export default function AdminPage() {
 
   async function loadAffiliates() {
     setAffiliatesLoading(true)
-    const { data } = await supabase.from('affiliates').select('*').order('created_at', { ascending: false })
-    setAffiliatesList(data ?? [])
+    const [{ data: affs }, { data: payments }, { data: referrals }] = await Promise.all([
+      supabase.from('affiliates').select('*').order('created_at', { ascending: false }),
+      supabase.from('payments').select('referral_code, status').not('referral_code', 'is', null),
+      supabase.from('referrals').select('referral_code'),
+    ])
+    setAffiliatesList(affs ?? [])
+    const stats: Record<string, { registrations: number; qrGenerated: number; qrPaid: number }> = {}
+    for (const p of payments ?? []) {
+      if (!p.referral_code) continue
+      if (!stats[p.referral_code]) stats[p.referral_code] = { registrations: 0, qrGenerated: 0, qrPaid: 0 }
+      stats[p.referral_code].qrGenerated++
+      if (p.status === 'PAID') stats[p.referral_code].qrPaid++
+    }
+    for (const r of referrals ?? []) {
+      if (!r.referral_code) continue
+      if (!stats[r.referral_code]) stats[r.referral_code] = { registrations: 0, qrGenerated: 0, qrPaid: 0 }
+      stats[r.referral_code].registrations++
+    }
+    setAffiliateStats(stats)
     setAffiliatesLoading(false)
   }
 
@@ -1672,6 +1691,9 @@ export default function AdminPage() {
                       <th className="text-left text-gray-500 font-medium px-4 py-2.5">Status</th>
                       <th className="text-left text-gray-500 font-medium px-4 py-2.5">Link</th>
                       <th className="text-left text-gray-500 font-medium px-4 py-2.5">Cliques</th>
+                      <th className="text-left text-gray-500 font-medium px-4 py-2.5">Cadastros</th>
+                      <th className="text-left text-gray-500 font-medium px-4 py-2.5">QR Gerados</th>
+                      <th className="text-left text-gray-500 font-medium px-4 py-2.5">QR Pagos</th>
                       <th className="text-left text-gray-500 font-medium px-4 py-2.5">Ações</th>
                     </tr>
                   </thead>
@@ -1693,6 +1715,9 @@ export default function AdminPage() {
                           {a.referral_code ? `?ref=${a.referral_code}` : <span className="text-gray-600">—</span>}
                         </td>
                         <td className="px-4 py-2.5 text-gray-300 font-bold">{a.clicks}</td>
+                        <td className="px-4 py-2.5 text-blue-400 font-bold">{a.referral_code ? (affiliateStats[a.referral_code]?.registrations ?? 0) : '—'}</td>
+                        <td className="px-4 py-2.5 text-orange-400 font-bold">{a.referral_code ? (affiliateStats[a.referral_code]?.qrGenerated ?? 0) : '—'}</td>
+                        <td className="px-4 py-2.5 text-green-400 font-bold">{a.referral_code ? (affiliateStats[a.referral_code]?.qrPaid ?? 0) : '—'}</td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-2">
                             {a.status !== 'approved' && (
