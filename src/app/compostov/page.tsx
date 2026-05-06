@@ -702,6 +702,21 @@ export default function AdminPage() {
     setRefreshing(false)
   }
 
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<string | null>(null)
+  async function syncPayments() {
+    setSyncing(true)
+    setSyncResult(null)
+    try {
+      const res = await fetch('/api/pix/sync', { method: 'POST' })
+      const data = await res.json()
+      if (data.error) { setSyncResult('Erro: ' + data.error) }
+      else { setSyncResult(`✓ ${data.updated} pagamento(s) atualizado(s) de ${data.checked} verificado(s)`) }
+    } catch { setSyncResult('Erro de conexão.') }
+    setSyncing(false)
+    setTimeout(() => setSyncResult(null), 8000)
+  }
+
   async function handleLogoFile(file: File) {
     if (!isImageFile(file)) return
     setLogoUploading(true); setLogoSaved(false)
@@ -1218,13 +1233,25 @@ export default function AdminPage() {
                 <strong>Trocou de canal?</strong> Use o botão <strong>Editar</strong> na stream existente — não crie uma nova. Criar uma nova stream gera um ID diferente e usuários que já pagaram precisarão pagar novamente.
               </p>
             </div>
-            <button
-              onClick={forceRefreshViewers}
-              disabled={refreshing}
-              className="flex items-center gap-2 bg-blue-600/20 hover:bg-blue-600/30 disabled:opacity-50 border border-blue-500/30 text-blue-400 font-bold px-4 py-2.5 rounded-xl transition-all text-sm"
-            >
-              {refreshing ? 'Enviando...' : '↺ Recarregar todos os espectadores'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={forceRefreshViewers}
+                disabled={refreshing}
+                className="flex items-center gap-2 bg-blue-600/20 hover:bg-blue-600/30 disabled:opacity-50 border border-blue-500/30 text-blue-400 font-bold px-4 py-2.5 rounded-xl transition-all text-sm"
+              >
+                {refreshing ? 'Enviando...' : '↺ Recarregar todos os espectadores'}
+              </button>
+              <button
+                onClick={syncPayments}
+                disabled={syncing}
+                className="flex items-center gap-2 bg-green-600/20 hover:bg-green-600/30 disabled:opacity-50 border border-green-500/30 text-green-400 font-bold px-4 py-2.5 rounded-xl transition-all text-sm"
+              >
+                {syncing ? 'Verificando...' : '✓ Verificar pagamentos pendentes'}
+              </button>
+            </div>
+            {syncResult && (
+              <p className="text-sm text-gray-300 bg-[#1A1A26] border border-[#2A2A3A] rounded-xl px-4 py-2.5">{syncResult}</p>
+            )}
             <div className="space-y-2">
               <div className="flex gap-2 flex-wrap">
                 <input type="text" placeholder="Nome do jogo (ex: Flamengo x Corinthians)" value={newTitle} onChange={e => setNewTitle(e.target.value)}
