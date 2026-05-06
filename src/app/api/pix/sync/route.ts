@@ -51,6 +51,6 @@ export async function POST() {
     })
   )
 
-  const updated = results.reduce((a, b) => a + b, 0)
+  const updated = results.reduce((a, b) => a + b, 0 as number)
   return NextResponse.json({ updated, checked: pending.length })
 }
