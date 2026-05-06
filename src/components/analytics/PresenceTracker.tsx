@@ -1,33 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
-import { usePathname } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-
+// Presence tracking moved to jogo/[id]/page.tsx so it only counts confirmed viewers
 export default function PresenceTracker() {
-  const pathname = usePathname()
-
-  useEffect(() => {
-    if (!pathname.startsWith('/jogo/')) return
-
-    let sid = sessionStorage.getItem('futzone_sid')
-    if (!sid) {
-      sid = crypto.randomUUID()
-      sessionStorage.setItem('futzone_sid', sid)
-    }
-
-    const channel = supabase.channel('site-presence', {
-      config: { presence: { key: sid } },
-    })
-
-    channel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await channel.track({ at: Date.now() })
-      }
-    })
-
-    return () => { supabase.removeChannel(channel) }
-  }, [pathname])
-
   return null
 }

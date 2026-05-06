@@ -114,6 +114,26 @@ export default function JogoPage({ params }: Props) {
     })
   }, [user, stream])
 
+  // Track presence only when user is confirmed watching (logged in + paid/free)
+  useEffect(() => {
+    if (!stream) return
+    const canWatch = !!user && !checkingPayment && (!stream.charge_enabled || hasPaid || isFreeAccess)
+    if (!canWatch) return
+
+    let sid = sessionStorage.getItem('futzone_sid')
+    if (!sid) { sid = crypto.randomUUID(); sessionStorage.setItem('futzone_sid', sid) }
+
+    const channel = supabase.channel('site-presence', {
+      config: { presence: { key: sid } },
+    })
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({ stream_id: id, at: Date.now() })
+      }
+    })
+    return () => { supabase.removeChannel(channel) }
+  }, [user, stream, hasPaid, isFreeAccess, checkingPayment, id])
+
   // Exit fullscreen when login/payment overlay needs to appear (overlay is outside native video fullscreen element)
   useEffect(() => {
     if (previewActive) return
