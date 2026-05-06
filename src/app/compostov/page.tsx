@@ -43,6 +43,7 @@ type Stream = {
   charge_amount: number
   payment_method: 'bspay' | 'fixed_qr' | null
   fixed_qr_url: string | null
+  chat_enabled: boolean
 }
 
 function FixtureRow({ f, selected, onSelect }: { f: Fixture; selected: boolean; onSelect: () => void }) {
@@ -439,6 +440,11 @@ export default function AdminPage() {
     if (data.broad_no) setEditSoopBroadNos(prev => ({ ...prev, [id]: String(data.broad_no) }))
     else alert('Canal não encontrado ao vivo na Sooplive')
     setDetectingBroad(null)
+  }
+
+  async function toggleChat(id: string, value: boolean) {
+    const { error } = await supabase.from('streams').update({ chat_enabled: value }).eq('id', id)
+    if (!error) setStreams(prev => prev.map(s => s.id === id ? { ...s, chat_enabled: value } : s))
   }
 
   async function toggleCharge(id: string, value: boolean) {
@@ -1264,6 +1270,12 @@ export default function AdminPage() {
                             className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.charge_enabled ? 'bg-green-600/20 text-green-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-green-600/20 hover:text-green-400'}`}
                             title={s.charge_enabled ? 'Cobrança ativa — clique para desativar' : 'Ativar cobrança'}>
                             {s.charge_enabled ? 'Cobrança ON' : 'Cobrança OFF'}
+                          </button>
+                          <button
+                            onClick={() => toggleChat(s.id, !s.chat_enabled)}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.chat_enabled !== false ? 'bg-blue-600/20 text-blue-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-blue-600/20 hover:text-blue-400'}`}
+                            title={s.chat_enabled !== false ? 'Chat ativo — clique para desativar' : 'Ativar chat'}>
+                            {s.chat_enabled !== false ? 'Chat ON' : 'Chat OFF'}
                           </button>
                           {s.charge_enabled && (
                             <div className="flex items-center gap-1">

@@ -30,6 +30,7 @@ type Stream = {
   charge_amount: number
   payment_method: 'bspay' | 'fixed_qr' | null
   fixed_qr_url: string | null
+  chat_enabled: boolean
 }
 
 export default function JogoPage({ params }: Props) {
@@ -472,7 +473,10 @@ export default function JogoPage({ params }: Props) {
         {/* Chat */}
         <div className="xl:col-span-1">
           <div className="sticky top-20 rounded-xl overflow-hidden border border-[#2A2A3A] bg-[#0B0B0F]" style={{ height: 560 }}>
-            <ChatBox streamId={stream.id} />
+            {stream.chat_enabled !== false
+              ? <ChatBox streamId={stream.id} />
+              : <div className="flex items-center justify-center h-full"><p className="text-gray-500 text-sm">Chat desativado.</p></div>
+            }
           </div>
         </div>
       </div>
