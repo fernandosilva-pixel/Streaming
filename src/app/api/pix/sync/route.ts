@@ -12,6 +12,7 @@ async function getBspayToken(): Promise<string | null> {
     method: 'POST',
     headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: 'grant_type=client_credentials',
+    signal: AbortSignal.timeout(8000),
   })
   if (!res.ok) return null
   const data = await res.json()
@@ -30,22 +31,26 @@ export async function POST() {
   const token = await getBspayToken()
   if (!token) return NextResponse.json({ error: 'BSPay auth failed' }, { status: 500 })
 
-  let updated = 0
-  for (const payment of pending) {
-    try {
-      const res = await fetch('https://api.bspay.co/v2/consult-transaction', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pix_id: payment.transaction_id }),
-      })
-      const data = await res.json()
-      const status = data?.requestBody?.status ?? data?.status
-      if (status === 'PAID') {
-        await supabase.from('payments').update({ status: 'PAID' }).eq('id', payment.id)
-        updated++
-      }
-    } catch { /* skip individual failures */ }
-  }
+  const results = await Promise.all(
+    pending.map(async (payment) => {
+      try {
+        const res = await fetch('https://api.bspay.co/v2/consult-transaction', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pix_id: payment.transaction_id }),
+          signal: AbortSignal.timeout(8000),
+        })
+        const data = await res.json()
+        const status = data?.requestBody?.status ?? data?.status
+        if (status === 'PAID') {
+          await supabase.from('payments').update({ status: 'PAID' }).eq('id', payment.id)
+          return 1
+        }
+      } catch { /* skip individual failures */ }
+      return 0
+    })
+  )
 
+  const updated = results.reduce((a, b) => a + b, 0)
   return NextResponse.json({ updated, checked: pending.length })
 }
