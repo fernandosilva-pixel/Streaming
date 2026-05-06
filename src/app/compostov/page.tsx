@@ -1824,19 +1824,39 @@ export default function AdminPage() {
             const qrCount = filteredPays.length
             const paidCount = filteredPays.filter(p => p.status === 'PAID').length
             const revenue = filteredPays.filter(p => p.status === 'PAID').reduce((s, p) => s + (p.amount ?? 0), 0)
+            const directQr = filteredPays.filter(p => !p.referral_code).length
+            const directPaid = filteredPays.filter(p => !p.referral_code && p.status === 'PAID').length
+            const affiliateQr = filteredPays.filter(p => p.referral_code).length
+            const affiliatePaid = filteredPays.filter(p => p.referral_code && p.status === 'PAID').length
             return (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { label: 'Cadastros', value: dashRegistrations.length, color: 'blue' },
-                  { label: 'QR Gerados', value: qrCount, color: 'orange' },
-                  { label: 'Pagamentos', value: paidCount, color: 'green' },
-                  { label: 'Receita', value: `R$ ${revenue.toFixed(2).replace('.', ',')}`, color: 'purple', raw: true },
-                ].map(({ label, value, color, raw }) => (
-                  <div key={label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
-                    <p className={`text-2xl font-black text-white`}>{raw ? value : Number(value).toLocaleString('pt-BR')}</p>
-                    <p className="text-gray-500 text-xs mt-0.5">{label}</p>
-                  </div>
-                ))}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  { [
+                    { label: 'Cadastros', value: dashRegistrations.length },
+                    { label: 'QR Gerados (total)', value: qrCount },
+                    { label: 'Pagamentos (total)', value: paidCount },
+                    { label: 'Receita', value: `R$ ${revenue.toFixed(2).replace('.', ',')}`, raw: true },
+                  ].map(({ label, value, raw }) => (
+                    <div key={label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
+                      <p className="text-2xl font-black text-white">{raw ? value : Number(value).toLocaleString('pt-BR')}</p>
+                      <p className="text-gray-500 text-xs mt-0.5">{label}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'QR Direto Gerado', value: directQr, sub: 'Sem afiliado' },
+                    { label: 'QR Direto Pago', value: directPaid, sub: 'Sem afiliado' },
+                    { label: 'QR Afiliado Gerado', value: affiliateQr, sub: 'Via link' },
+                    { label: 'QR Afiliado Pago', value: affiliatePaid, sub: 'Via link' },
+                  ].map(({ label, value, sub }) => (
+                    <div key={label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
+                      <p className="text-2xl font-black text-white">{Number(value).toLocaleString('pt-BR')}</p>
+                      <p className="text-gray-400 text-xs font-medium mt-0.5">{label}</p>
+                      <p className="text-gray-600 text-xs">{sub}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )
           })()}
