@@ -102,6 +102,8 @@ export default function AdminPage() {
   // Auth / misc
   const [authChecked, setAuthChecked] = useState(false)
   const [onlineUsers, setOnlineUsers] = useState(0)
+  const [onlineList, setOnlineList] = useState<{ name: string; phone: string }[]>([])
+  const [showOnlineList, setShowOnlineList] = useState(false)
 
   // Notificações de novos cadastros
   const [toasts, setToasts] = useState<{ id: string; name: string; phone: string }[]>([])
@@ -277,7 +279,15 @@ export default function AdminPage() {
   useEffect(() => {
     const channel = supabase.channel('site-presence')
     channel.on('presence', { event: 'sync' }, () => {
-      setOnlineUsers(Object.keys(channel.presenceState()).length)
+      const state = channel.presenceState()
+      const users = Object.values(state).flatMap((arr: unknown[]) =>
+        arr.map((p: unknown) => {
+          const presence = p as { name?: string; phone?: string }
+          return { name: presence.name ?? 'Usuário', phone: presence.phone ?? '' }
+        })
+      )
+      setOnlineUsers(users.length)
+      setOnlineList(users)
     }).subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
@@ -885,10 +895,31 @@ export default function AdminPage() {
           <p className="text-gray-500 text-sm mt-1">Gerencie o site</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-[#12121A] border border-[#2A2A3A] px-4 py-2 rounded-xl">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
-            <span className="text-white font-bold text-sm tabular-nums">{onlineUsers}</span>
-            <span className="text-gray-500 text-sm">online agora</span>
+          <div className="relative">
+            <button
+              onClick={() => setShowOnlineList(v => !v)}
+              className="flex items-center gap-2 bg-[#12121A] border border-[#2A2A3A] hover:border-green-500/40 px-4 py-2 rounded-xl transition-all"
+            >
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+              <span className="text-white font-bold text-sm tabular-nums">{onlineUsers}</span>
+              <span className="text-gray-500 text-sm">online agora</span>
+            </button>
+            {showOnlineList && (
+              <div className="absolute right-0 top-11 z-50 bg-[#12121A] border border-[#2A2A3A] rounded-xl shadow-xl min-w-56 max-h-72 overflow-y-auto">
+                {onlineList.length === 0 ? (
+                  <p className="text-gray-500 text-sm px-4 py-3">Ninguém online</p>
+                ) : (
+                  <ul className="divide-y divide-[#2A2A3A]">
+                    {onlineList.map((u, i) => (
+                      <li key={i} className="px-4 py-2.5">
+                        <p className="text-white text-sm font-medium">{u.name}</p>
+                        <p className="text-gray-500 text-xs">{u.phone}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
           <button onClick={handleLogout} className="text-gray-500 hover:text-white text-sm border border-[#2A2A3A] hover:border-orange-500/50 px-4 py-2 rounded-xl transition-all">
             Sair

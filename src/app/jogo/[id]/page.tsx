@@ -128,7 +128,7 @@ export default function JogoPage({ params }: Props) {
     })
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await channel.track({ stream_id: id, at: Date.now() })
+        await channel.track({ stream_id: id, name: user.name, phone: user.phone, at: Date.now() })
       }
     })
     return () => { supabase.removeChannel(channel) }
