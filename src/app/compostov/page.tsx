@@ -44,6 +44,9 @@ type Stream = {
   payment_method: 'bspay' | 'fixed_qr' | null
   fixed_qr_url: string | null
   chat_enabled: boolean
+  coupon_enabled: boolean
+  coupon_code: string | null
+  coupon_quantity: number
 }
 
 function FixtureRow({ f, selected, onSelect }: { f: Fixture; selected: boolean; onSelect: () => void }) {
@@ -212,6 +215,13 @@ export default function AdminPage() {
   const [chargeModalUploading, setChargeModalUploading] = useState(false)
   const [chargeModalSaving, setChargeModalSaving] = useState(false)
   const [chargeModalDragging, setChargeModalDragging] = useState(false)
+
+  // Modal de código de acesso
+  const [couponModal, setCouponModal] = useState<{ id: string } | null>(null)
+  const [couponModalCode, setCouponModalCode] = useState('')
+  const [couponModalQty, setCouponModalQty] = useState('50')
+  const [couponModalSaving, setCouponModalSaving] = useState(false)
+  const [couponUsedCounts, setCouponUsedCounts] = useState<Record<string, number>>({})
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -422,6 +432,7 @@ export default function AdminPage() {
     setEditHlsUrls(initialHlsUrls)
     setEditYoutubeUrls(initialYoutubeUrls)
     setEditAmounts(initialAmounts)
+    loadCouponUsedCounts(list.map((s: Stream) => s.id))
   }
 
   function extractYoutubeId(input: string): string {
@@ -863,6 +874,53 @@ export default function AdminPage() {
     setChargeModalQrUrl(null)
     setChargeModalSaving(false)
   }
+
+  async function toggleCoupon(id: string, value: boolean) {
+    if (value) {
+      setCouponModalCode('')
+      setCouponModalQty('50')
+      setCouponModal({ id })
+      return
+    }
+    const { error } = await supabase.from('streams').update({ coupon_enabled: false }).eq('id', id)
+    if (error) { alert('Erro: ' + error.message); return }
+    setStreams(prev => prev.map(s => s.id === id ? { ...s, coupon_enabled: false } : s))
+  }
+
+  async function confirmCouponModal() {
+    if (!couponModal) return
+    const code = couponModalCode.trim()
+    const qty = parseInt(couponModalQty)
+    if (!code) { alert('Digite um código'); return }
+    if (isNaN(qty) || qty < 1) { alert('Quantidade inválida'); return }
+    setCouponModalSaving(true)
+    const { error } = await supabase.from('streams').update({
+      coupon_enabled: true,
+      coupon_code: code,
+      coupon_quantity: qty,
+    }).eq('id', couponModal.id)
+    if (error) { alert('Erro: ' + error.message); setCouponModalSaving(false); return }
+    setStreams(prev => prev.map(s => s.id === couponModal.id
+      ? { ...s, coupon_enabled: true, coupon_code: code, coupon_quantity: qty }
+      : s
+    ))
+    setCouponModal(null)
+    setCouponModalSaving(false)
+  }
+
+  async function loadCouponUsedCounts(streamIds: string[]) {
+    if (!streamIds.length) return
+    const results = await Promise.all(
+      streamIds.map(id =>
+        supabase.from('coupon_uses').select('id', { count: 'exact', head: true }).eq('stream_id', id)
+          .then(({ count }) => ({ id, count: count ?? 0 }))
+      )
+    )
+    const map: Record<string, number> = {}
+    for (const r of results) map[r.id] = r.count
+    setCouponUsedCounts(map)
+  }
+
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -1353,6 +1411,12 @@ export default function AdminPage() {
                             className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.chat_enabled !== false ? 'bg-blue-600/20 text-blue-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-blue-600/20 hover:text-blue-400'}`}
                             title={s.chat_enabled !== false ? 'Chat ativo — clique para desativar' : 'Ativar chat'}>
                             {s.chat_enabled !== false ? 'Chat ON' : 'Chat OFF'}
+                          </button>
+                          <button
+                            onClick={() => toggleCoupon(s.id, !s.coupon_enabled)}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.coupon_enabled ? 'bg-purple-600/20 text-purple-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-purple-600/20 hover:text-purple-400'}`}
+                            title={s.coupon_enabled ? `Código ativo (${couponUsedCounts[s.id] ?? 0}/${s.coupon_quantity}) — clique para desativar` : 'Ativar código de acesso'}>
+                            {s.coupon_enabled ? `Código ON (${couponUsedCounts[s.id] ?? 0}/${s.coupon_quantity})` : 'Código OFF'}
                           </button>
                           {s.charge_enabled && (
                             <div className="flex items-center gap-1">
@@ -1854,6 +1918,52 @@ export default function AdminPage() {
               className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
             >
               {chargeModalSaving ? 'Salvando...' : 'Confirmar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal — código de acesso */}
+      {couponModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setCouponModal(null)} />
+          <div className="relative w-full max-w-sm bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-6 space-y-5 shadow-2xl">
+            <button onClick={() => setCouponModal(null)} className="absolute top-4 right-4 text-gray-600 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-black text-white">Ativar código de acesso</h2>
+              <p className="text-gray-500 text-sm mt-1">Defina o código e quantas pessoas poderão usá-lo.</p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Código</p>
+                <input
+                  type="text"
+                  value={couponModalCode}
+                  onChange={e => setCouponModalCode(e.target.value.toUpperCase())}
+                  placeholder="Ex: FUTZONE2025"
+                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-500 font-mono tracking-wider"
+                />
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Quantidade disponível</p>
+                <input
+                  type="number"
+                  min="1"
+                  value={couponModalQty}
+                  onChange={e => setCouponModalQty(e.target.value)}
+                  placeholder="50"
+                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-500"
+                />
+              </div>
+            </div>
+            <button
+              onClick={confirmCouponModal}
+              disabled={couponModalSaving || !couponModalCode.trim() || !couponModalQty}
+              className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
+            >
+              {couponModalSaving ? 'Salvando...' : 'Confirmar'}
             </button>
           </div>
         </div>

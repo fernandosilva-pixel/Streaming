@@ -31,6 +31,9 @@ type Stream = {
   payment_method: 'bspay' | 'fixed_qr' | null
   fixed_qr_url: string | null
   chat_enabled: boolean
+  coupon_enabled: boolean
+  coupon_code: string | null
+  coupon_quantity: number
 }
 
 export default function JogoPage({ params }: Props) {
@@ -42,6 +45,11 @@ export default function JogoPage({ params }: Props) {
   const [checkingPayment, setCheckingPayment] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [isFreeAccess, setIsFreeAccess] = useState(false)
+  const [hasCoupon, setHasCoupon] = useState(false)
+  const [couponModalOpen, setCouponModalOpen] = useState(false)
+  const [couponCode, setCouponCode] = useState('')
+  const [couponError, setCouponError] = useState('')
+  const [couponLoading, setCouponLoading] = useState(false)
 
   const [soopBroadNo, setSoopBroadNo] = useState<string | null>(null)
   const [soopLoading, setSoopLoading] = useState(false)
@@ -107,9 +115,11 @@ export default function JogoPage({ params }: Props) {
     Promise.all([
       supabase.from('payments').select('id').eq('stream_id', stream.id).eq('user_phone', user.phone).eq('status', 'PAID').maybeSingle(),
       supabase.from('free_access').select('id').eq('user_phone', user.phone).maybeSingle(),
-    ]).then(([payment, free]) => {
+      supabase.from('coupon_uses').select('id').eq('stream_id', stream.id).eq('user_phone', user.phone).maybeSingle(),
+    ]).then(([payment, free, coupon]) => {
       setHasPaid(!!payment.data)
       setIsFreeAccess(!!free.data)
+      setHasCoupon(!!coupon.data)
       setCheckingPayment(false)
     })
   }, [user, stream])
@@ -117,7 +127,7 @@ export default function JogoPage({ params }: Props) {
   // Track presence only when user is confirmed watching (logged in + paid/free)
   useEffect(() => {
     if (!stream) return
-    const canWatch = !!user && !checkingPayment && (!stream.charge_enabled || hasPaid || isFreeAccess)
+    const canWatch = !!user && !checkingPayment && (!stream.charge_enabled || hasPaid || isFreeAccess || hasCoupon)
     if (!canWatch) return
 
     let sid = sessionStorage.getItem('futzone_sid')
@@ -138,7 +148,7 @@ export default function JogoPage({ params }: Props) {
   useEffect(() => {
     if (previewActive) return
     const needsLogin = !user
-    const needsPayment = !!user && !!stream?.charge_enabled && !hasPaid && !checkingPayment && !isFreeAccess
+    const needsPayment = !!user && !!stream?.charge_enabled && !hasPaid && !checkingPayment && !isFreeAccess && !hasCoupon
     if ((needsLogin || needsPayment) && document.fullscreenElement) {
       document.exitFullscreen()
     }
@@ -337,7 +347,7 @@ export default function JogoPage({ params }: Props) {
   }
 
   const wouldNeedLogin = !user
-  const wouldNeedPayment = !!user && stream.charge_enabled && !hasPaid && !checkingPayment && !isFreeAccess
+  const wouldNeedPayment = !!user && stream.charge_enabled && !hasPaid && !checkingPayment && !isFreeAccess && !hasCoupon
 
   const needsLogin = wouldNeedLogin && !previewActive
   const needsPayment = wouldNeedPayment && !previewActive
@@ -428,6 +438,58 @@ export default function JogoPage({ params }: Props) {
                 >
                   Pagar e assistir
                 </button>
+                {stream.coupon_enabled && (
+                  <button
+                    onClick={() => { setCouponModalOpen(true); setCouponError(''); setCouponCode('') }}
+                    className="text-gray-400 hover:text-white text-sm underline underline-offset-2 transition-colors"
+                  >
+                    Tenho um código
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Coupon modal */}
+            {couponModalOpen && (
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 px-6">
+                <div className="w-full max-w-xs bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-5 space-y-4">
+                  <p className="text-white font-bold text-center">Digite o código</p>
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError('') }}
+                    placeholder="EX: FUTZONE2025"
+                    className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-purple-500"
+                  />
+                  {couponError && <p className="text-red-400 text-xs text-center">{couponError}</p>}
+                  <button
+                    disabled={couponLoading || !couponCode.trim()}
+                    onClick={async () => {
+                      if (!user) return
+                      setCouponLoading(true)
+                      setCouponError('')
+                      try {
+                        const res = await fetch('/api/coupon/validate', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ stream_id: stream.id, code: couponCode, user_phone: user.phone }),
+                        })
+                        const data = await res.json()
+                        if (!res.ok) { setCouponError(data.error ?? 'Código inválido'); return }
+                        setHasCoupon(true)
+                        setCouponModalOpen(false)
+                      } finally {
+                        setCouponLoading(false)
+                      }
+                    }}
+                    className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition-all text-sm"
+                  >
+                    {couponLoading ? 'Verificando...' : 'Confirmar'}
+                  </button>
+                  <button onClick={() => setCouponModalOpen(false)} className="w-full text-gray-500 hover:text-white text-xs transition-colors">
+                    Cancelar
+                  </button>
+                </div>
               </div>
             )}
 
