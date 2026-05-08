@@ -11,11 +11,13 @@ interface Props {
   amount: number
   paymentMethod: 'bspay' | 'fixed_qr'
   fixedQrUrl?: string | null
+  couponEnabled?: boolean
   onPaid: () => void
+  onCouponSuccess?: () => void
   onClose: () => void
 }
 
-export default function PaymentModal({ streamId, userPhone, userName, amount, paymentMethod, fixedQrUrl, onPaid, onClose }: Props) {
+export default function PaymentModal({ streamId, userPhone, userName, amount, paymentMethod, fixedQrUrl, couponEnabled, onPaid, onCouponSuccess, onClose }: Props) {
   const [qrcode, setQrcode] = useState<string | null>(null)
   const [transactionId, setTransactionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(paymentMethod === 'bspay')
@@ -25,6 +27,29 @@ export default function PaymentModal({ streamId, userPhone, userName, amount, pa
   const [verifying, setVerifying] = useState(false)
   const [verifyMsg, setVerifyMsg] = useState('')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const [couponOpen, setCouponOpen] = useState(false)
+  const [couponCode, setCouponCode] = useState('')
+  const [couponError, setCouponError] = useState('')
+  const [couponLoading, setCouponLoading] = useState(false)
+
+  async function handleCoupon() {
+    setCouponLoading(true)
+    setCouponError('')
+    try {
+      const res = await fetch('/api/coupon/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stream_id: streamId, code: couponCode, user_phone: userPhone }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setCouponError(data.error ?? 'Código inválido'); return }
+      if (onCouponSuccess) onCouponSuccess()
+      else onPaid()
+    } finally {
+      setCouponLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (paymentMethod !== 'bspay') return
@@ -191,6 +216,39 @@ export default function PaymentModal({ streamId, userPhone, userName, amount, pa
                     <p className="text-gray-600 text-xs text-center">
                       Aguardando confirmação automática do pagamento...
                     </p>
+                    {couponEnabled && (
+                      <div className="space-y-2 pt-1">
+                        {!couponOpen ? (
+                          <button
+                            onClick={() => { setCouponOpen(true); setCouponError(''); setCouponCode('') }}
+                            className="w-full text-purple-400 font-bold border border-purple-500 rounded-full py-3 text-sm transition-all hover:bg-purple-500/10"
+                          >
+                            Tenho um código
+                          </button>
+                        ) : (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={couponCode}
+                              onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError('') }}
+                              placeholder="EX: FUTZONE2025"
+                              className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-purple-500"
+                            />
+                            {couponError && <p className="text-red-400 text-xs text-center">{couponError}</p>}
+                            <button
+                              disabled={couponLoading || !couponCode.trim()}
+                              onClick={handleCoupon}
+                              className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition-all text-sm"
+                            >
+                              {couponLoading ? 'Verificando...' : 'Confirmar código'}
+                            </button>
+                            <button onClick={() => setCouponOpen(false)} className="w-full text-gray-500 hover:text-white text-xs transition-colors">
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </>

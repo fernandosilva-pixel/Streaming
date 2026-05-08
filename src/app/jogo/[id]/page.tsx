@@ -46,10 +46,6 @@ export default function JogoPage({ params }: Props) {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [isFreeAccess, setIsFreeAccess] = useState(false)
   const [hasCoupon, setHasCoupon] = useState(false)
-  const [couponModalOpen, setCouponModalOpen] = useState(false)
-  const [couponCode, setCouponCode] = useState('')
-  const [couponError, setCouponError] = useState('')
-  const [couponLoading, setCouponLoading] = useState(false)
 
   const [soopBroadNo, setSoopBroadNo] = useState<string | null>(null)
   const [soopLoading, setSoopLoading] = useState(false)
@@ -438,60 +434,9 @@ export default function JogoPage({ params }: Props) {
                 >
                   Pagar e assistir
                 </button>
-                {stream.coupon_enabled && (
-                  <button
-                    onClick={() => { setCouponModalOpen(true); setCouponError(''); setCouponCode('') }}
-                    className="text-purple-400 font-bold border border-purple-500 rounded-full px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base transition-all hover:bg-purple-500/10 w-full max-w-[220px] sm:max-w-xs"
-                  >
-                    Tenho um código
-                  </button>
-                )}
               </div>
             )}
 
-            {/* Coupon modal */}
-            {couponModalOpen && (
-              <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 px-6">
-                <div className="w-full max-w-xs bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-5 space-y-4">
-                  <p className="text-white font-bold text-center">Digite o código</p>
-                  <input
-                    type="text"
-                    value={couponCode}
-                    onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError('') }}
-                    placeholder="EX: FUTZONE2025"
-                    className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-purple-500"
-                  />
-                  {couponError && <p className="text-red-400 text-xs text-center">{couponError}</p>}
-                  <button
-                    disabled={couponLoading || !couponCode.trim()}
-                    onClick={async () => {
-                      if (!user) return
-                      setCouponLoading(true)
-                      setCouponError('')
-                      try {
-                        const res = await fetch('/api/coupon/validate', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ stream_id: stream.id, code: couponCode, user_phone: user.phone }),
-                        })
-                        const data = await res.json()
-                        if (!res.ok) { setCouponError(data.error ?? 'Código inválido'); return }
-                        setHasCoupon(true)
-                        setCouponModalOpen(false)
-                      } finally {
-                        setCouponLoading(false)
-                      }
-                    }}
-                    className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition-all text-sm"
-                  >
-                    {couponLoading ? 'Verificando...' : 'Confirmar'}
-                  </button>
-                  <button onClick={() => setCouponModalOpen(false)} className="w-full text-gray-500 hover:text-white text-xs transition-colors">
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Checking payment */}
             {user && stream.charge_enabled && checkingPayment && (
@@ -508,7 +453,9 @@ export default function JogoPage({ params }: Props) {
                 amount={stream.charge_amount}
                 paymentMethod={stream.payment_method ?? 'bspay'}
                 fixedQrUrl={stream.fixed_qr_url}
+                couponEnabled={stream.coupon_enabled}
                 onPaid={() => { setHasPaid(true); setPaymentModalOpen(false) }}
+                onCouponSuccess={() => { setHasCoupon(true); setPaymentModalOpen(false) }}
                 onClose={() => setPaymentModalOpen(false)}
               />
             )}
@@ -520,7 +467,9 @@ export default function JogoPage({ params }: Props) {
                 amount={stream.charge_amount}
                 paymentMethod={stream.payment_method ?? 'bspay'}
                 fixedQrUrl={stream.fixed_qr_url}
+                couponEnabled={stream.coupon_enabled}
                 onSuccess={(userObj) => { loginDirect(userObj); setHasPaid(true) }}
+                onCouponSuccess={(userObj) => { loginDirect(userObj); setHasCoupon(true) }}
                 onClose={() => {}}
               />
             )}

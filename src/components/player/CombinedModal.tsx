@@ -10,7 +10,9 @@ interface Props {
   amount: number
   paymentMethod: 'bspay' | 'fixed_qr'
   fixedQrUrl?: string | null
+  couponEnabled?: boolean
   onSuccess: (user: { name: string; phone: string }) => void
+  onCouponSuccess?: (user: { name: string; phone: string }) => void
   onClose: () => void
 }
 
@@ -24,7 +26,7 @@ function fmt(v: string) {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
 }
 
-export default function CombinedModal({ streamId, amount, paymentMethod, fixedQrUrl, onSuccess, onClose }: Props) {
+export default function CombinedModal({ streamId, amount, paymentMethod, fixedQrUrl, couponEnabled, onSuccess, onCouponSuccess, onClose }: Props) {
   const [step, setStep] = useState<Step>('credentials')
   const [mode, setMode] = useState<Mode>('register')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
@@ -50,6 +52,30 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
   const [verifyMsg, setVerifyMsg] = useState('')
   const [copied, setCopied] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const [couponOpen, setCouponOpen] = useState(false)
+  const [couponCode, setCouponCode] = useState('')
+  const [couponError, setCouponError] = useState('')
+  const [couponLoading, setCouponLoading] = useState(false)
+
+  async function handleCoupon() {
+    if (!currentUser) return
+    setCouponLoading(true)
+    setCouponError('')
+    try {
+      const res = await fetch('/api/coupon/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stream_id: streamId, code: couponCode, user_phone: currentUser.phone }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setCouponError(data.error ?? 'Código inválido'); return }
+      if (onCouponSuccess) onCouponSuccess(currentUser)
+      else onSuccess(currentUser)
+    } finally {
+      setCouponLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!transactionId) return
@@ -306,6 +332,40 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
               </>
             )}
             {verifyMsg && paymentMethod === 'fixed_qr' && <p className="text-red-500 text-xs text-center">{verifyMsg}</p>}
+
+            {couponEnabled && (
+              <div className="space-y-2 pt-1">
+                {!couponOpen ? (
+                  <button
+                    onClick={() => { setCouponOpen(true); setCouponError(''); setCouponCode('') }}
+                    className="w-full text-purple-400 font-bold border border-purple-500 rounded-full py-3 text-sm transition-all hover:bg-purple-500/10"
+                  >
+                    Tenho um código
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError('') }}
+                      placeholder="EX: FUTZONE2025"
+                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-purple-500"
+                    />
+                    {couponError && <p className="text-red-400 text-xs text-center">{couponError}</p>}
+                    <button
+                      disabled={couponLoading || !couponCode.trim()}
+                      onClick={handleCoupon}
+                      className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition-all text-sm"
+                    >
+                      {couponLoading ? 'Verificando...' : 'Confirmar código'}
+                    </button>
+                    <button onClick={() => setCouponOpen(false)} className="w-full text-gray-500 hover:text-white text-xs transition-colors">
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
