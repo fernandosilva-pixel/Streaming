@@ -441,7 +441,7 @@ export default function JogoPage({ params }: Props) {
                 {stream.coupon_enabled && (
                   <button
                     onClick={() => { setCouponModalOpen(true); setCouponError(''); setCouponCode('') }}
-                    className="text-gray-400 hover:text-white text-sm underline underline-offset-2 transition-colors"
+                    className="text-purple-400 font-bold border border-purple-500 rounded-full px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base transition-all hover:bg-purple-500/10 w-full max-w-[220px] sm:max-w-xs"
                   >
                     Tenho um código
                   </button>
