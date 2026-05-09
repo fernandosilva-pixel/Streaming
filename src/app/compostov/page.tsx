@@ -189,11 +189,11 @@ export default function AdminPage() {
   async function loadAdminDashboard() {
     setDashLoading(true)
     const [regRes, payRes] = await Promise.all([
-      supabase.from('registrations').select('*').limit(200),
-      supabase.from('payments').select('*').limit(500),
+      supabase.from('registrations').select('*').order('created_at', { ascending: false }).limit(500),
+      supabase.from('payments').select('*').order('created_at', { ascending: false }).limit(1000),
     ])
-    setDashRegistrations((regRes.data ?? []).reverse())
-    setDashPayments((payRes.data ?? []).reverse())
+    setDashRegistrations(regRes.data ?? [])
+    setDashPayments(payRes.data ?? [])
     setDashLoading(false)
   }
 
@@ -308,13 +308,15 @@ export default function AdminPage() {
     const channel = supabase
       .channel('new-registrations')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'registrations' }, payload => {
-        const reg = payload.new as { id: string; name?: string; phone?: string }
+        const reg = payload.new as { id: string; name?: string; phone?: string; created_at?: string }
         const id = reg.id ?? String(Date.now())
         const name = reg.name ?? 'Novo usuário'
         const phone = reg.phone ?? ''
         setToasts(prev => [...prev, { id, name, phone }])
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000)
         setUnreadCount(prev => prev + 1)
+        // Atualiza a tabela do dashboard em tempo real
+        setDashRegistrations(prev => [{ ...reg, id, name, phone }, ...prev])
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
@@ -1987,47 +1989,6 @@ export default function AdminPage() {
           </div>
 
           {/* Stats */}
-          {(() => {
-            const filteredPays = dashStreamFilter === 'all' ? dashPayments : dashPayments.filter(p => p.stream_id === dashStreamFilter)
-            const qrCount = filteredPays.length
-            const paidCount = filteredPays.filter(p => p.status === 'PAID').length
-            const revenue = filteredPays.filter(p => p.status === 'PAID').reduce((s, p) => s + (p.amount ?? 0), 0)
-            const directQr = filteredPays.filter(p => !p.referral_code).length
-            const directPaid = filteredPays.filter(p => !p.referral_code && p.status === 'PAID').length
-            const affiliateQr = filteredPays.filter(p => p.referral_code).length
-            const affiliatePaid = filteredPays.filter(p => p.referral_code && p.status === 'PAID').length
-            return (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  { [
-                    { label: 'Cadastros', value: dashRegistrations.length },
-                    { label: 'QR Gerados (total)', value: qrCount },
-                    { label: 'Pagamentos (total)', value: paidCount },
-                    { label: 'Receita', value: `R$ ${revenue.toFixed(2).replace('.', ',')}`, raw: true },
-                  ].map(({ label, value, raw }) => (
-                    <div key={label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
-                      <p className="text-2xl font-black text-white">{raw ? value : Number(value).toLocaleString('pt-BR')}</p>
-                      <p className="text-gray-500 text-xs mt-0.5">{label}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { label: 'QR Direto Gerado', value: directQr, sub: 'Sem afiliado' },
-                    { label: 'QR Direto Pago', value: directPaid, sub: 'Sem afiliado' },
-                    { label: 'QR Afiliado Gerado', value: affiliateQr, sub: 'Via link' },
-                    { label: 'QR Afiliado Pago', value: affiliatePaid, sub: 'Via link' },
-                  ].map(({ label, value, sub }) => (
-                    <div key={label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
-                      <p className="text-2xl font-black text-white">{Number(value).toLocaleString('pt-BR')}</p>
-                      <p className="text-gray-400 text-xs font-medium mt-0.5">{label}</p>
-                      <p className="text-gray-600 text-xs">{sub}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
 
           {/* Filtros */}
           <div className="flex flex-wrap items-center gap-3">
@@ -2075,8 +2036,46 @@ export default function AdminPage() {
               const filteredPays = dashPayments
                 .filter(p => dashStreamFilter === 'all' || p.stream_id === dashStreamFilter)
                 .filter(p => matchDate(p.created_at))
+              const qrCount = filteredPays.length
+              const paidCount = filteredPays.filter(p => p.status === 'PAID').length
+              const revenue = filteredPays.filter(p => p.status === 'PAID').reduce((s, p) => s + (p.amount ?? 0), 0)
+              const directQr = filteredPays.filter(p => !p.referral_code).length
+              const directPaid = filteredPays.filter(p => !p.referral_code && p.status === 'PAID').length
+              const affiliateQr = filteredPays.filter(p => p.referral_code).length
+              const affiliatePaid = filteredPays.filter(p => p.referral_code && p.status === 'PAID').length
               return (
                 <div className="space-y-6">
+                  {/* Cards de métricas — respeitam todos os filtros */}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Cadastros', value: filteredRegs.length },
+                        { label: 'QR Gerados', value: qrCount },
+                        { label: 'Pagamentos', value: paidCount },
+                        { label: 'Receita', value: `R$ ${revenue.toFixed(2).replace('.', ',')}`, raw: true },
+                      ].map(({ label, value, raw }) => (
+                        <div key={label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
+                          <p className="text-2xl font-black text-white">{raw ? value : Number(value).toLocaleString('pt-BR')}</p>
+                          <p className="text-gray-500 text-xs mt-0.5">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: 'QR Direto Gerado', value: directQr, sub: 'Sem afiliado' },
+                        { label: 'QR Direto Pago', value: directPaid, sub: 'Sem afiliado' },
+                        { label: 'QR Afiliado Gerado', value: affiliateQr, sub: 'Via link' },
+                        { label: 'QR Afiliado Pago', value: affiliatePaid, sub: 'Via link' },
+                      ].map(({ label, value, sub }) => (
+                        <div key={label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
+                          <p className="text-2xl font-black text-white">{Number(value).toLocaleString('pt-BR')}</p>
+                          <p className="text-gray-400 text-xs font-medium mt-0.5">{label}</p>
+                          <p className="text-gray-600 text-xs">{sub}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Cadastros */}
                   <div className="space-y-2">
                     <h3 className="text-white font-semibold text-sm">Cadastros ({filteredRegs.length})</h3>
