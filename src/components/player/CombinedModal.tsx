@@ -88,7 +88,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
         const { data: existing } = await supabase.from('registrations').select('id').eq('email', normalizedEmail).maybeSingle()
         if (existing) { setFormError(t('emailAlreadyUsed')); setFormLoading(false); return }
 
-        const { error } = await supabase.from('registrations').insert({ name: name.trim(), email: normalizedEmail, password })
+        const { error } = await supabase.from('registrations').insert({ name: name.trim(), email: normalizedEmail, phone: normalizedEmail, password })
         if (error) { setFormError(error.message); setFormLoading(false); return }
 
         const refCode = localStorage.getItem('futzone_ref')

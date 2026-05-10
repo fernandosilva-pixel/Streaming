@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { error } = await supabase
       .from('registrations')
-      .insert({ name, email: normalizedEmail, password })
+      .insert({ name, email: normalizedEmail, phone: normalizedEmail, password })
 
     if (error) throw new Error('supabase:' + error.message)
 
