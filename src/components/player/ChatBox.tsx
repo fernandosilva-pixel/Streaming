@@ -153,10 +153,24 @@ export default function ChatBox({ streamId }: { streamId: string }) {
     await supabase.from('chat_messages').update({ is_pinned: false }).eq('id', pinnedMessage.id)
   }
 
+  async function clearAllMessages() {
+    if (!confirm('Limpar todas as mensagens do chat?')) return
+    await supabase.from('chat_messages').delete().eq('stream_id', streamId)
+  }
+
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-[#0f0f13] px-4 py-3 border-b border-[#2A2A3A] shrink-0">
+      <div className="bg-[#0f0f13] px-4 py-3 border-b border-[#2A2A3A] shrink-0 flex items-center justify-center relative">
         <p className="text-white text-sm font-bold text-center tracking-wide">Chat da transmissão</p>
+        {isAdmin && (
+          <button
+            onClick={clearAllMessages}
+            className="absolute right-3 text-gray-600 hover:text-red-500 transition-colors"
+            title="Limpar todas as mensagens"
+          >
+            🧹
+          </button>
+        )}
       </div>
 
       {/* Mensagem fixada */}
