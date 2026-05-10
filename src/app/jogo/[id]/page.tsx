@@ -168,7 +168,7 @@ export default function JogoPage({ params }: Props) {
           sessionStorage.setItem(`preview_payment_${id}_${user.email}`, '0')
         }
       })
-  }, [user?.phone, id, stream?.charge_enabled])
+  }, [user?.email, id, stream?.charge_enabled])
 
   // Poll for admin-triggered force refresh every 5s
   useEffect(() => {

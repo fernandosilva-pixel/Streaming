@@ -32,14 +32,14 @@ export default function ChatBox({ streamId }: { streamId: string }) {
   const messagesRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!user?.phone) { setIsAdmin(false); return }
+    if (!user?.email) { setIsAdmin(false); return }
     supabase
       .from('registrations')
       .select('is_admin')
-      .eq('phone', user.phone)
+      .eq('email', user.email)
       .single()
       .then(({ data }) => setIsAdmin(data?.is_admin ?? false))
-  }, [user?.phone])
+  }, [user?.email])
 
   useEffect(() => {
     supabase
