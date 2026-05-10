@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 
 type SiteUser = {
   name: string
-  phone: string
+  email: string
 }
 
 type AuthContextType = {
@@ -15,8 +15,8 @@ type AuthContextType = {
   hideModal: () => void
   modalVisible: boolean
   modalInitialView: 'login' | 'register'
-  login: (phone: string, password: string) => Promise<boolean>
-  register: (name: string, phone: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<boolean>
+  register: (name: string, email: string, password: string) => Promise<void>
   loginDirect: (userObj: SiteUser) => void
   logout: () => void
 }
@@ -31,7 +31,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('futzone_user')
-    if (stored) setUser(JSON.parse(stored))
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      // Migrate old phone-based sessions
+      if (parsed.phone && !parsed.email) {
+        parsed.email = parsed.phone
+      }
+      setUser(parsed)
+    }
     setInitialized(true)
   }, [])
 
@@ -41,17 +48,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   function hideModal() { setModalVisible(false) }
 
-  async function login(phone: string, password: string): Promise<boolean> {
-    const digits = phone.replace(/\D/g, '')
+  async function login(email: string, password: string): Promise<boolean> {
     const { data } = await supabase
       .from('registrations')
-      .select('name, phone')
-      .eq('phone', digits)
+      .select('name, email')
+      .eq('email', email.trim().toLowerCase())
       .eq('password', password)
       .single()
 
     if (data) {
-      const userObj = { name: data.name, phone: data.phone }
+      const userObj = { name: data.name, email: data.email }
       localStorage.setItem('futzone_user', JSON.stringify(userObj))
       setUser(userObj)
       setModalVisible(false)
@@ -60,34 +66,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false
   }
 
-  async function register(name: string, phone: string, password: string) {
-    const digits = phone.replace(/\D/g, '')
+  async function register(name: string, email: string, password: string) {
+    const normalizedEmail = email.trim().toLowerCase()
 
     const { data: existing } = await supabase
       .from('registrations')
       .select('id')
-      .eq('phone', digits)
+      .eq('email', normalizedEmail)
       .maybeSingle()
 
-    if (existing) throw new Error('Telefone já cadastrado. Faça login.')
+    if (existing) throw new Error('email_taken')
 
     const { error } = await supabase
       .from('registrations')
-      .insert({ name, phone: digits, password })
+      .insert({ name, email: normalizedEmail, password })
 
     if (error) throw new Error(error.message)
 
-    // Track referral if user came via affiliate link
     const refCode = localStorage.getItem('futzone_ref')
     if (refCode) {
       fetch('/api/affiliate/referral', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_phone: digits, user_name: name, referral_code: refCode }),
+        body: JSON.stringify({ user_phone: normalizedEmail, user_name: name, referral_code: refCode }),
       })
     }
 
-    const newUser = { name, phone: digits }
+    const newUser = { name, email: normalizedEmail }
     localStorage.setItem('futzone_user', JSON.stringify(newUser))
     setUser(newUser)
     setModalVisible(false)

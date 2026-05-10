@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ChevronLeft, Lock, DollarSign, Maximize } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useLanguage } from '@/contexts/LanguageContext'
 import { use } from 'react'
 import ChatBox from '@/components/player/ChatBox'
 import PaymentModal from '@/components/player/PaymentModal'
@@ -39,6 +40,7 @@ type Stream = {
 export default function JogoPage({ params }: Props) {
   const { id } = use(params)
   const { user, showModal, loginDirect } = useAuth()
+  const { t } = useLanguage()
   const [stream, setStream] = useState<Stream | null>(null)
   const [loading, setLoading] = useState(true)
   const [hasPaid, setHasPaid] = useState(false)
@@ -109,9 +111,9 @@ export default function JogoPage({ params }: Props) {
     if (!user || !stream || !stream.charge_enabled) return
     setCheckingPayment(true)
     Promise.all([
-      supabase.from('payments').select('id').eq('stream_id', stream.id).eq('user_phone', user.phone).eq('status', 'PAID').maybeSingle(),
-      supabase.from('free_access').select('id').eq('user_phone', user.phone).maybeSingle(),
-      supabase.from('coupon_uses').select('id').eq('stream_id', stream.id).eq('user_phone', user.phone).maybeSingle(),
+      supabase.from('payments').select('id').eq('stream_id', stream.id).eq('user_phone', user.email).eq('status', 'PAID').maybeSingle(),
+      supabase.from('free_access').select('id').eq('user_phone', user.email).maybeSingle(),
+      supabase.from('coupon_uses').select('id').eq('stream_id', stream.id).eq('user_phone', user.email).maybeSingle(),
     ]).then(([payment, free, coupon]) => {
       setHasPaid(!!payment.data)
       setIsFreeAccess(!!free.data)
@@ -134,7 +136,7 @@ export default function JogoPage({ params }: Props) {
     })
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await channel.track({ stream_id: id, name: user.name, phone: user.phone, at: Date.now() })
+        await channel.track({ stream_id: id, name: user.name, phone: user.email, at: Date.now() })
       }
     })
     return () => { supabase.removeChannel(channel) }
@@ -155,14 +157,14 @@ export default function JogoPage({ params }: Props) {
     if (!user || !stream || !stream.charge_enabled) return
     supabase.from('preview_used')
       .select('user_phone')
-      .eq('user_phone', user.phone)
+      .eq('user_phone', user.email)
       .eq('stream_id', id)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
           setPreviewActive(false)
           setPreviewSeconds(0)
-          sessionStorage.setItem(`preview_payment_${id}_${user.phone}`, '0')
+          sessionStorage.setItem(`preview_payment_${id}_${user.email}`, '0')
         }
       })
   }, [user?.phone, id, stream?.charge_enabled])
@@ -181,7 +183,7 @@ export default function JogoPage({ params }: Props) {
   }, [id])
 
   // 2m30s preview, separate timer for not-logged-in and logged-in-but-unpaid
-  const previewKey = user ? `preview_payment_${id}_${user.phone}` : `preview_login_${id}`
+  const previewKey = user ? `preview_payment_${id}_${user.email}` : `preview_login_${id}`
 
   useEffect(() => {
     const stored = sessionStorage.getItem(previewKey)
@@ -216,7 +218,7 @@ export default function JogoPage({ params }: Props) {
           fetch('/api/preview/use', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_phone: u.phone, stream_id: id }),
+            body: JSON.stringify({ user_phone: u.email, stream_id: id }),
           })
         }
       } else {
@@ -367,7 +369,7 @@ export default function JogoPage({ params }: Props) {
           {/* Hint badge — centralizado acima do iframe */}
           <div className="flex items-center justify-center">
             <div className="animate-pulse" style={{ transform: 'skewX(-12deg)', background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,106,0,0.3)', borderRadius: 6, padding: '3px 14px' }}>
-              <span style={{ transform: 'skewX(12deg)', display: 'inline-block' }} className="text-orange-400 text-xs font-semibold">Som desativado? Coloque em tela cheia e aumente o volume.</span>
+              <span style={{ transform: 'skewX(12deg)', display: 'inline-block' }} className="text-orange-400 text-xs font-semibold">{t('soundHint')}</span>
             </div>
           </div>
           {/* Wrapper fullscreen — ref aqui fora do iframe */}
@@ -396,22 +398,22 @@ export default function JogoPage({ params }: Props) {
             )}
 
 
-            {/* Login overlay — free stream: show auth modal. Paid stream: CombinedModal handles it outside player */}
+            {/* Login overlay — free stream */}
             {needsLogin && !stream.charge_enabled && (
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/50">
                 <div className="w-14 h-14 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
                   <Lock className="w-6 h-6 text-orange-500" />
                 </div>
                 <div className="text-center">
-                  <p className="text-white font-bold text-lg">Conteúdo restrito</p>
-                  <p className="text-gray-400 text-sm mt-1">Já tem conta na Futzone? Faça o login e assista agora.</p>
-                  <p className="text-gray-400 text-sm mt-0.5">Ainda não tem conta? Crie sua conta e assista agora.</p>
+                  <p className="text-white font-bold text-lg">{t('restrictedContent')}</p>
+                  <p className="text-gray-400 text-sm mt-1">{t('restrictedLogin')}</p>
+                  <p className="text-gray-400 text-sm mt-0.5">{t('restrictedNoAccount')}</p>
                 </div>
                 <button
                   className="animate-orange-pulse text-orange-500 font-bold border border-orange-500 rounded-full px-8 py-3 transition-all hover:bg-orange-500/10"
                   onClick={() => showModal('login')}
                 >
-                  Criar Conta
+                  {t('createAccount')}
                 </button>
               </div>
             )}
@@ -423,32 +425,31 @@ export default function JogoPage({ params }: Props) {
                   <DollarSign className="w-6 h-6 text-orange-500" />
                 </div>
                 <div className="text-center">
-                  <p className="text-white font-bold text-lg">Conteúdo pago</p>
+                  <p className="text-white font-bold text-lg">{t('paidContent')}</p>
                   <p className="text-white text-sm mt-1">
-                    R$ {stream.charge_amount.toFixed(2).replace('.', ',')} via PIX para assistir
+                    R$ {stream.charge_amount.toFixed(2).replace('.', ',')} {t('viaPix')}
                   </p>
                 </div>
                 <button
                   onClick={() => setPaymentModalOpen(true)}
                   className="animate-orange-pulse text-orange-500 font-bold border border-orange-500 rounded-full px-8 py-3 transition-all hover:bg-orange-500/10"
                 >
-                  Pagar e assistir
+                  {t('payAndWatch')}
                 </button>
               </div>
             )}
 
-
             {/* Checking payment */}
             {user && stream.charge_enabled && checkingPayment && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                <p className="text-gray-400 text-sm">Verificando acesso...</p>
+                <p className="text-gray-400 text-sm">{t('checkingAccess')}</p>
               </div>
             )}
 
             {paymentModalOpen && user && stream.charge_enabled && !hasPaid && (
               <PaymentModal
                 streamId={stream.id}
-                userPhone={user.phone}
+                userEmail={user.email}
                 userName={user.name}
                 amount={stream.charge_amount}
                 paymentMethod={stream.payment_method ?? 'bspay'}

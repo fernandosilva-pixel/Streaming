@@ -2,19 +2,36 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Zap } from 'lucide-react';
+import { Zap, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage, Lang } from '@/contexts/LanguageContext';
+
+const langLabels: Record<Lang, { flag: string; label: string }> = {
+  pt: { flag: '🇧🇷', label: 'PT' },
+  en: { flag: '🇺🇸', label: 'EN' },
+  es: { flag: '🇪🇸', label: 'ES' },
+}
 
 export default function Navbar() {
   const { user, showModal, logout } = useAuth();
+  const { lang, setLang, t } = useLanguage();
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [langOpen, setLangOpen] = useState(false);
 
   useEffect(() => {
     supabase.from('site_settings').select('logo_url').single().then(({ data }) => {
       if (data?.logo_url) setLogoUrl(data.logo_url);
     });
   }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!langOpen) return;
+    const handler = () => setLangOpen(false);
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, [langOpen]);
 
   return (
     <header
@@ -51,14 +68,42 @@ export default function Navbar() {
           )}
         </Link>
 
-        {/* Botões */}
-        <div className="flex items-center">
+        {/* Right side */}
+        <div className="flex items-center gap-2">
+
+          {/* Language selector */}
+          <div className="relative" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setLangOpen(v => !v)}
+              className="flex items-center gap-1 text-white/70 hover:text-white text-xs font-bold px-2 py-1.5 rounded-lg hover:bg-white/5 transition-all"
+            >
+              <span>{langLabels[lang].flag}</span>
+              <span className="hidden sm:inline">{langLabels[lang].label}</span>
+              <ChevronDown className="w-3 h-3" />
+            </button>
+            {langOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden shadow-2xl z-50 min-w-[110px]">
+                {(Object.entries(langLabels) as [Lang, { flag: string; label: string }][]).map(([code, { flag, label }]) => (
+                  <button
+                    key={code}
+                    onClick={() => { setLang(code); setLangOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold transition-all hover:bg-orange-500/10 hover:text-orange-400 ${lang === code ? 'text-orange-400 bg-orange-500/5' : 'text-white'}`}
+                  >
+                    <span>{flag}</span>
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Auth buttons */}
           {user ? (
-            <SkewButton onClick={logout} variant="outline">Sair</SkewButton>
+            <SkewButton onClick={logout} variant="outline">{t('logout')}</SkewButton>
           ) : (
             <>
-              <SkewButton onClick={() => showModal('login')} variant="outline" z={1}>Entrar</SkewButton>
-              <SkewButton onClick={() => showModal('register')} variant="solid" z={2} overlap>Criar conta</SkewButton>
+              <SkewButton onClick={() => showModal('login')} variant="outline" z={1}>{t('signIn')}</SkewButton>
+              <SkewButton onClick={() => showModal('register')} variant="solid" z={2} overlap>{t('signUp')}</SkewButton>
             </>
           )}
         </div>

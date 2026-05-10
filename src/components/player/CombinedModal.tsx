@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import QRCode from 'react-qr-code'
 import { Copy, Check, X, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Props {
   streamId: string
@@ -11,22 +12,16 @@ interface Props {
   paymentMethod: 'bspay' | 'fixed_qr'
   fixedQrUrl?: string | null
   couponEnabled?: boolean
-  onSuccess: (user: { name: string; phone: string }) => void
-  onCouponSuccess?: (user: { name: string; phone: string }) => void
+  onSuccess: (user: { name: string; email: string }) => void
+  onCouponSuccess?: (user: { name: string; email: string }) => void
   onClose: () => void
 }
 
 type Step = 'credentials' | 'qr'
 type Mode = 'register' | 'login'
 
-function fmt(v: string) {
-  const d = v.replace(/\D/g, '').slice(0, 11)
-  if (d.length <= 2) return d
-  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`
-  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
-}
-
 export default function CombinedModal({ streamId, amount, paymentMethod, fixedQrUrl, couponEnabled, onSuccess, onCouponSuccess, onClose }: Props) {
+  const { t } = useLanguage()
   const [step, setStep] = useState<Step>('credentials')
   const [mode, setMode] = useState<Mode>('register')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
@@ -38,13 +33,13 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
   }, [])
 
   const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [formError, setFormError] = useState('')
   const [formLoading, setFormLoading] = useState(false)
 
-  const [currentUser, setCurrentUser] = useState<{ name: string; phone: string } | null>(null)
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null)
   const [qrcode, setQrcode] = useState<string | null>(null)
   const [transactionId, setTransactionId] = useState<string | null>(null)
   const [paid, setPaid] = useState(false)
@@ -57,25 +52,6 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
   const [couponCode, setCouponCode] = useState('')
   const [couponError, setCouponError] = useState('')
   const [couponLoading, setCouponLoading] = useState(false)
-
-  async function handleCoupon() {
-    if (!currentUser) return
-    setCouponLoading(true)
-    setCouponError('')
-    try {
-      const res = await fetch('/api/coupon/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stream_id: streamId, code: couponCode, user_phone: currentUser.phone }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setCouponError(data.error ?? 'Código inválido'); return }
-      if (onCouponSuccess) onCouponSuccess(currentUser)
-      else onSuccess(currentUser)
-    } finally {
-      setCouponLoading(false)
-    }
-  }
 
   useEffect(() => {
     if (!transactionId) return
@@ -99,45 +75,62 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
     e.preventDefault()
     setFormError('')
     setFormLoading(true)
-    const digits = phone.replace(/\D/g, '')
+    const normalizedEmail = email.trim().toLowerCase()
 
     try {
-      let userObj: { name: string; phone: string }
+      let userObj: { name: string; email: string }
 
       if (mode === 'register') {
-        if (!name.trim()) { setFormError('Informe seu nome.'); setFormLoading(false); return }
-        if (digits.length < 10) { setFormError('Telefone inválido.'); setFormLoading(false); return }
-        if (password.length < 4) { setFormError('Senha deve ter ao menos 4 caracteres.'); setFormLoading(false); return }
+        if (!name.trim()) { setFormError(t('nicknameLabel')); setFormLoading(false); return }
+        if (!normalizedEmail.includes('@')) { setFormError(t('emailLabel')); setFormLoading(false); return }
+        if (password.length < 4) { setFormError(t('passwordLabel')); setFormLoading(false); return }
 
-        const { data: existing } = await supabase.from('registrations').select('id').eq('phone', digits).maybeSingle()
-        if (existing) { setFormError('Telefone já cadastrado. Clique em "Já tenho conta".'); setFormLoading(false); return }
+        const { data: existing } = await supabase.from('registrations').select('id').eq('email', normalizedEmail).maybeSingle()
+        if (existing) { setFormError(t('emailAlreadyUsed')); setFormLoading(false); return }
 
-        const { error } = await supabase.from('registrations').insert({ name: name.trim(), phone: digits, password })
-        if (error) { setFormError('Erro ao cadastrar. Tente novamente.'); setFormLoading(false); return }
+        const { error } = await supabase.from('registrations').insert({ name: name.trim(), email: normalizedEmail, password })
+        if (error) { setFormError(t('wrongCredentials')); setFormLoading(false); return }
 
         const refCode = localStorage.getItem('futzone_ref')
         if (refCode) {
           fetch('/api/affiliate/referral', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_phone: digits, user_name: name.trim(), referral_code: refCode }),
+            body: JSON.stringify({ user_phone: normalizedEmail, user_name: name.trim(), referral_code: refCode }),
           })
         }
 
-        userObj = { name: name.trim(), phone: digits }
+        userObj = { name: name.trim(), email: normalizedEmail }
       } else {
-        const { data } = await supabase.from('registrations').select('name, phone').eq('phone', digits).eq('password', password).single()
-        if (!data) { setFormError('Telefone ou senha incorretos.'); setFormLoading(false); return }
-        userObj = { name: data.name, phone: data.phone }
+        const { data } = await supabase.from('registrations').select('name, email').eq('email', normalizedEmail).eq('password', password).single()
+        if (!data) { setFormError(t('wrongCredentials')); setFormLoading(false); return }
+        userObj = { name: data.name, email: data.email }
       }
 
       setCurrentUser(userObj)
 
       // Check free access
-      const { data: freeAccess } = await supabase.from('free_access').select('id').eq('user_phone', userObj.phone).maybeSingle()
+      const { data: freeAccess } = await supabase.from('free_access').select('id').eq('user_phone', userObj.email).maybeSingle()
       if (freeAccess) {
         setFormLoading(false)
         onSuccess(userObj)
+        return
+      }
+
+      // Check prior payment
+      const { data: priorPayment } = await supabase.from('payments').select('id').eq('stream_id', streamId).eq('user_phone', userObj.email).eq('status', 'PAID').maybeSingle()
+      if (priorPayment) {
+        setFormLoading(false)
+        onSuccess(userObj)
+        return
+      }
+
+      // Check prior coupon use
+      const { data: priorCoupon } = await supabase.from('coupon_uses').select('id').eq('stream_id', streamId).eq('user_phone', userObj.email).maybeSingle()
+      if (priorCoupon) {
+        setFormLoading(false)
+        if (onCouponSuccess) onCouponSuccess(userObj)
+        else onSuccess(userObj)
         return
       }
 
@@ -147,12 +140,11 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
         return
       }
 
-      // BSPay — generate QR
       const referralCode = localStorage.getItem('futzone_ref') ?? undefined
       const res = await fetch('/api/pix/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stream_id: streamId, user_phone: userObj.phone, user_name: userObj.name, amount: Number(amount), referral_code: referralCode }),
+        body: JSON.stringify({ stream_id: streamId, user_phone: userObj.email, user_name: userObj.name, amount: Number(amount), referral_code: referralCode }),
       })
       const data = await res.json()
       if (!res.ok) { setFormError(`Erro ao gerar PIX: ${data.detail ?? data.error ?? ''}`); setFormLoading(false); return }
@@ -160,7 +152,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
       setTransactionId(data.transaction_id)
       setStep('qr')
     } catch {
-      setFormError('Erro de conexão. Tente novamente.')
+      setFormError(t('wrongCredentials'))
     }
     setFormLoading(false)
   }
@@ -174,12 +166,12 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
       const res = await fetch('/api/pix/fixed-confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stream_id: streamId, user_phone: currentUser.phone, referral_code: referralCode }),
+        body: JSON.stringify({ stream_id: streamId, user_phone: currentUser.email, referral_code: referralCode }),
       })
       const data = await res.json()
-      if (!res.ok || !data.ok) { setVerifyMsg('Erro ao registrar. Tente novamente.'); setVerifying(false); return }
+      if (!res.ok || !data.ok) { setVerifyMsg(t('wrongCredentials')); setVerifying(false); return }
     } catch {
-      setVerifyMsg('Erro ao conectar. Tente novamente.')
+      setVerifyMsg(t('wrongCredentials'))
       setVerifying(false)
       return
     }
@@ -196,9 +188,28 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
       clearInterval(pollRef.current!)
       handlePaid()
     } else {
-      setVerifyMsg('Pagamento não identificado ainda. Tente novamente.')
+      setVerifyMsg(t('wrongCredentials'))
     }
     setVerifying(false)
+  }
+
+  async function handleCoupon() {
+    if (!currentUser) return
+    setCouponLoading(true)
+    setCouponError('')
+    try {
+      const res = await fetch('/api/coupon/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stream_id: streamId, code: couponCode, user_phone: currentUser.email }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setCouponError(data.error ?? t('wrongCredentials')); return }
+      if (onCouponSuccess) onCouponSuccess(currentUser)
+      else onSuccess(currentUser)
+    } finally {
+      setCouponLoading(false)
+    }
   }
 
   function copy() {
@@ -214,7 +225,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-sm bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-6 shadow-2xl">
+      <div className="relative w-full max-w-sm bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-6 shadow-2xl overflow-y-auto max-h-[90svh]">
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-600 hover:text-white transition-colors">
           <X className="w-5 h-5" />
         </button>
@@ -224,31 +235,28 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
             <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto">
               <Check className="w-8 h-8 text-green-500" />
             </div>
-            <p className="text-white font-bold text-lg">Pagamento confirmado!</p>
-            <p className="text-gray-500 text-sm">Liberando acesso...</p>
+            <p className="text-white font-bold text-lg">{t('paymentConfirmed')}</p>
+            <p className="text-gray-500 text-sm">{t('releasingAccess')}</p>
           </div>
         ) : step === 'credentials' ? (
           <div className="space-y-5">
             <div className="text-center space-y-3">
-              {logoUrl && (
-                <img src={logoUrl} alt="FutZone" className="h-10 object-contain mx-auto" />
-              )}
-              <h2 className="text-2xl font-black text-white">Liberar Jogo Completo</h2>
+              {logoUrl && <img src={logoUrl} alt="FutZone" className="h-10 object-contain mx-auto" />}
+              <h2 className="text-2xl font-black text-white">{t('unlockGame')}</h2>
               <div className="inline-flex items-baseline gap-1.5 bg-orange-500/10 border border-orange-500/30 rounded-xl px-5 py-2">
                 <span className="text-orange-400 text-sm font-semibold">R$</span>
                 <span className="text-orange-400 text-3xl font-black">{amount.toFixed(2).replace('.', ',')}</span>
                 <span className="text-orange-400/70 text-sm">via PIX</span>
               </div>
-              <p className="text-gray-500 text-xs">Acesso imediato após confirmação</p>
+              <p className="text-gray-500 text-xs">{t('immediateAccess')}</p>
             </div>
 
-            {/* Mode toggle */}
             <div className="flex rounded-xl overflow-hidden border border-[#2A2A3A]">
               <button onClick={() => { setMode('register'); setFormError('') }} className={`flex-1 py-2 text-sm font-bold transition-all ${mode === 'register' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>
-                Criar conta
+                {t('createAccountTab')}
               </button>
               <button onClick={() => { setMode('login'); setFormError('') }} className={`flex-1 py-2 text-sm font-bold transition-all ${mode === 'login' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>
-                Já tenho conta
+                {t('alreadyHaveAccountTab')}
               </button>
             </div>
 
@@ -256,25 +264,26 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
               {mode === 'register' && (
                 <input
                   className={inputClass} style={inputStyle}
-                  placeholder="Seu nome"
+                  placeholder={t('nicknamePlaceholder')}
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  autoComplete="name"
+                  autoComplete="nickname"
                 />
               )}
               <input
+                type="email"
                 className={inputClass} style={inputStyle}
-                placeholder="Telefone (WhatsApp)"
-                value={phone}
-                onChange={e => setPhone(fmt(e.target.value))}
-                inputMode="tel"
-                autoComplete="tel"
+                placeholder={t('emailPlaceholder')}
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                inputMode="email"
+                autoComplete="email"
               />
               <div className="relative">
                 <input
                   className={inputClass} style={{ ...inputStyle, paddingRight: 44 }}
                   type={showPass ? 'text' : 'password'}
-                  placeholder="Senha"
+                  placeholder={t('passwordPlaceholder')}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
@@ -289,7 +298,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
                 disabled={formLoading}
                 className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-black rounded-xl py-3 transition-all"
               >
-                {formLoading ? 'Aguarde...' : 'Avançar →'}
+                {formLoading ? '...' : t('continue')}
               </button>
             </form>
           </div>
@@ -297,7 +306,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
           <div className="space-y-5">
             <div className="text-center space-y-1">
               {logoUrl && <img src={logoUrl} alt="FutZone" className="h-8 object-contain mx-auto mb-2" />}
-              <p className="text-gray-500 text-sm">Acesso imediato após confirmação</p>
+              <p className="text-gray-500 text-sm">{t('immediateAccess')}</p>
             </div>
 
             {paymentMethod === 'fixed_qr' ? (
@@ -307,26 +316,26 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
                   : <p className="text-red-500 text-sm text-center">QR Code não configurado.</p>
                 }
                 <button onClick={handleFixedQrPaid} disabled={verifying} className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold rounded-xl py-3 text-sm transition-all">
-                  {verifying ? 'Registrando...' : 'Já paguei'}
+                  {verifying ? t('registering') : t('alreadyPaid')}
                 </button>
               </>
             ) : (
               <>
                 {!qrcode ? (
-                  <div className="py-8 text-center"><p className="text-gray-500 text-sm">Gerando QR Code...</p></div>
+                  <div className="py-8 text-center"><p className="text-gray-500 text-sm">{t('generating')}</p></div>
                 ) : (
                   <>
                     <div className="bg-white rounded-xl p-4 flex items-center justify-center">
                       <QRCode value={qrcode} size={200} />
                     </div>
                     <button onClick={copy} className="w-full flex items-center justify-center gap-2 bg-[#1A1A26] hover:bg-[#2A2A3A] border border-[#2A2A3A] text-white rounded-xl px-4 py-3 text-sm transition-all">
-                      {copied ? <><Check className="w-4 h-4 text-green-500" /> Copiado!</> : <><Copy className="w-4 h-4" /> Copiar código PIX</>}
+                      {copied ? <><Check className="w-4 h-4 text-green-500" /> {t('copied')}</> : <><Copy className="w-4 h-4" /> {t('copyPix')}</>}
                     </button>
                     <button onClick={checkManually} disabled={verifying} className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold rounded-xl py-3 text-sm transition-all">
-                      {verifying ? 'Verificando...' : 'Já paguei'}
+                      {verifying ? t('verifying') : t('alreadyPaid')}
                     </button>
                     {verifyMsg && <p className="text-yellow-500 text-xs text-center">{verifyMsg}</p>}
-                    <p className="text-gray-600 text-xs text-center">Aguardando confirmação automática...</p>
+                    <p className="text-gray-600 text-xs text-center">{t('waitingConfirmation')}</p>
                   </>
                 )}
               </>
@@ -340,7 +349,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
                     onClick={() => { setCouponOpen(true); setCouponError(''); setCouponCode('') }}
                     className="w-full text-purple-400 font-bold border border-purple-500 rounded-full py-3 text-sm transition-all hover:bg-purple-500/10"
                   >
-                    Tenho um código
+                    {t('haveCode')}
                   </button>
                 ) : (
                   <div className="space-y-2">
@@ -348,7 +357,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
                       type="text"
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError('') }}
-                      placeholder="EX: FUTZONE2025"
+                      placeholder={t('codePlaceholder')}
                       className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-purple-500"
                     />
                     {couponError && <p className="text-red-400 text-xs text-center">{couponError}</p>}
@@ -357,10 +366,10 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
                       onClick={handleCoupon}
                       className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition-all text-sm"
                     >
-                      {couponLoading ? 'Verificando...' : 'Confirmar código'}
+                      {couponLoading ? t('verifying') : t('confirmCode')}
                     </button>
                     <button onClick={() => setCouponOpen(false)} className="w-full text-gray-500 hover:text-white text-xs transition-colors">
-                      Cancelar
+                      {t('cancel')}
                     </button>
                   </div>
                 )}
