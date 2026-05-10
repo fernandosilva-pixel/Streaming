@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Lock, DollarSign, Maximize, Globe } from 'lucide-react'
+import { ChevronLeft, Lock, DollarSign, Maximize } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { useLanguage, Lang } from '@/contexts/LanguageContext'
+import { useLanguage } from '@/contexts/LanguageContext'
 import { use } from 'react'
 import ChatBox from '@/components/player/ChatBox'
 import PaymentModal from '@/components/player/PaymentModal'
@@ -39,9 +39,8 @@ type Stream = {
 
 export default function JogoPage({ params }: Props) {
   const { id } = use(params)
-  const { user, showModal, logout, loginDirect } = useAuth()
-  const { lang, setLang, t } = useLanguage()
-  const [langOpen, setLangOpen] = useState(false)
+  const { user, showModal, loginDirect } = useAuth()
+  const { t } = useLanguage()
   const [stream, setStream] = useState<Stream | null>(null)
   const [loading, setLoading] = useState(true)
   const [hasPaid, setHasPaid] = useState(false)
@@ -365,55 +364,6 @@ export default function JogoPage({ params }: Props) {
           <span className="text-white text-sm font-medium truncate">{stream.title}</span>
         </div>
 
-        {/* Language + auth */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Language switcher */}
-          <div className="relative">
-            <button
-              onClick={() => setLangOpen(v => !v)}
-              className="flex items-center gap-1.5 text-gray-400 hover:text-white text-xs font-bold px-2.5 py-1.5 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/10 transition-all"
-            >
-              <Globe className="w-4 h-4" />
-              <span className="hidden sm:inline uppercase">{lang}</span>
-            </button>
-            {langOpen && (
-              <div
-                className="absolute right-0 top-full mt-1 bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden shadow-2xl z-50 min-w-[110px]"
-                onMouseLeave={() => setLangOpen(false)}
-              >
-                {(['pt', 'en', 'es'] as Lang[]).map(code => {
-                  const flags: Record<Lang, string> = { pt: '🇧🇷 PT', en: '🇺🇸 EN', es: '🇪🇸 ES' }
-                  return (
-                    <button
-                      key={code}
-                      onClick={() => { setLang(code); setLangOpen(false) }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold transition-all hover:bg-orange-500/10 hover:text-orange-400 ${lang === code ? 'text-orange-400 bg-orange-500/5' : 'text-white'}`}
-                    >
-                      {flags[code]}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Auth button */}
-          {user ? (
-            <button
-              onClick={logout}
-              className="text-xs font-bold text-gray-400 hover:text-white border border-[#2A2A3A] hover:border-white/20 px-3 py-1.5 rounded-lg transition-all"
-            >
-              {t('logout')}
-            </button>
-          ) : (
-            <button
-              onClick={() => showModal('login')}
-              className="text-xs font-bold text-orange-400 hover:text-orange-300 border border-orange-500/40 hover:border-orange-500 px-3 py-1.5 rounded-lg transition-all"
-            >
-              {t('signIn')}
-            </button>
-          )}
-        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
