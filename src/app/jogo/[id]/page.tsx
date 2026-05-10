@@ -122,6 +122,54 @@ export default function JogoPage({ params }: Props) {
     })
   }, [user, stream])
 
+  // ── CAMADA 2: Polling contínuo no DB a cada 4s (independente do modal) ──────
+  // Garante liberação mesmo que o modal tenha sido fechado antes da confirmação
+  useEffect(() => {
+    if (!user || !stream?.charge_enabled || hasPaid || isFreeAccess || hasCoupon) return
+
+    async function recheckDB() {
+      const { data } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('stream_id', stream!.id)
+        .eq('user_phone', user!.email)
+        .eq('status', 'PAID')
+        .maybeSingle()
+      if (data) setHasPaid(true)
+    }
+
+    const interval = setInterval(recheckDB, 4000)
+
+    // Camada 3: dispara imediatamente quando o usuário volta para a aba
+    const onVisibility = () => { if (document.visibilityState === 'visible') recheckDB() }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [user, stream, hasPaid, isFreeAccess, hasCoupon])
+
+  // ── CAMADA 4: Realtime Supabase — libera instantaneamente quando webhook atualiza ──
+  useEffect(() => {
+    if (!user || !stream?.charge_enabled || hasPaid || isFreeAccess || hasCoupon) return
+
+    const channel = supabase
+      .channel(`pay-watch:${id}:${user.email}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'payments',
+        filter: `stream_id=eq.${id}`,
+      }, (payload) => {
+        const row = payload.new as { user_phone: string; status: string }
+        if (row.user_phone === user.email && row.status === 'PAID') setHasPaid(true)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [user, stream, hasPaid, isFreeAccess, hasCoupon, id])
+
   // Track presence only when user is confirmed watching (logged in + paid/free)
   useEffect(() => {
     if (!stream) return

@@ -9,10 +9,13 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   const body = await req.json()
 
-  if (body.status === 'PAID' || body.transactionType === 'RECEIVEPIX') {
+  const isPaid = body.status === 'PAID' || body.transactionType === 'RECEIVEPIX'
+  const txId = body.transactionId ?? body.transaction_id ?? body.pix_id ?? body.id
+
+  if (isPaid && txId) {
     await supabase.from('payments')
       .update({ status: 'PAID' })
-      .eq('transaction_id', body.transactionId)
+      .eq('transaction_id', String(txId))
   }
 
   return NextResponse.json({ ok: true })

@@ -27,33 +27,40 @@ export async function GET(req: NextRequest) {
 
   if (!transaction_id) return NextResponse.json({ status: 'PENDING' })
 
-  // Consulta BSPay diretamente com o endpoint correto
-  const token = await getBspayToken()
-  if (token) {
-    const bsRes = await fetch('https://api.bspay.co/v2/consult-transaction', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ pix_id: transaction_id }),
-    })
-    const bsData = await bsRes.json()
-    const txStatus = bsData?.requestBody?.status ?? bsData?.status
-    if (txStatus === 'PAID') {
-      await supabase.from('payments')
-        .update({ status: 'PAID' })
-        .eq('transaction_id', transaction_id)
-      return NextResponse.json({ status: 'PAID' })
-    }
-    return NextResponse.json({ status: txStatus ?? 'PENDING' })
-  }
-
-  // Fallback: verifica no banco
-  const { data: payment } = await supabase.from('payments')
+  // 1. Verifica banco PRIMEIRO — webhook pode já ter marcado como PAID
+  const { data: dbPayment } = await supabase.from('payments')
     .select('status')
     .eq('transaction_id', transaction_id)
     .maybeSingle()
 
-  return NextResponse.json({ status: payment?.status ?? 'PENDING' })
+  if (dbPayment?.status === 'PAID') return NextResponse.json({ status: 'PAID' })
+
+  // 2. Se banco diz PENDING, consulta BSPay para status ao vivo
+  const token = await getBspayToken()
+  if (token) {
+    try {
+      const bsRes = await fetch('https://api.bspay.co/v2/consult-transaction', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pix_id: transaction_id }),
+        signal: AbortSignal.timeout(8000),
+      })
+      const bsData = await bsRes.json()
+      const txStatus = bsData?.requestBody?.status ?? bsData?.status
+      if (txStatus === 'PAID') {
+        await supabase.from('payments')
+          .update({ status: 'PAID' })
+          .eq('transaction_id', transaction_id)
+        return NextResponse.json({ status: 'PAID' })
+      }
+      return NextResponse.json({ status: txStatus ?? 'PENDING' })
+    } catch {
+      // BSPay indisponível — retorna status do banco
+    }
+  }
+
+  return NextResponse.json({ status: dbPayment?.status ?? 'PENDING' })
 }
