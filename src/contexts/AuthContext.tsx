@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('registrations')
       .insert({ name, email: normalizedEmail, password })
 
-    if (error) throw new Error(error.message)
+    if (error) throw new Error('supabase:' + error.message)
 
     const refCode = localStorage.getItem('futzone_ref')
     if (refCode) {

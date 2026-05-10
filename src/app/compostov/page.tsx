@@ -168,7 +168,7 @@ export default function AdminPage() {
   const [ctaLinkSaving, setCtaLinkSaving] = useState<Record<number, boolean>>({})
 
   // Moderadores do chat
-  const [adminUsers, setAdminUsers] = useState<{ id: string; name: string; phone: string }[]>([])
+  const [adminUsers, setAdminUsers] = useState<{ id: string; name: string; email: string }[]>([])
   const [newAdminPhone, setNewAdminPhone] = useState('')
   const [addingAdmin, setAddingAdmin] = useState(false)
 
@@ -762,11 +762,11 @@ export default function AdminPage() {
   }
 
   async function addFreeAccess() {
-    const phone = newFreePhone.trim().replace(/\s/g, '')
-    if (!phone) return
+    const email = newFreePhone.trim().toLowerCase()
+    if (!email) return
     setAddingFreeUser(true)
-    const { error } = await supabase.from('free_access').insert({ user_phone: phone })
-    if (error) { alert('Erro: ' + (error.message.includes('unique') ? 'Esse número já tem acesso gratuito.' : error.message)); setAddingFreeUser(false); return }
+    const { error } = await supabase.from('free_access').insert({ user_phone: email })
+    if (error) { alert('Erro: ' + (error.message.includes('unique') ? 'Esse e-mail já tem acesso gratuito.' : error.message)); setAddingFreeUser(false); return }
     setNewFreePhone('')
     await loadFreeAccess()
     setAddingFreeUser(false)
@@ -780,24 +780,24 @@ export default function AdminPage() {
   async function loadAdminUsers() {
     const { data } = await supabase
       .from('registrations')
-      .select('id, name, phone')
+      .select('id, name, email')
       .eq('is_admin', true)
       .order('name')
     setAdminUsers(data ?? [])
   }
 
   async function addAdminUser() {
-    const phone = newAdminPhone.trim().replace(/\D/g, '')
-    if (!phone) return
+    const email = newAdminPhone.trim().toLowerCase()
+    if (!email) return
     setAddingAdmin(true)
     const { data, error } = await supabase
       .from('registrations')
       .update({ is_admin: true })
-      .eq('phone', phone)
-      .select('id, name, phone')
+      .eq('email', email)
+      .select('id, name, email')
       .single()
     if (error || !data) {
-      alert(error ? 'Erro: ' + error.message : 'Telefone não encontrado.')
+      alert(error ? 'Erro: ' + error.message : 'E-mail não encontrado.')
       setAddingAdmin(false)
       return
     }
@@ -1552,8 +1552,8 @@ export default function AdminPage() {
           </div>
           <div className="flex gap-2">
             <input
-              type="tel"
-              placeholder="Número de telefone (ex: 11999999999)"
+              type="email"
+              placeholder="E-mail do usuário"
               value={newFreePhone}
               onChange={e => setNewFreePhone(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addFreeAccess()}
@@ -1592,8 +1592,8 @@ export default function AdminPage() {
             </div>
             <div className="flex gap-2">
               <input
-                type="tel"
-                placeholder="Telefone do usuário (ex: 11999999999)"
+                type="email"
+                placeholder="E-mail do usuário"
                 value={newAdminPhone}
                 onChange={e => setNewAdminPhone(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addAdminUser()}
@@ -1617,7 +1617,7 @@ export default function AdminPage() {
                   <div key={u.id} className="flex items-center justify-between bg-[#12121A] border border-[#2A2A3A] rounded-xl px-4 py-3">
                     <div>
                       <p className="text-white text-sm font-semibold">{u.name}</p>
-                      <p className="text-gray-500 text-xs font-mono">{u.phone}</p>
+                      <p className="text-gray-500 text-xs font-mono">{u.email}</p>
                     </div>
                     <button onClick={() => removeAdminUser(u.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1" title="Revogar moderação">
                       <Trash2 className="w-4 h-4" />

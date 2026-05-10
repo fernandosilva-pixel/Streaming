@@ -62,7 +62,9 @@ export default function AuthModal() {
       await register(name.trim(), email, password)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
-      setError(msg === 'email_taken' ? t('emailAlreadyUsed') : t('wrongCredentials'))
+      if (msg === 'email_taken') setError(t('emailAlreadyUsed'))
+      else if (msg.startsWith('supabase:')) setError(msg.replace('supabase:', ''))
+      else setError(t('wrongCredentials'))
     } finally {
       setLoading(false)
     }
