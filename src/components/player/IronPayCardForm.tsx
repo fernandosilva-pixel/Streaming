@@ -20,6 +20,7 @@ function CardForm({ streamId, userEmail, userName, amount, onPaid }: Props) {
   const elements = useElements()
   const [cardName, setCardName] = useState(userName)
   const [loading, setLoading] = useState(false)
+  const [polling, setPolling] = useState(false)
   const [error, setError] = useState('')
   const [paid, setPaid] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -52,15 +53,19 @@ function CardForm({ streamId, userEmail, userName, amount, onPaid }: Props) {
       return
     }
 
+    console.log('IronPay response:', JSON.stringify(data))
+
     if (data.status === 'paid' || data.status === 'approved') {
       setPaid(true)
       setTimeout(onPaid, 1500)
       return
     }
 
-    // Pending — poll for status
-    if (data.transaction_hash) {
-      const hash = data.transaction_hash
+    const hash = data.transaction_hash ?? data.hash ?? data.id ?? null
+
+    if (hash) {
+      setLoading(false)
+      setPolling(true)
       pollRef.current = setInterval(async () => {
         const statusRes = await fetch(
           `/api/ironpay/status?transaction_hash=${hash}&stream_id=${streamId}&user_email=${encodeURIComponent(userEmail)}`
@@ -68,15 +73,17 @@ function CardForm({ streamId, userEmail, userName, amount, onPaid }: Props) {
         const statusData = await statusRes.json()
         if (statusData.status === 'paid' || statusData.status === 'approved') {
           clearInterval(pollRef.current!)
+          setPolling(false)
           setPaid(true)
           setTimeout(onPaid, 1500)
         } else if (statusData.status === 'canceled' || statusData.status === 'failed' || statusData.status === 'refused') {
           clearInterval(pollRef.current!)
+          setPolling(false)
           setError('Pagamento recusado. Verifique os dados do cartão e tente novamente.')
-          setLoading(false)
         }
       }, 3000)
     } else {
+      setError('Resposta inesperada do gateway. Tente novamente.')
       setLoading(false)
     }
   }
@@ -132,13 +139,22 @@ function CardForm({ streamId, userEmail, userName, amount, onPaid }: Props) {
 
       {error && <p className="text-red-400 text-xs text-center">{error}</p>}
 
-      <button
-        onClick={handleSubmit}
-        disabled={loading || !stripe || !cardName.trim()}
-        className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
-      >
-        {loading ? 'Processando...' : 'Pagar agora'}
-      </button>
+      {polling && (
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 text-center space-y-1">
+          <p className="text-blue-400 text-sm font-semibold">Aguardando confirmação...</p>
+          <p className="text-gray-500 text-xs">O pagamento está sendo processado. Aguarde alguns segundos.</p>
+        </div>
+      )}
+
+      {!polling && (
+        <button
+          onClick={handleSubmit}
+          disabled={loading || !stripe || !cardName.trim()}
+          className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
+        >
+          {loading ? 'Processando...' : 'Pagar agora'}
+        </button>
+      )}
 
       <p className="text-gray-600 text-xs text-center">🔒 Pagamento seguro · Cartão internacional aceito</p>
     </div>
