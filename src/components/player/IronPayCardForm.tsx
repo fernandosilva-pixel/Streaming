@@ -1,11 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { loadStripe } from '@stripe/stripe-js'
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { Check } from 'lucide-react'
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_IRONPAY_STRIPE_PK!)
 
 interface Props {
   streamId: string
@@ -15,10 +11,21 @@ interface Props {
   onPaid: () => void
 }
 
-function CardForm({ streamId, userEmail, userName, amount, onPaid }: Props) {
-  const stripe = useStripe()
-  const elements = useElements()
-  const [cardName, setCardName] = useState(userName)
+function formatCardNumber(value: string) {
+  return value.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim()
+}
+
+function formatExpiry(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 4)
+  if (digits.length >= 3) return digits.slice(0, 2) + '/' + digits.slice(2)
+  return digits
+}
+
+export default function IronPayCardForm({ streamId, userEmail, userName, amount, onPaid }: Props) {
+  const [cardNumber, setCardNumber] = useState('')
+  const [holderName, setHolderName] = useState(userName)
+  const [expiry, setExpiry] = useState('')
+  const [cvv, setCvv] = useState('')
   const [loading, setLoading] = useState(false)
   const [polling, setPolling] = useState(false)
   const [error, setError] = useState('')
@@ -26,25 +33,36 @@ function CardForm({ streamId, userEmail, userName, amount, onPaid }: Props) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   async function handleSubmit() {
-    if (!stripe || !elements) return
-    setLoading(true)
     setError('')
+    const rawNumber = cardNumber.replace(/\s/g, '')
+    const expiryParts = expiry.split('/')
+    const expMonth = parseInt(expiryParts[0] ?? '', 10)
+    const expYear = parseInt(expiryParts[1] ?? '', 10)
 
-    const cardElement = elements.getElement(CardElement)
-    if (!cardElement) { setLoading(false); return }
+    if (rawNumber.length < 13) { setError('Número do cartão inválido'); return }
+    if (!holderName.trim()) { setError('Informe o nome do titular'); return }
+    if (!expMonth || !expYear || expMonth < 1 || expMonth > 12) { setError('Validade inválida'); return }
+    if (cvv.length < 3) { setError('CVV inválido'); return }
 
-    const { token, error: stripeError } = await stripe.createToken(cardElement, { name: cardName })
-    if (stripeError || !token) {
-      setError(stripeError?.message ?? 'Erro ao processar cartão')
-      setLoading(false)
-      return
-    }
+    setLoading(true)
 
     const res = await fetch('/api/ironpay/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stream_id: streamId, user_email: userEmail, user_name: userName, card_token: token.id }),
+      body: JSON.stringify({
+        stream_id: streamId,
+        user_email: userEmail,
+        user_name: userName,
+        card: {
+          number: rawNumber,
+          holder_name: holderName.trim(),
+          exp_month: expMonth,
+          exp_year: expYear < 100 ? 2000 + expYear : expYear,
+          cvv,
+        },
+      }),
     })
+
     const data = await res.json()
 
     if (!res.ok) {
@@ -100,6 +118,8 @@ function CardForm({ streamId, userEmail, userName, amount, onPaid }: Props) {
     )
   }
 
+  const inputClass = "w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500 transition-colors placeholder:text-gray-600"
+
   return (
     <div className="space-y-4">
       <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-2.5 flex items-center justify-between">
@@ -108,31 +128,49 @@ function CardForm({ streamId, userEmail, userName, amount, onPaid }: Props) {
       </div>
 
       <div>
-        <p className="text-gray-400 text-xs mb-1.5">Nome no cartão</p>
+        <p className="text-gray-400 text-xs mb-1.5">Número do cartão</p>
         <input
           type="text"
-          value={cardName}
-          onChange={e => setCardName(e.target.value)}
-          placeholder="Nome como está no cartão"
-          className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500 transition-colors"
+          inputMode="numeric"
+          value={cardNumber}
+          onChange={e => setCardNumber(formatCardNumber(e.target.value))}
+          placeholder="0000 0000 0000 0000"
+          className={inputClass}
         />
       </div>
 
       <div>
-        <p className="text-gray-400 text-xs mb-1.5">Dados do cartão</p>
-        <div className="bg-[#0B0B0F] border border-[#2A2A3A] rounded-xl px-3 py-3 focus-within:border-orange-500 transition-colors">
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: '14px',
-                  color: '#ffffff',
-                  fontFamily: 'inherit',
-                  '::placeholder': { color: '#6b7280' },
-                },
-                invalid: { color: '#ef4444' },
-              },
-            }}
+        <p className="text-gray-400 text-xs mb-1.5">Nome no cartão</p>
+        <input
+          type="text"
+          value={holderName}
+          onChange={e => setHolderName(e.target.value)}
+          placeholder="Nome como está no cartão"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <p className="text-gray-400 text-xs mb-1.5">Validade</p>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={expiry}
+            onChange={e => setExpiry(formatExpiry(e.target.value))}
+            placeholder="MM/AA"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <p className="text-gray-400 text-xs mb-1.5">CVV</p>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={cvv}
+            onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            placeholder="123"
+            className={inputClass}
           />
         </div>
       </div>
@@ -149,7 +187,7 @@ function CardForm({ streamId, userEmail, userName, amount, onPaid }: Props) {
       {!polling && (
         <button
           onClick={handleSubmit}
-          disabled={loading || !stripe || !cardName.trim()}
+          disabled={loading || !holderName.trim()}
           className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
         >
           {loading ? 'Processando...' : 'Pagar agora'}
@@ -158,13 +196,5 @@ function CardForm({ streamId, userEmail, userName, amount, onPaid }: Props) {
 
       <p className="text-gray-600 text-xs text-center">🔒 Pagamento seguro · Cartão internacional aceito</p>
     </div>
-  )
-}
-
-export default function IronPayCardForm(props: Props) {
-  return (
-    <Elements stripe={stripePromise}>
-      <CardForm {...props} />
-    </Elements>
   )
 }
