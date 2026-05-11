@@ -177,7 +177,21 @@ export default function AdminPage() {
   const [addingAdmin, setAddingAdmin] = useState(false)
 
   // Aba ativa
-  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard'>('visual')
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins'>('visual')
+
+  // Permissões do admin logado (null = superadmin, array = abas permitidas)
+  const [allowedTabs, setAllowedTabs] = useState<string[] | null>(null)
+
+  // Gestão de sub-admins
+  type SubAdmin = { email: string; name: string; allowed_tabs: string[]; created_at: string }
+  const [subAdmins, setSubAdmins] = useState<SubAdmin[]>([])
+  const [subAdminsLoading, setSubAdminsLoading] = useState(false)
+  const [newSubName, setNewSubName] = useState('')
+  const [newSubEmail, setNewSubEmail] = useState('')
+  const [newSubPassword, setNewSubPassword] = useState('')
+  const [newSubTabs, setNewSubTabs] = useState<string[]>([])
+  const [creatingSubAdmin, setCreatingSubAdmin] = useState(false)
+  const [subAdminError, setSubAdminError] = useState('')
 
   // Dashboard
   type DashRegistration = { id?: string; name: string; phone: string; created_at?: string }
@@ -222,15 +236,21 @@ export default function AdminPage() {
   const [couponUsedCounts, setCouponUsedCounts] = useState<Record<string, number>>({})
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) router.replace('/compostov/login')
-      else setAuthChecked(true)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) { router.replace('/compostov/login'); return }
+      const res = await fetch('/api/admin/permissions', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
+      })
+      if (res.ok) {
+        const { allowed_tabs } = await res.json()
+        setAllowedTabs(allowed_tabs) // null = superadmin
+      }
+      setAuthChecked(true)
     })
   }, [])
 
   useEffect(() => {
     if (authChecked) {
-      loadAllBanners()
       loadAllBanners()
       loadCarouselBanners()
       loadLogo()
@@ -240,6 +260,7 @@ export default function AdminPage() {
       loadActivePopup()
       loadCtaCards()
       loadAffiliates()
+      if (allowedTabs === null) loadSubAdmins()
     }
   }, [authChecked])
 
@@ -922,6 +943,38 @@ export default function AdminPage() {
     router.replace('/compostov/login')
   }
 
+  async function loadSubAdmins() {
+    setSubAdminsLoading(true)
+    const res = await fetch('/api/admin/sub')
+    if (res.ok) { const { admins } = await res.json(); setSubAdmins(admins) }
+    setSubAdminsLoading(false)
+  }
+
+  async function createSubAdmin() {
+    setSubAdminError('')
+    if (!newSubName.trim() || !newSubEmail.trim() || !newSubPassword.trim() || !newSubTabs.length) {
+      setSubAdminError('Preencha todos os campos e selecione ao menos uma aba.')
+      return
+    }
+    setCreatingSubAdmin(true)
+    const res = await fetch('/api/admin/sub', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newSubName.trim(), email: newSubEmail.trim().toLowerCase(), password: newSubPassword, allowed_tabs: newSubTabs }),
+    })
+    const data = await res.json()
+    if (!res.ok) { setSubAdminError(data.error ?? 'Erro ao criar acesso'); setCreatingSubAdmin(false); return }
+    setNewSubName(''); setNewSubEmail(''); setNewSubPassword(''); setNewSubTabs([])
+    await loadSubAdmins()
+    setCreatingSubAdmin(false)
+  }
+
+  async function deleteSubAdmin(email: string) {
+    if (!confirm(`Remover acesso de ${email}?`)) return
+    await fetch('/api/admin/sub', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
+    setSubAdmins(prev => prev.filter(a => a.email !== email))
+  }
+
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -981,7 +1034,7 @@ export default function AdminPage() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-1">
+      <div className="flex gap-1 bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-1 flex-wrap">
         {([
           { id: 'visual', label: 'Visual', icon: <ImageIcon className="w-4 h-4" /> },
           { id: 'transmissao', label: 'Transmissão', icon: <Radio className="w-4 h-4" /> },
@@ -989,18 +1042,21 @@ export default function AdminPage() {
           { id: 'notificar', label: 'Notificar', icon: <Megaphone className="w-4 h-4" /> },
           { id: 'afiliados', label: 'Afiliados', icon: <UserCheck className="w-4 h-4" /> },
           { id: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
-        ] as const).map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-2 rounded-xl text-sm font-bold transition-all ${
-              activeTab === tab.id ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            {tab.icon}
-            <span className="hidden sm:inline">{tab.label}</span>
-          </button>
-        ))}
+          ...(allowedTabs === null ? [{ id: 'admins', label: 'Admins', icon: <UserCheck className="w-4 h-4" /> }] : []),
+        ] as { id: string; label: string; icon: React.ReactNode }[])
+          .filter(tab => allowedTabs === null || allowedTabs.includes(tab.id))
+          .map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-2 rounded-xl text-sm font-bold transition-all ${
+                activeTab === tab.id ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {tab.icon}
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
       </div>
 
       {/* ── ABA: VISUAL ── */}
@@ -2140,6 +2196,145 @@ export default function AdminPage() {
                 </div>
               )
             })()}
+        </div>
+      )}
+
+      {/* ── ABA: ADMINS ── */}
+      {activeTab === 'admins' && allowedTabs === null && (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-lg font-bold text-white">Acessos Admin</h2>
+            <p className="text-gray-500 text-sm mt-0.5">Crie contas com acesso restrito ao painel. Cada conta só vê as abas que você liberar.</p>
+          </div>
+
+          {/* Formulário de criação */}
+          <div className="bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-5 space-y-4">
+            <h3 className="text-white font-bold text-sm">Novo acesso</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Nome</p>
+                <input
+                  type="text"
+                  value={newSubName}
+                  onChange={e => setNewSubName(e.target.value)}
+                  placeholder="Ex: João Moderador"
+                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500"
+                />
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs mb-1">E-mail</p>
+                <input
+                  type="email"
+                  value={newSubEmail}
+                  onChange={e => setNewSubEmail(e.target.value)}
+                  placeholder="admin@email.com"
+                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <p className="text-gray-500 text-xs mb-1">Senha</p>
+                <input
+                  type="text"
+                  value={newSubPassword}
+                  onChange={e => setNewSubPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <p className="text-gray-500 text-xs mb-2">Abas liberadas</p>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { id: 'visual', label: 'Visual' },
+                  { id: 'transmissao', label: 'Transmissão' },
+                  { id: 'acesso', label: 'Acesso Gratuito' },
+                  { id: 'notificar', label: 'Notificar' },
+                  { id: 'afiliados', label: 'Afiliados' },
+                  { id: 'dashboard', label: 'Dashboard' },
+                ]).map(tab => {
+                  const selected = newSubTabs.includes(tab.id)
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setNewSubTabs(prev => selected ? prev.filter(t => t !== tab.id) : [...prev, tab.id])}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                        selected
+                          ? 'bg-orange-500/20 border-orange-500 text-orange-400'
+                          : 'bg-[#0B0B0F] border-[#2A2A3A] text-gray-500 hover:border-orange-500/40 hover:text-gray-300'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {subAdminError && <p className="text-red-500 text-xs">{subAdminError}</p>}
+
+            <button
+              onClick={createSubAdmin}
+              disabled={creatingSubAdmin}
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition-all text-sm"
+            >
+              {creatingSubAdmin ? 'Criando...' : 'Criar acesso'}
+            </button>
+          </div>
+
+          {/* Lista de sub-admins */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-bold text-sm">Acessos criados</h3>
+              <button
+                onClick={loadSubAdmins}
+                disabled={subAdminsLoading}
+                className="text-gray-500 hover:text-white text-xs transition-colors flex items-center gap-1"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Atualizar
+              </button>
+            </div>
+
+            {subAdminsLoading ? (
+              <p className="text-gray-500 text-sm">Carregando...</p>
+            ) : subAdmins.length === 0 ? (
+              <p className="text-gray-600 text-sm">Nenhum acesso criado ainda.</p>
+            ) : (
+              <div className="space-y-2">
+                {subAdmins.map(a => (
+                  <div key={a.email} className="flex items-start justify-between gap-4 bg-[#12121A] border border-[#2A2A3A] rounded-xl px-4 py-3">
+                    <div className="space-y-1 min-w-0">
+                      <p className="text-white font-semibold text-sm">{a.name}</p>
+                      <p className="text-gray-500 text-xs">{a.email}</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {a.allowed_tabs.map(tab => (
+                          <span key={tab} className="text-[10px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-full">
+                            {tab === 'visual' ? 'Visual'
+                              : tab === 'transmissao' ? 'Transmissão'
+                              : tab === 'acesso' ? 'Acesso Gratuito'
+                              : tab === 'notificar' ? 'Notificar'
+                              : tab === 'afiliados' ? 'Afiliados'
+                              : tab === 'dashboard' ? 'Dashboard'
+                              : tab}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => deleteSubAdmin(a.email)}
+                      className="text-gray-600 hover:text-red-400 transition-colors shrink-0 mt-0.5"
+                      title="Remover acesso"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
