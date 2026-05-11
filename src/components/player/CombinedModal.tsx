@@ -268,7 +268,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
             <button
               onClick={generateQr}
               disabled={generating}
-              className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-black rounded-xl py-3 transition-all"
+              className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-black rounded-xl py-3 transition-all"
             >
               {generating ? 'Gerando...' : 'Gerar QR Code PIX'}
             </button>
@@ -277,9 +277,12 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
                 {!couponOpen ? (
                   <button
                     onClick={() => { setCouponOpen(true); setCouponError(''); setCouponCode('') }}
-                    className="w-full text-purple-400 font-bold border border-purple-500 rounded-full py-3 text-sm transition-all hover:bg-purple-500/10"
+                    className="w-full relative overflow-hidden font-black py-3 text-sm transition-all rounded-xl border-2 border-yellow-400 text-yellow-900 hover:brightness-110"
+                    style={{ background: 'linear-gradient(135deg, #f5c518 0%, #fde68a 40%, #f59e0b 60%, #f5c518 100%)' }}
                   >
-                    {t('haveCode')}
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      🎟️ Código Exclusivo
+                    </span>
                   </button>
                 ) : (
                   <div className="space-y-2">
