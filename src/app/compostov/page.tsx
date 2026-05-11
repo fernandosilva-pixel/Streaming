@@ -120,6 +120,12 @@ export default function AdminPage() {
   const [settingsId, setSettingsId] = useState<string | null>(null)
   const [logoSaved, setLogoSaved] = useState(false)
 
+  // Favicon
+  const [faviconUrl, setFaviconUrl] = useState<string | null>(null)
+  const [faviconUploading, setFaviconUploading] = useState(false)
+  const [isFaviconDragging, setIsFaviconDragging] = useState(false)
+  const [faviconSaved, setFaviconSaved] = useState(false)
+
   // Acesso gratuito
   const [freeUsers, setFreeUsers] = useState<{ id: string; user_phone: string }[]>([])
   const [newFreePhone, setNewFreePhone] = useState('')
@@ -645,10 +651,11 @@ export default function AdminPage() {
   }
 
   async function loadLogo() {
-    const { data } = await supabase.from('site_settings').select('*').single()
+    const { data } = await supabase.from('site_settings').select('*').maybeSingle()
     if (data) {
       setSettingsId(data.id)
       if (data.logo_url) setLogoUrl(data.logo_url)
+      if (data.favicon_url) setFaviconUrl(data.favicon_url)
     }
   }
 
@@ -779,6 +786,31 @@ export default function AdminPage() {
       : await supabase.from('site_settings').insert({ logo_url: publicUrl })
     if (dbError) { alert('Erro ao salvar: ' + dbError.message); setLogoUploading(false); return }
     setLogoUrl(publicUrl); setLogoUploading(false); setLogoSaved(true)
+  }
+
+  async function handleFaviconFile(file: File) {
+    const allowed = ['image/x-icon', 'image/vnd.microsoft.icon', 'image/png', 'image/svg+xml', 'image/webp']
+    if (!allowed.includes(file.type) && !file.name.endsWith('.ico')) {
+      alert('Formato inválido. Use .ico, .png, .svg ou .webp')
+      return
+    }
+    setFaviconUploading(true); setFaviconSaved(false)
+    const ext = file.name.split('.').pop() ?? 'ico'
+    const fileName = `site-favicon.${ext}`
+    const contentType = file.type || 'image/x-icon'
+    const { error: storageError } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
+    if (storageError) { alert('Erro no upload: ' + storageError.message); setFaviconUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
+    const payload = { favicon_url: publicUrl, updated_at: new Date().toISOString() }
+    const { error: dbError } = settingsId
+      ? await supabase.from('site_settings').update(payload).eq('id', settingsId)
+      : await supabase.from('site_settings').insert({ ...payload })
+    if (dbError) { alert('Erro ao salvar: ' + dbError.message); setFaviconUploading(false); return }
+    if (!settingsId) {
+      const { data } = await supabase.from('site_settings').select('id').maybeSingle()
+      if (data) setSettingsId(data.id)
+    }
+    setFaviconUrl(publicUrl); setFaviconUploading(false); setFaviconSaved(true)
   }
 
   async function loadFreeAccess() {
@@ -1087,6 +1119,35 @@ export default function AdminPage() {
               </div>
             </div>
             {logoSaved && <p className="text-green-500 text-xs">Logo salva! Recarregue a página para ver no navbar.</p>}
+          </div>
+
+          {/* Favicon */}
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-bold text-white">Favicon</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Ícone exibido na aba do navegador · .ico, .png ou .svg · 32×32px recomendado</p>
+            </div>
+            <div className="flex items-center gap-5">
+              {faviconUrl && (
+                <div className="flex-shrink-0 h-14 w-14 bg-[#12121A] border border-[#2A2A3A] rounded-xl flex items-center justify-center overflow-hidden">
+                  <img src={faviconUrl} alt="Favicon atual" className="w-8 h-8 object-contain" />
+                </div>
+              )}
+              <div
+                onDragOver={e => { e.preventDefault(); setIsFaviconDragging(true) }}
+                onDragLeave={() => setIsFaviconDragging(false)}
+                onDrop={e => { e.preventDefault(); setIsFaviconDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFaviconFile(f) }}
+                onClick={() => document.getElementById('faviconInput')?.click()}
+                className={`flex-1 border-2 border-dashed rounded-2xl cursor-pointer transition-all flex items-center justify-center h-14 ${isFaviconDragging ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] hover:border-orange-500/40 bg-[#12121A]'}`}
+              >
+                <input id="faviconInput" type="file" accept=".ico,.png,.svg,.webp,image/*" className="hidden" onChange={e => e.target.files?.[0] && handleFaviconFile(e.target.files[0])} />
+                {faviconUploading
+                  ? <p className="text-white text-sm font-semibold">Enviando...</p>
+                  : <p className="text-gray-500 text-sm">{faviconUrl ? 'Arraste para substituir o favicon' : 'Arraste o favicon aqui ou clique'}</p>
+                }
+              </div>
+            </div>
+            {faviconSaved && <p className="text-green-500 text-xs">Favicon salvo! Recarregue a página para ver no navegador.</p>}
           </div>
 
           {/* Banners */}

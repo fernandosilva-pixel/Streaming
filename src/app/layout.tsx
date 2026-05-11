@@ -8,12 +8,22 @@ import AuthModal from '@/components/auth/AuthModal'
 import PresenceTracker from '@/components/analytics/PresenceTracker';
 import ReferralTracker from '@/components/analytics/ReferralTracker';
 import PopupBanner from '@/components/common/PopupBanner';
+import { createClient } from '@supabase/supabase-js';
 
-export const metadata: Metadata = {
-  title: 'FutZone — Futebol Ao Vivo',
-  description: 'Assista aos melhores jogos de futebol ao vivo. Champions League, Brasileirão, Premier League e mais.',
-  keywords: ['futebol ao vivo', 'jogos online', 'transmissão futebol', 'assistir futebol'],
-};
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { data } = await supabaseAdmin.from('site_settings').select('favicon_url').maybeSingle()
+  return {
+    title: 'FutZone — Futebol Ao Vivo',
+    description: 'Assista aos melhores jogos de futebol ao vivo. Champions League, Brasileirão, Premier League e mais.',
+    keywords: ['futebol ao vivo', 'jogos online', 'transmissão futebol', 'assistir futebol'],
+    icons: data?.favicon_url ? { icon: data.favicon_url } : undefined,
+  }
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
