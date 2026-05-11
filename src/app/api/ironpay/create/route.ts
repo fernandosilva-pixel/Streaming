@@ -13,8 +13,8 @@ const OFFER_HASH = 'ondjhpeeag'
 const PRODUCT_HASH = '6fizrgie7y'
 
 export async function POST(req: NextRequest) {
-  const { stream_id, user_email, user_name, card } = await req.json()
-  if (!stream_id || !user_email || !user_name || !card) {
+  const { stream_id, user_email, user_name, card_token } = await req.json()
+  if (!stream_id || !user_email || !user_name || !card_token) {
     return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
   }
 
@@ -32,13 +32,7 @@ export async function POST(req: NextRequest) {
     amount: amountInCents,
     offer_hash: OFFER_HASH,
     payment_method: 'credit_card',
-    card: {
-      number: card.number,
-      holder_name: card.holder_name,
-      exp_month: Number(card.exp_month),
-      exp_year: card.exp_year,
-      cvv: String(card.cvv),
-    },
+    card_token,
     customer: {
       name: user_name,
       email: user_email,
