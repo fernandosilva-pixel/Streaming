@@ -5,11 +5,12 @@ import QRCode from 'react-qr-code'
 import { Copy, Check, X, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/contexts/LanguageContext'
+import IronPayCardForm from './IronPayCardForm'
 
 interface Props {
   streamId: string
   amount: number
-  paymentMethod: 'bspay' | 'fixed_qr'
+  paymentMethod: 'bspay' | 'fixed_qr' | 'ironpay'
   fixedQrUrl?: string | null
   couponEnabled?: boolean
   onSuccess: (user: { name: string; email: string }) => void
@@ -17,7 +18,7 @@ interface Props {
   onClose: () => void
 }
 
-type Step = 'credentials' | 'confirm' | 'qr'
+type Step = 'credentials' | 'confirm' | 'qr' | 'card'
 type Mode = 'register' | 'login'
 
 export default function CombinedModal({ streamId, amount, paymentMethod, fixedQrUrl, couponEnabled, onSuccess, onCouponSuccess, onClose }: Props) {
@@ -142,6 +143,12 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
         return
       }
 
+      if (paymentMethod === 'ironpay') {
+        setStep('card')
+        setFormLoading(false)
+        return
+      }
+
       setStep('confirm')
     } catch {
       setFormError(t('wrongCredentials'))
@@ -252,6 +259,22 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
             </div>
             <p className="text-white font-bold text-lg">{t('paymentConfirmed')}</p>
             <p className="text-gray-500 text-sm">{t('releasingAccess')}</p>
+          </div>
+        ) : step === 'card' ? (
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              {logoUrl && <img src={logoUrl} alt="FutZone" className="h-10 object-contain mx-auto" />}
+              <p className="text-gray-400 text-sm">Pagamento com cartão internacional</p>
+            </div>
+            {currentUser && (
+              <IronPayCardForm
+                streamId={streamId}
+                userEmail={currentUser.email}
+                userName={currentUser.name}
+                amount={amount}
+                onPaid={() => currentUser && onSuccess(currentUser)}
+              />
+            )}
           </div>
         ) : step === 'confirm' ? (
           <div className="space-y-5">

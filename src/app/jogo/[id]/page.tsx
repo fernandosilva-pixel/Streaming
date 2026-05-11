@@ -29,7 +29,7 @@ type Stream = {
   crop_enabled: boolean
   charge_enabled: boolean
   charge_amount: number
-  payment_method: 'bspay' | 'fixed_qr' | null
+  payment_method: 'bspay' | 'fixed_qr' | 'ironpay' | null
   fixed_qr_url: string | null
   chat_enabled: boolean
   coupon_enabled: boolean

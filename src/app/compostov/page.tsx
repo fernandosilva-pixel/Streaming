@@ -41,7 +41,7 @@ type Stream = {
   crop_enabled: boolean
   charge_enabled: boolean
   charge_amount: number
-  payment_method: 'bspay' | 'fixed_qr' | null
+  payment_method: 'bspay' | 'fixed_qr' | 'ironpay' | null
   fixed_qr_url: string | null
   chat_enabled: boolean
   coupon_enabled: boolean
@@ -152,6 +152,7 @@ export default function AdminPage() {
   const [chargeAmountModal, setChargeAmountModal] = useState<{ id: string } | null>(null)
   const [chargeAmountInput, setChargeAmountInput] = useState('')
   const [chargeAmountSaving, setChargeAmountSaving] = useState(false)
+  const [chargeGateway, setChargeGateway] = useState<'bspay' | 'ironpay'>('bspay')
   const [savingChannel, setSavingChannel] = useState<string | null>(null)
   const [detectingBroad, setDetectingBroad] = useState<string | null>(null)
   const [editingStreamId, setEditingStreamId] = useState<string | null>(null)
@@ -909,13 +910,13 @@ export default function AdminPage() {
     setChargeAmountSaving(true)
     const { error } = await supabase.from('streams').update({
       charge_enabled: true,
-      payment_method: 'bspay' as const,
+      payment_method: chargeGateway,
       fixed_qr_url: null,
       charge_amount: amount,
     }).eq('id', chargeAmountModal.id)
     if (error) { alert('Erro: ' + error.message); setChargeAmountSaving(false); return }
     setStreams(prev => prev.map(s => s.id === chargeAmountModal.id
-      ? { ...s, charge_enabled: true, payment_method: 'bspay' as const, fixed_qr_url: null, charge_amount: amount }
+      ? { ...s, charge_enabled: true, payment_method: chargeGateway, fixed_qr_url: null, charge_amount: amount }
       : s
     ))
     setChargeAmountModal(null)
@@ -1999,6 +2000,25 @@ export default function AdminPage() {
             <div>
               <h2 className="text-xl font-black text-white">Definir valor da cobrança</h2>
               <p className="text-gray-500 text-sm mt-1">Quanto cada espectador vai pagar para acessar a transmissão.</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs mb-2">Gateway de pagamento</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setChargeGateway('bspay')}
+                  className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-sm font-bold ${chargeGateway === 'bspay' ? 'border-green-500 bg-green-500/10 text-green-400' : 'border-[#2A2A3A] text-gray-500 hover:border-gray-500'}`}
+                >
+                  <span>🇧🇷 PIX</span>
+                  <span className="text-xs font-normal opacity-70">Asap Bank</span>
+                </button>
+                <button
+                  onClick={() => setChargeGateway('ironpay')}
+                  className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-sm font-bold ${chargeGateway === 'ironpay' ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-[#2A2A3A] text-gray-500 hover:border-gray-500'}`}
+                >
+                  <span>💳 Cartão</span>
+                  <span className="text-xs font-normal opacity-70">IronPay</span>
+                </button>
+              </div>
             </div>
             <div>
               <p className="text-gray-500 text-xs mb-1">Valor (R$)</p>
