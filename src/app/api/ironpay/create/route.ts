@@ -45,6 +45,14 @@ export async function POST(req: NextRequest) {
       phone_number: '11999999999',
       document: '09115751031',
     },
+    cart: [{
+      product_hash: '6fizrgie7y',
+      title: stream.title || 'Acesso à transmissão',
+      price: amountInCents,
+      quantity: 1,
+      operation_type: 1,
+      tangible: false,
+    }],
     installments: 1,
     postback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/ironpay/webhook`,
   }
