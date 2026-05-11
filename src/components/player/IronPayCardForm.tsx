@@ -56,7 +56,7 @@ export default function IronPayCardForm({ streamId, userEmail, userName, amount,
         card: {
           number: rawNumber,
           holder_name: holderName.trim(),
-          exp_month: expMonth,
+          exp_month: String(expMonth).padStart(2, '0'),
           exp_year: expYear < 100 ? 2000 + expYear : expYear,
           cvv,
         },

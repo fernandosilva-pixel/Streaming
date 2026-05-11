@@ -35,9 +35,9 @@ export async function POST(req: NextRequest) {
     card: {
       number: card.number,
       holder_name: card.holder_name,
-      exp_month: card.exp_month,
+      exp_month: String(card.exp_month).padStart(2, '0'),
       exp_year: card.exp_year,
-      cvv: card.cvv,
+      cvv: String(card.cvv),
     },
     customer: {
       name: user_name,
@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
     transaction_origin: 'api',
     postback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/ironpay/webhook`,
   }
+
+  console.log('IronPay request body:', JSON.stringify(body))
 
   const token = process.env.IRONPAY_API_TOKEN
   const res = await fetch(
