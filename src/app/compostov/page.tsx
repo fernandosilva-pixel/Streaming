@@ -143,6 +143,9 @@ export default function AdminPage() {
   const [editHlsUrls, setEditHlsUrls] = useState<Record<string, string>>({})
   const [editYoutubeUrls, setEditYoutubeUrls] = useState<Record<string, string>>({})
   const [editAmounts, setEditAmounts] = useState<Record<string, string>>({})
+  const [chargeAmountModal, setChargeAmountModal] = useState<{ id: string } | null>(null)
+  const [chargeAmountInput, setChargeAmountInput] = useState('')
+  const [chargeAmountSaving, setChargeAmountSaving] = useState(false)
   const [savingChannel, setSavingChannel] = useState<string | null>(null)
   const [detectingBroad, setDetectingBroad] = useState<string | null>(null)
   const [editingStreamId, setEditingStreamId] = useState<string | null>(null)
@@ -846,36 +849,25 @@ export default function AdminPage() {
     setClosingPopup(false)
   }
 
-  async function handleChargeModalQrFile(file: File) {
-    if (!isImageFile(file)) return
-    setChargeModalUploading(true)
-    const ext = file.name.split('.').pop()
-    const fileName = `qr-fixo-${Date.now()}.${ext}`
-    const contentType = getContentType(file)
-    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType })
-    if (error) { alert('Erro no upload: ' + error.message); setChargeModalUploading(false); return }
-    const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
-    setChargeModalQrUrl(publicUrl)
-    setChargeModalUploading(false)
-  }
-
-  async function confirmChargeModal() {
-    if (!chargeModal) return
-    if (chargeModalMethod === 'fixed_qr' && !chargeModalQrUrl) { alert('Faça upload do QR Code primeiro'); return }
-    setChargeModalSaving(true)
+  async function confirmChargeAmountModal() {
+    if (!chargeAmountModal) return
+    const amount = parseFloat(chargeAmountInput.replace(',', '.'))
+    if (isNaN(amount) || amount <= 0) { alert('Digite um valor válido'); return }
+    setChargeAmountSaving(true)
     const { error } = await supabase.from('streams').update({
       charge_enabled: true,
-      payment_method: chargeModalMethod,
-      fixed_qr_url: chargeModalMethod === 'fixed_qr' ? chargeModalQrUrl : null,
-    }).eq('id', chargeModal.id)
-    if (error) { alert('Erro: ' + error.message); setChargeModalSaving(false); return }
-    setStreams(prev => prev.map(s => s.id === chargeModal.id
-      ? { ...s, charge_enabled: true, payment_method: chargeModalMethod, fixed_qr_url: chargeModalMethod === 'fixed_qr' ? chargeModalQrUrl : null }
+      payment_method: 'bspay' as const,
+      fixed_qr_url: null,
+      charge_amount: amount,
+    }).eq('id', chargeAmountModal.id)
+    if (error) { alert('Erro: ' + error.message); setChargeAmountSaving(false); return }
+    setStreams(prev => prev.map(s => s.id === chargeAmountModal.id
+      ? { ...s, charge_enabled: true, payment_method: 'bspay' as const, fixed_qr_url: null, charge_amount: amount }
       : s
     ))
-    setChargeModal(null)
-    setChargeModalQrUrl(null)
-    setChargeModalSaving(false)
+    setChargeAmountModal(null)
+    setChargeAmountInput('')
+    setChargeAmountSaving(false)
   }
 
   async function toggleCoupon(id: string, value: boolean) {
@@ -1407,7 +1399,12 @@ export default function AdminPage() {
                           </button>
                           <button
                             onClick={() => {
-                              toggleCharge(s.id, !s.charge_enabled)
+                              if (s.charge_enabled) {
+                                toggleCharge(s.id, false)
+                              } else {
+                                setChargeAmountInput(s.charge_amount ? String(s.charge_amount) : '')
+                                setChargeAmountModal({ id: s.id })
+                              }
                             }}
                             className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.charge_enabled ? 'bg-green-600/20 text-green-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-green-600/20 hover:text-green-400'}`}
                             title={s.charge_enabled ? 'Cobrança ativa — clique para desativar' : 'Ativar cobrança'}>
@@ -1871,6 +1868,45 @@ export default function AdminPage() {
       )}
 
       {/* Modal — código de acesso */}
+      {chargeAmountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setChargeAmountModal(null)} />
+          <div className="relative w-full max-w-sm bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-6 space-y-5 shadow-2xl">
+            <button onClick={() => setChargeAmountModal(null)} className="absolute top-4 right-4 text-gray-600 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-black text-white">Definir valor da cobrança</h2>
+              <p className="text-gray-500 text-sm mt-1">Quanto cada espectador vai pagar para acessar a transmissão.</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Valor (R$)</p>
+              <div className="flex items-center gap-2 bg-[#0B0B0F] border border-[#2A2A3A] rounded-xl px-3 focus-within:border-green-500 transition-colors">
+                <span className="text-gray-500 text-sm">R$</span>
+                <input
+                  autoFocus
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={chargeAmountInput}
+                  onChange={e => setChargeAmountInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && confirmChargeAmountModal()}
+                  placeholder="0,00"
+                  className="flex-1 bg-transparent text-white py-2.5 text-sm focus:outline-none"
+                />
+              </div>
+            </div>
+            <button
+              onClick={confirmChargeAmountModal}
+              disabled={chargeAmountSaving || !chargeAmountInput || parseFloat(chargeAmountInput.replace(',', '.')) <= 0}
+              className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
+            >
+              {chargeAmountSaving ? 'Salvando...' : 'Ativar cobrança'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {couponModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setCouponModal(null)} />
