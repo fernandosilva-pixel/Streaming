@@ -22,7 +22,7 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
   const { t } = useLanguage()
   const [qrcode, setQrcode] = useState<string | null>(null)
   const [transactionId, setTransactionId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(paymentMethod === 'bspay')
+  const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
   const [paid, setPaid] = useState(false)
@@ -35,28 +35,26 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
   const [couponError, setCouponError] = useState('')
   const [couponLoading, setCouponLoading] = useState(false)
 
-  useEffect(() => {
-    if (paymentMethod !== 'bspay') return
-    async function createPayment() {
-      try {
-        const referralCode = localStorage.getItem('futzone_ref') ?? undefined
-        const res = await fetch('/api/pix/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stream_id: streamId, user_phone: userEmail, user_name: userName, amount: Number(amount), referral_code: referralCode }),
-        })
-        const data = await res.json()
-        if (!res.ok) { setError(`Erro: ${data.detail ?? data.error ?? JSON.stringify(data)}`); return }
-        setQrcode(data.qrcode)
-        setTransactionId(data.transaction_id)
-      } catch {
-        setError('Erro ao conectar. Tente novamente.')
-      } finally {
-        setLoading(false)
-      }
+  async function generateQr() {
+    setGenerating(true)
+    setError('')
+    try {
+      const referralCode = localStorage.getItem('futzone_ref') ?? undefined
+      const res = await fetch('/api/pix/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stream_id: streamId, user_phone: userEmail, user_name: userName, amount: Number(amount), referral_code: referralCode }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(`Erro: ${data.detail ?? data.error ?? JSON.stringify(data)}`); return }
+      setQrcode(data.qrcode)
+      setTransactionId(data.transaction_id)
+    } catch {
+      setError('Erro ao conectar. Tente novamente.')
+    } finally {
+      setGenerating(false)
     }
-    createPayment()
-  }, [])
+  }
 
   useEffect(() => {
     if (!transactionId) return
@@ -177,8 +175,20 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
               </div>
             ) : (
               <>
-                {loading && <div className="py-10 text-center"><p className="text-gray-500 text-sm">{t('generating')}</p></div>}
-                {error && <div className="py-6 text-center"><p className="text-red-500 text-sm">{error}</p></div>}
+                {!qrcode && !generating && !error && (
+                  <div className="py-4 space-y-3">
+                    <button onClick={generateQr} className="w-full bg-orange-500 hover:bg-orange-400 text-white font-black rounded-xl py-3 transition-all">
+                      Gerar QR Code PIX
+                    </button>
+                  </div>
+                )}
+                {generating && <div className="py-10 text-center"><p className="text-gray-500 text-sm">{t('generating')}</p></div>}
+                {error && (
+                  <div className="py-4 space-y-3 text-center">
+                    <p className="text-red-500 text-sm">{error}</p>
+                    <button onClick={generateQr} className="text-orange-400 text-sm hover:text-orange-300 transition-colors">Tentar novamente</button>
+                  </div>
+                )}
                 {qrcode && !error && (
                   <div className="space-y-4">
                     <div className="bg-white rounded-xl p-4 flex items-center justify-center">

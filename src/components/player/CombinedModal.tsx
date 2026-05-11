@@ -17,7 +17,7 @@ interface Props {
   onClose: () => void
 }
 
-type Step = 'credentials' | 'qr'
+type Step = 'credentials' | 'confirm' | 'qr'
 type Mode = 'register' | 'login'
 
 export default function CombinedModal({ streamId, amount, paymentMethod, fixedQrUrl, couponEnabled, onSuccess, onCouponSuccess, onClose }: Props) {
@@ -46,6 +46,8 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
   const [verifying, setVerifying] = useState(false)
   const [verifyMsg, setVerifyMsg] = useState('')
   const [copied, setCopied] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState('')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [couponOpen, setCouponOpen] = useState(false)
@@ -140,21 +142,34 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
         return
       }
 
-      const referralCode = localStorage.getItem('futzone_ref') ?? undefined
-      const res = await fetch('/api/pix/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stream_id: streamId, user_phone: userObj.email, user_name: userObj.name, amount: Number(amount), referral_code: referralCode }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setFormError(`Erro ao gerar PIX: ${data.detail ?? data.error ?? ''}`); setFormLoading(false); return }
-      setQrcode(data.qrcode)
-      setTransactionId(data.transaction_id)
-      setStep('qr')
+      setStep('confirm')
     } catch {
       setFormError(t('wrongCredentials'))
     }
     setFormLoading(false)
+  }
+
+  async function generateQr() {
+    if (!currentUser) return
+    setGenerating(true)
+    setGenerateError('')
+    try {
+      const referralCode = localStorage.getItem('futzone_ref') ?? undefined
+      const res = await fetch('/api/pix/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stream_id: streamId, user_phone: currentUser.email, user_name: currentUser.name, amount: Number(amount), referral_code: referralCode }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setGenerateError(`Erro ao gerar PIX: ${data.detail ?? data.error ?? ''}`); return }
+      setQrcode(data.qrcode)
+      setTransactionId(data.transaction_id)
+      setStep('qr')
+    } catch {
+      setGenerateError('Erro ao conectar. Tente novamente.')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   async function handleFixedQrPaid() {
@@ -237,6 +252,60 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
             </div>
             <p className="text-white font-bold text-lg">{t('paymentConfirmed')}</p>
             <p className="text-gray-500 text-sm">{t('releasingAccess')}</p>
+          </div>
+        ) : step === 'confirm' ? (
+          <div className="space-y-5">
+            <div className="text-center space-y-3">
+              {logoUrl && <img src={logoUrl} alt="FutZone" className="h-10 object-contain mx-auto" />}
+              <h2 className="text-2xl font-black text-white">Tudo certo!</h2>
+              <div className="inline-flex items-baseline gap-1.5 bg-orange-500/10 border border-orange-500/30 rounded-xl px-5 py-2">
+                <span className="text-orange-400 text-sm font-semibold">R$</span>
+                <span className="text-orange-400 text-3xl font-black">{amount.toFixed(2).replace('.', ',')}</span>
+                <span className="text-orange-400/70 text-sm">via PIX</span>
+              </div>
+              <p className="text-gray-500 text-xs">Clique abaixo para gerar seu QR Code e liberar o acesso.</p>
+            </div>
+            {generateError && <p className="text-red-500 text-xs text-center">{generateError}</p>}
+            <button
+              onClick={generateQr}
+              disabled={generating}
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-black rounded-xl py-3 transition-all"
+            >
+              {generating ? 'Gerando...' : 'Gerar QR Code PIX'}
+            </button>
+            {couponEnabled && (
+              <div className="space-y-2 pt-1">
+                {!couponOpen ? (
+                  <button
+                    onClick={() => { setCouponOpen(true); setCouponError(''); setCouponCode('') }}
+                    className="w-full text-purple-400 font-bold border border-purple-500 rounded-full py-3 text-sm transition-all hover:bg-purple-500/10"
+                  >
+                    {t('haveCode')}
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError('') }}
+                      placeholder={t('codePlaceholder')}
+                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-purple-500"
+                    />
+                    {couponError && <p className="text-red-400 text-xs text-center">{couponError}</p>}
+                    <button
+                      disabled={couponLoading || !couponCode.trim()}
+                      onClick={handleCoupon}
+                      className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition-all text-sm"
+                    >
+                      {couponLoading ? t('verifying') : t('confirmCode')}
+                    </button>
+                    <button onClick={() => setCouponOpen(false)} className="w-full text-gray-500 hover:text-white text-xs transition-colors">
+                      {t('cancel')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : step === 'credentials' ? (
           <div className="space-y-5">
