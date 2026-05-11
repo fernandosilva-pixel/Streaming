@@ -290,8 +290,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError('') }}
                       placeholder={t('codePlaceholder')}
-                      className="w-full rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none border-2 border-yellow-400 text-yellow-900 font-black placeholder-yellow-700/60"
-                      style={{ background: 'linear-gradient(135deg, #f5c518 0%, #fde68a 40%, #f59e0b 60%, #f5c518 100%)' }}
+                      className="w-full bg-[#0B0B0F] rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none text-white placeholder-gray-600 border-2 border-yellow-400/80"
                     />
                     {couponError && <p className="text-red-400 text-xs text-center">{couponError}</p>}
                     <button
@@ -429,8 +428,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError('') }}
                       placeholder={t('codePlaceholder')}
-                      className="w-full rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none border-2 border-yellow-400 text-yellow-900 font-black placeholder-yellow-700/60"
-                      style={{ background: 'linear-gradient(135deg, #f5c518 0%, #fde68a 40%, #f59e0b 60%, #f5c518 100%)' }}
+                      className="w-full bg-[#0B0B0F] rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none text-white placeholder-gray-600 border-2 border-yellow-400/80"
                     />
                     {couponError && <p className="text-red-400 text-xs text-center">{couponError}</p>}
                     <button
