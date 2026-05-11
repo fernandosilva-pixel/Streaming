@@ -60,11 +60,16 @@ export async function POST(req: NextRequest) {
     postback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/ironpay/webhook`,
   }
 
+  const token = process.env.IRONPAY_API_TOKEN
   const res = await fetch(
-    `${IRONPAY_BASE}/transactions?api_token=${process.env.IRONPAY_API_TOKEN}`,
+    `${IRONPAY_BASE}/transactions?api_token=${token}`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(body),
     }
   )
@@ -72,7 +77,7 @@ export async function POST(req: NextRequest) {
   const data = await res.json()
 
   if (!res.ok) {
-    console.error('IronPay error:', JSON.stringify(data))
+    console.error('IronPay error:', res.status, JSON.stringify(data))
     return NextResponse.json(
       { error: data.message ?? data.error ?? 'Erro ao processar pagamento' },
       { status: 400 }
