@@ -257,7 +257,6 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
           <div className="space-y-5">
             <div className="text-center space-y-3">
               {logoUrl && <img src={logoUrl} alt="FutZone" className="h-10 object-contain mx-auto" />}
-              <h2 className="text-2xl font-black text-white">Tudo certo!</h2>
               <div className="inline-flex items-baseline gap-1.5 bg-green-500/15 border border-green-500/40 rounded-xl px-5 py-2">
                 <span className="text-green-400 text-sm font-semibold">R$</span>
                 <span className="text-green-400 text-3xl font-black">{amount.toFixed(2).replace('.', ',')}</span>
