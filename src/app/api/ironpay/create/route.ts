@@ -10,11 +10,10 @@ const supabase = createClient(
 
 const IRONPAY_BASE = 'https://api.ironpayapp.com.br/api/public/v1'
 const OFFER_HASH = 'ondjhpeeag'
-const PRODUCT_HASH = '6fizrgie7y'
 
 export async function POST(req: NextRequest) {
-  const { stream_id, user_email, user_name, card_token } = await req.json()
-  if (!stream_id || !user_email || !user_name || !card_token) {
+  const { stream_id, user_email, user_name, card } = await req.json()
+  if (!stream_id || !user_email || !user_name || !card) {
     return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
   }
 
@@ -28,35 +27,25 @@ export async function POST(req: NextRequest) {
 
   const amountInCents = Math.round(stream.charge_amount * 100)
 
+  // number deve vir formatado com espaços: "4111 1111 1111 1111"
   const body = {
     amount: amountInCents,
     offer_hash: OFFER_HASH,
     payment_method: 'credit_card',
-    card_token,
+    card: {
+      number: card.number,
+      holder_name: card.holder_name,
+      exp_month: Number(card.exp_month),
+      exp_year: Number(card.exp_year),
+      cvv: String(card.cvv),
+    },
     customer: {
       name: user_name,
       email: user_email,
-      phone_number: '00000000000',
-      document: '54074646838',
-      street_name: 'N/A',
-      number: '0',
-      complement: '',
-      neighborhood: 'N/A',
-      city: 'N/A',
-      state: 'SP',
-      zip_code: '00000000',
+      phone_number: '11999999999',
+      document: '09115751031',
     },
-    cart: [{
-      product_hash: PRODUCT_HASH,
-      title: stream.title || 'Acesso à transmissão',
-      price: amountInCents,
-      quantity: 1,
-      operation_type: 1,
-      tangible: false,
-    }],
     installments: 1,
-    expire_in_days: 1,
-    transaction_origin: 'api',
     postback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/ironpay/webhook`,
   }
 
