@@ -11,8 +11,9 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   const body = await req.json()
 
-  const isPaid = body.status === 'PAID' || body.transactionType === 'RECEIVEPIX'
-  const txId = body.transactionId ?? body.transaction_id ?? body.pix_id ?? body.id
+  // Asap Bank webhook payload: { id, status, eventType }
+  const isPaid = body.status === 'PAID'
+  const txId = body.id
 
   if (isPaid && txId) {
     await supabase.from('payments')
