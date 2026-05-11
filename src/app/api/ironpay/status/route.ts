@@ -23,10 +23,20 @@ export async function GET(req: NextRequest) {
     { headers: { Accept: 'application/json' } }
   )
 
-  if (!res.ok) return NextResponse.json({ status: 'pending' })
+  if (!res.ok) {
+    console.error('IronPay status fetch failed:', res.status)
+    return NextResponse.json({ status: 'pending' })
+  }
 
   const data = await res.json()
-  const status: string = data.status ?? data.transaction?.status ?? 'pending'
+  console.log('IronPay status response:', JSON.stringify(data))
+
+  const status: string = (
+    data.status ??
+    data.transaction?.status ??
+    data.data?.status ??
+    'pending'
+  ).toLowerCase()
 
   if ((status === 'paid' || status === 'approved') && streamId && userEmail) {
     const { data: tx } = await supabase

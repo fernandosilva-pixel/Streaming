@@ -73,9 +73,15 @@ export default function IronPayCardForm({ streamId, userEmail, userName, amount,
 
     console.log('IronPay response:', JSON.stringify(data))
 
-    if (data.status === 'paid' || data.status === 'approved') {
+    const initialStatus = (data.status ?? '').toLowerCase()
+    if (initialStatus === 'paid' || initialStatus === 'approved') {
       setPaid(true)
       setTimeout(onPaid, 1500)
+      return
+    }
+    if (initialStatus && initialStatus !== 'pending' && initialStatus !== 'processing' && initialStatus !== 'waiting_payment') {
+      setError('Pagamento recusado. Verifique os dados do cartão e tente novamente.')
+      setLoading(false)
       return
     }
 
@@ -84,20 +90,27 @@ export default function IronPayCardForm({ streamId, userEmail, userName, amount,
     if (hash) {
       setLoading(false)
       setPolling(true)
+      let pollCount = 0
       pollRef.current = setInterval(async () => {
+        pollCount++
         const statusRes = await fetch(
           `/api/ironpay/status?transaction_hash=${hash}&stream_id=${streamId}&user_email=${encodeURIComponent(userEmail)}`
         )
         const statusData = await statusRes.json()
-        if (statusData.status === 'paid' || statusData.status === 'approved') {
+        const s = (statusData.status ?? '').toLowerCase()
+        if (s === 'paid' || s === 'approved') {
           clearInterval(pollRef.current!)
           setPolling(false)
           setPaid(true)
           setTimeout(onPaid, 1500)
-        } else if (statusData.status === 'canceled' || statusData.status === 'failed' || statusData.status === 'refused') {
+        } else if (s !== 'pending' && s !== 'processing' && s !== 'waiting_payment') {
           clearInterval(pollRef.current!)
           setPolling(false)
           setError('Pagamento recusado. Verifique os dados do cartão e tente novamente.')
+        } else if (pollCount >= 20) {
+          clearInterval(pollRef.current!)
+          setPolling(false)
+          setError('Tempo esgotado. Verifique se o pagamento foi aprovado e tente novamente.')
         }
       }, 3000)
     } else {
