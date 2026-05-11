@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+export const runtime = 'edge'
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -14,7 +16,7 @@ export async function POST(req: NextRequest) {
   const host = req.headers.get('host')
   const postbackUrl = `${proto}://${host}/api/pix/webhook`
 
-  const credentials = Buffer.from(`${process.env.BSPAY_CLIENT_ID}:${process.env.BSPAY_API_KEY}`).toString('base64')
+  const credentials = btoa(`${process.env.BSPAY_CLIENT_ID}:${process.env.BSPAY_API_KEY}`)
   const tokenRes = await fetch('https://api.bspay.co/v2/oauth/token', {
     method: 'POST',
     headers: {

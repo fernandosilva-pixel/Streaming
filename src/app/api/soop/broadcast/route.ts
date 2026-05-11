@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export const runtime = 'edge'
+
 // Searches Sooplive public broadcast list for a specific broadcaster
 export async function GET(req: NextRequest) {
   const bjid = req.nextUrl.searchParams.get('bjid')

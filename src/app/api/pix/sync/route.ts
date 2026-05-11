@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+export const runtime = 'edge'
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
 async function getBspayToken(): Promise<string | null> {
-  const credentials = Buffer.from(`${process.env.BSPAY_CLIENT_ID}:${process.env.BSPAY_API_KEY}`).toString('base64')
+  const credentials = btoa(`${process.env.BSPAY_CLIENT_ID}:${process.env.BSPAY_API_KEY}`)
   const res = await fetch('https://api.bspay.co/v2/oauth/token', {
     method: 'POST',
     headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
