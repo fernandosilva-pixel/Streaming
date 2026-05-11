@@ -12,10 +12,13 @@ const IRONPAY_BASE = 'https://api.ironpayapp.com.br/api/public/v1'
 const OFFER_HASH = 'ondjhpeeag'
 
 export async function POST(req: NextRequest) {
-  const { stream_id, user_email, user_name, card } = await req.json()
+  const body_raw = await req.json()
+  console.log('Received body:', JSON.stringify(body_raw))
+  const { stream_id, user_email, user_name, card } = body_raw
   if (!stream_id || !user_email || !user_name || !card) {
     return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
   }
+  console.log('card received:', JSON.stringify(card), 'exp_month type:', typeof card.exp_month)
 
   const { data: stream } = await supabase
     .from('streams')
@@ -35,7 +38,7 @@ export async function POST(req: NextRequest) {
     card: {
       number: card.number,
       holder_name: card.holder_name,
-      exp_month: Number(card.exp_month),
+      exp_month: String(Number(card.exp_month)).padStart(2, '0'),
       exp_year: Number(card.exp_year),
       cvv: String(card.cvv),
     },
