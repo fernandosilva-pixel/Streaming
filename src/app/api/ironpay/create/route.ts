@@ -9,7 +9,7 @@ const supabase = createClient(
 )
 
 const IRONPAY_BASE = 'https://api.ironpayapp.com.br/api/public/v1'
-const OFFER_HASH = 'ondjhpeeag'
+const OFFER_HASH = '6fizrgie7y_lp995bxj4t'
 const PRODUCT_HASH = '6fizrgie7y'
 
 export async function POST(req: NextRequest) {
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     card: {
       number: card.number,
       holder_name: card.holder_name,
-      exp_month: String(card.exp_month).padStart(2, '0'),
+      exp_month: Number(card.exp_month),
       exp_year: card.exp_year,
       cvv: String(card.cvv),
     },
