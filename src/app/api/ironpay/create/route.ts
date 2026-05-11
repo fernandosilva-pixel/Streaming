@@ -95,7 +95,14 @@ export async function POST(req: NextRequest) {
   console.log('IronPay create response:', JSON.stringify(data))
 
   const transactionHash = data.hash ?? data.transaction_hash ?? String(data.id ?? '')
-  const status: string = data.status ?? 'pending'
+  const status: string = (data.payment_status ?? data.status ?? 'pending').toLowerCase()
+
+  if (status === 'failed' || status === 'refused' || status === 'canceled') {
+    return NextResponse.json(
+      { error: 'Pagamento recusado pelo banco. Verifique os dados do cartão e tente novamente.' },
+      { status: 400 }
+    )
+  }
 
   await supabase.from('ironpay_transactions').insert({
     transaction_hash: transactionHash,

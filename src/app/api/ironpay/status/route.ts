@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
   console.log('IronPay status response:', JSON.stringify(data))
 
   const status: string = (
+    data.payment_status ??
     data.status ??
     data.transaction?.status ??
     data.data?.status ??
