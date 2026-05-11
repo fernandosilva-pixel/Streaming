@@ -106,6 +106,7 @@ export default function AdminPage() {
   const [authChecked, setAuthChecked] = useState(false)
   const [onlineUsers, setOnlineUsers] = useState(0)
   const [onlineList, setOnlineList] = useState<{ name: string; phone: string }[]>([])
+  const [viewersByStream, setViewersByStream] = useState<Record<string, number>>({})
   const [showOnlineList, setShowOnlineList] = useState(false)
 
   // Notificações de novos cadastros
@@ -292,12 +293,15 @@ export default function AdminPage() {
       const state = channel.presenceState()
       const users = Object.values(state).flatMap((arr: unknown[]) =>
         arr.map((p: unknown) => {
-          const presence = p as { name?: string; phone?: string }
-          return { name: presence.name ?? 'Usuário', phone: presence.phone ?? '' }
+          const presence = p as { name?: string; phone?: string; stream_id?: string }
+          return { name: presence.name ?? 'Usuário', phone: presence.phone ?? '', stream_id: presence.stream_id ?? '' }
         })
       )
       setOnlineUsers(users.length)
       setOnlineList(users)
+      const counts: Record<string, number> = {}
+      users.forEach(u => { if (u.stream_id) counts[u.stream_id] = (counts[u.stream_id] ?? 0) + 1 })
+      setViewersByStream(counts)
     }).subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
@@ -1390,7 +1394,12 @@ export default function AdminPage() {
                   return (
                     <div key={s.id} className={`rounded-xl border overflow-hidden transition-all ${s.is_live ? 'border-red-500/40 bg-red-500/5' : 'border-[#2A2A3A] bg-[#12121A]'}`}>
                       <div className="flex flex-wrap items-center gap-2 p-3">
-                        <p className="text-white text-sm font-semibold truncate flex-1 min-w-0">{s.title}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm font-semibold truncate">{s.title}</p>
+                          {(viewersByStream[s.id] ?? 0) > 0 && (
+                            <p className="text-green-400 text-xs font-semibold mt-0.5">● {viewersByStream[s.id]} assistindo agora</p>
+                          )}
+                        </div>
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
                           <button
                             onClick={() => toggleLive(s.id, !s.is_live)}
