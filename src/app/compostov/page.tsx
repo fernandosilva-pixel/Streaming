@@ -1393,37 +1393,37 @@ export default function AdminPage() {
               <p className="text-sm text-gray-300 bg-[#1A1A26] border border-[#2A2A3A] rounded-xl px-4 py-2.5">{syncResult}</p>
             )}
             <div className="space-y-2">
-              <div className="flex gap-2 flex-wrap">
-                <input type="text" placeholder="Nome do jogo (ex: Flamengo x Corinthians)" value={newTitle} onChange={e => setNewTitle(e.target.value)}
-                  className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
-                <div className="flex rounded-xl overflow-hidden border border-[#2A2A3A]">
-                  <button onClick={() => setNewSource('kick')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>Kick</button>
-                  <button onClick={() => setNewSource('soop')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>Soop</button>
-                  <button onClick={() => setNewSource('hls')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'hls' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>HLS/VPS</button>
-                  <button onClick={() => setNewSource('youtube')} className={`px-4 py-2.5 text-sm font-bold transition-all ${newSource === 'youtube' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>YouTube</button>
+              <input type="text" placeholder="Nome do jogo (ex: Flamengo x Corinthians)" value={newTitle} onChange={e => setNewTitle(e.target.value)}
+                className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+              <div className="overflow-x-auto -mx-1 px-1">
+                <div className="flex rounded-xl overflow-hidden border border-[#2A2A3A] w-max min-w-full">
+                  <button onClick={() => setNewSource('kick')} className={`flex-1 px-4 py-2.5 text-sm font-bold transition-all whitespace-nowrap ${newSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>Kick</button>
+                  <button onClick={() => setNewSource('soop')} className={`flex-1 px-4 py-2.5 text-sm font-bold transition-all whitespace-nowrap ${newSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>Soop</button>
+                  <button onClick={() => setNewSource('hls')} className={`flex-1 px-4 py-2.5 text-sm font-bold transition-all whitespace-nowrap ${newSource === 'hls' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>HLS/VPS</button>
+                  <button onClick={() => setNewSource('youtube')} className={`flex-1 px-4 py-2.5 text-sm font-bold transition-all whitespace-nowrap ${newSource === 'youtube' ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}>YouTube</button>
                 </div>
               </div>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2">
                 {newSource === 'kick' ? (
                   <input type="text" placeholder="Canal da Kick (ex: futzone_fla)" value={newChannel} onChange={e => setNewChannel(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
-                    className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                    className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
                 ) : newSource === 'soop' ? (
-                  <>
+                  <div className="flex-1 flex flex-col gap-2">
                     <input type="text" placeholder="ID do canal Soop" value={newSoopChannel} onChange={e => setNewSoopChannel(e.target.value)}
-                      className="flex-1 min-w-36 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                      className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
                     <input type="text" placeholder="Nº do broadcast (opcional)" value={newSoopBroadNo} onChange={e => setNewSoopBroadNo(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
-                      className="w-52 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
-                  </>
+                      className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                  </div>
                 ) : newSource === 'hls' ? (
                   <input type="text" placeholder="URL HLS (ex: http://ip/hls/chave.m3u8)" value={newHlsUrl} onChange={e => setNewHlsUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
-                    className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                    className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
                 ) : (
                   <input type="text" placeholder="URL do YouTube (ex: youtube.com/watch?v=...)" value={newYoutubeUrl} onChange={e => setNewYoutubeUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
-                    className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                    className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
                 )}
                 <button onClick={addStream} disabled={addingStream || !newTitle.trim() || (newSource === 'kick' ? !newChannel.trim() : newSource === 'soop' ? !newSoopChannel.trim() : newSource === 'hls' ? !newHlsUrl.trim() : !newYoutubeUrl.trim())}
-                  className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm">
-                  <Plus className="w-4 h-4" />{addingStream ? 'Adicionando...' : 'Adicionar'}
+                  className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm shrink-0">
+                  <Plus className="w-4 h-4" />{addingStream ? '...' : 'Adicionar'}
                 </button>
               </div>
             </div>
@@ -1438,49 +1438,18 @@ export default function AdminPage() {
                   const currentSource = editSources[s.id] ?? s.stream_source ?? 'kick'
                   return (
                     <div key={s.id} className={`rounded-xl border overflow-hidden transition-all ${s.is_live ? 'border-red-500/40 bg-red-500/5' : 'border-[#2A2A3A] bg-[#12121A]'}`}>
-                      <div className="flex flex-wrap items-center gap-2 p-3">
+                      {/* Linha de título + ações */}
+                      <div className="flex items-center gap-2 p-3 pb-2">
                         <div className="flex-1 min-w-0">
                           <p className="text-white text-sm font-semibold truncate">{s.title}</p>
                           {(viewersByStream[s.id] ?? 0) > 0 && (
                             <p className="text-green-400 text-xs font-semibold mt-0.5">● {viewersByStream[s.id]} assistindo agora</p>
                           )}
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => toggleLive(s.id, !s.is_live)}
-                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.is_live ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-[#2A2A3A] text-gray-400 hover:bg-red-600/20 hover:text-red-400'}`}
-                            title={s.is_live ? 'Ao vivo — clique para desativar' : 'Ativar ao vivo'}
-                          >
-                            {s.is_live ? '🔴 Ao Vivo' : 'Ao Vivo OFF'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (s.charge_enabled) {
-                                toggleCharge(s.id, false)
-                              } else {
-                                setChargeAmountInput(s.charge_amount ? String(s.charge_amount) : '')
-                                setChargeAmountModal({ id: s.id })
-                              }
-                            }}
-                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.charge_enabled ? 'bg-green-600/20 text-green-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-green-600/20 hover:text-green-400'}`}
-                            title={s.charge_enabled ? 'Cobrança ativa — clique para desativar' : 'Ativar cobrança'}>
-                            {s.charge_enabled ? 'Cobrança ON' : 'Cobrança OFF'}
-                          </button>
-                          <button
-                            onClick={() => toggleChat(s.id, !s.chat_enabled)}
-                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.chat_enabled !== false ? 'bg-blue-600/20 text-blue-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-blue-600/20 hover:text-blue-400'}`}
-                            title={s.chat_enabled !== false ? 'Chat ativo — clique para desativar' : 'Ativar chat'}>
-                            {s.chat_enabled !== false ? 'Chat ON' : 'Chat OFF'}
-                          </button>
-                          <button
-                            onClick={() => toggleCoupon(s.id, !s.coupon_enabled)}
-                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${s.coupon_enabled ? 'bg-purple-600/20 text-purple-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-purple-600/20 hover:text-purple-400'}`}
-                            title={s.coupon_enabled ? `Código ativo (${couponUsedCounts[s.id] ?? 0}/${s.coupon_quantity}) — clique para desativar` : 'Ativar código de acesso'}>
-                            {s.coupon_enabled ? `Código ON (${couponUsedCounts[s.id] ?? 0}/${s.coupon_quantity})` : 'Código OFF'}
-                          </button>
+                        <div className="flex items-center gap-1 shrink-0">
                           {s.charge_enabled && (
                             <div className="flex items-center gap-1">
-                              <span className="text-gray-500 text-xs shrink-0">R$</span>
+                              <span className="text-gray-500 text-xs">R$</span>
                               <input type="number" min="0.01" step="0.01" value={editAmounts[s.id] ?? s.charge_amount}
                                 onChange={e => setEditAmounts(prev => ({ ...prev, [s.id]: e.target.value }))}
                                 onBlur={() => saveAmount(s.id)}
@@ -1488,13 +1457,44 @@ export default function AdminPage() {
                             </div>
                           )}
                           <button onClick={() => setEditingStreamId(isEditing ? null : s.id)}
-                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-[#2A2A3A] text-gray-400 hover:text-white hover:bg-[#3A3A4A] transition-all">
-                            {isEditing ? <><X className="w-3 h-3" /> Fechar</> : <><Pencil className="w-3 h-3" /> Editar</>}
+                            className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-[#2A2A3A] text-gray-400 hover:text-white hover:bg-[#3A3A4A] transition-all">
+                            {isEditing ? <X className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
+                            <span className="hidden sm:inline">{isEditing ? 'Fechar' : 'Editar'}</span>
                           </button>
                           <button onClick={() => deleteStream(s.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1.5">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
+                      </div>
+                      {/* Grid de toggles */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-3 pb-3">
+                        <button
+                          onClick={() => toggleLive(s.id, !s.is_live)}
+                          className={`text-xs font-bold px-3 py-2 rounded-lg transition-all text-center ${s.is_live ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-[#2A2A3A] text-gray-400 hover:bg-red-600/20 hover:text-red-400'}`}>
+                          {s.is_live ? '🔴 Ao Vivo' : 'Ao Vivo OFF'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (s.charge_enabled) {
+                              toggleCharge(s.id, false)
+                            } else {
+                              setChargeAmountInput(s.charge_amount ? String(s.charge_amount) : '')
+                              setChargeAmountModal({ id: s.id })
+                            }
+                          }}
+                          className={`text-xs font-bold px-3 py-2 rounded-lg transition-all text-center ${s.charge_enabled ? 'bg-green-600/20 text-green-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-green-600/20 hover:text-green-400'}`}>
+                          {s.charge_enabled ? 'Cobrança ON' : 'Cobrança OFF'}
+                        </button>
+                        <button
+                          onClick={() => toggleChat(s.id, !s.chat_enabled)}
+                          className={`text-xs font-bold px-3 py-2 rounded-lg transition-all text-center ${s.chat_enabled !== false ? 'bg-blue-600/20 text-blue-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-blue-600/20 hover:text-blue-400'}`}>
+                          {s.chat_enabled !== false ? 'Chat ON' : 'Chat OFF'}
+                        </button>
+                        <button
+                          onClick={() => toggleCoupon(s.id, !s.coupon_enabled)}
+                          className={`text-xs font-bold px-3 py-2 rounded-lg transition-all text-center ${s.coupon_enabled ? 'bg-purple-600/20 text-purple-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-purple-600/20 hover:text-purple-400'}`}>
+                          {s.coupon_enabled ? `Cód. ON (${couponUsedCounts[s.id] ?? 0}/${s.coupon_quantity})` : 'Código OFF'}
+                        </button>
                       </div>
                       {isEditing && (
                         <div className="px-3 pb-3 pt-2 border-t border-[#2A2A3A] space-y-2">
@@ -1510,33 +1510,37 @@ export default function AdminPage() {
                           </div>
                           <div>
                             <p className="text-gray-500 text-xs mb-1">ID do Canal</p>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <div className="flex rounded-lg overflow-hidden border border-[#2A2A3A]">
-                                <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'kick' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Kick</button>
-                                <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'soop' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Soop</button>
-                                <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'hls' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'hls' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>HLS/VPS</button>
-                                <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'youtube' }))} className={`px-2.5 py-1 text-xs font-bold transition-all ${currentSource === 'youtube' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>YouTube</button>
+                            <div className="space-y-2">
+                              <div className="overflow-x-auto -mx-1 px-1">
+                                <div className="flex rounded-lg overflow-hidden border border-[#2A2A3A] w-max min-w-full">
+                                  <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'kick' }))} className={`flex-1 px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${currentSource === 'kick' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Kick</button>
+                                  <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'soop' }))} className={`flex-1 px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${currentSource === 'soop' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>Soop</button>
+                                  <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'hls' }))} className={`flex-1 px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${currentSource === 'hls' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>HLS/VPS</button>
+                                  <button onClick={() => setEditSources(prev => ({ ...prev, [s.id]: 'youtube' }))} className={`flex-1 px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${currentSource === 'youtube' ? 'bg-orange-500 text-white' : 'bg-[#0B0B0F] text-gray-400 hover:text-white'}`}>YouTube</button>
+                                </div>
                               </div>
                               {currentSource === 'kick' ? (
                                 <input type="text" value={editChannels[s.id] ?? s.kick_channel ?? ''} onChange={e => setEditChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Canal da Kick"
-                                  className="flex-1 min-w-36 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
                               ) : currentSource === 'soop' ? (
-                                <>
+                                <div className="space-y-2">
                                   <input type="text" value={editSoopChannels[s.id] ?? s.soop_channel ?? ''} onChange={e => setEditSoopChannels(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="ID do canal Soop (bjid)"
-                                    className="flex-1 min-w-28 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
-                                  <input type="text" value={editSoopBroadNos[s.id] ?? s.soop_broad_no ?? ''} onChange={e => setEditSoopBroadNos(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Nº broadcast"
-                                    className="w-32 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
-                                  <button onClick={() => detectSoopBroadcast(s.id)} disabled={detectingBroad === s.id || !editSoopChannels[s.id]}
-                                    className="bg-[#2A2A3A] hover:bg-orange-500 disabled:opacity-40 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all">
-                                    {detectingBroad === s.id ? '...' : 'Detectar'}
-                                  </button>
-                                </>
+                                    className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                                  <div className="flex gap-2">
+                                    <input type="text" value={editSoopBroadNos[s.id] ?? s.soop_broad_no ?? ''} onChange={e => setEditSoopBroadNos(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Nº broadcast"
+                                      className="flex-1 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                                    <button onClick={() => detectSoopBroadcast(s.id)} disabled={detectingBroad === s.id || !editSoopChannels[s.id]}
+                                      className="bg-[#2A2A3A] hover:bg-orange-500 disabled:opacity-40 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all shrink-0">
+                                      {detectingBroad === s.id ? '...' : 'Detectar'}
+                                    </button>
+                                  </div>
+                                </div>
                               ) : currentSource === 'hls' ? (
                                 <input type="text" value={editHlsUrls[s.id] ?? s.hls_url ?? ''} onChange={e => setEditHlsUrls(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="URL HLS (ex: http://ip/hls/chave.m3u8)"
-                                  className="flex-1 min-w-48 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
                               ) : (
                                 <input type="text" value={editYoutubeUrls[s.id] ?? s.youtube_url ?? ''} onChange={e => setEditYoutubeUrls(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="URL do YouTube (ex: youtube.com/watch?v=...)"
-                                  className="flex-1 min-w-48 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
                               )}
                             </div>
                           </div>
