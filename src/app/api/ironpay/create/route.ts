@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       name: user_name,
       email: user_email,
       phone_number: '00000000000',
-      document: '00000000000',
+      document: '54074646838',
       street_name: 'N/A',
       number: '0',
       complement: '',
