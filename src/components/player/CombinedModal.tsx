@@ -184,9 +184,9 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
         body: JSON.stringify({ stream_id: streamId, user_phone: currentUser.email, referral_code: referralCode }),
       })
       const data = await res.json()
-      if (!res.ok || !data.ok) { setVerifyMsg(t('wrongCredentials')); setVerifying(false); return }
+      if (!res.ok || !data.ok) { setVerifyMsg('Pagamento não detectado. Verifique se o PIX foi enviado e tente novamente.'); setVerifying(false); return }
     } catch {
-      setVerifyMsg(t('wrongCredentials'))
+      setVerifyMsg('Erro ao verificar pagamento. Tente novamente.')
       setVerifying(false)
       return
     }
@@ -203,7 +203,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
       clearInterval(pollRef.current!)
       handlePaid()
     } else {
-      setVerifyMsg(t('wrongCredentials'))
+      setVerifyMsg('Pagamento não detectado. Verifique se o PIX foi enviado e tente novamente.')
     }
     setVerifying(false)
   }
