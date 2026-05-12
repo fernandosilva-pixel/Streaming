@@ -208,6 +208,9 @@ export default function AdminPage() {
   const [scheduleGames, setScheduleGames] = useState<ScheduleGame[]>([])
   const [scheduleSaving, setScheduleSaving] = useState(false)
   const [scheduleLoading, setScheduleLoading] = useState(false)
+  const [showAddGameForm, setShowAddGameForm] = useState(false)
+  const [logo1Uploading, setLogo1Uploading] = useState(false)
+  const [logo2Uploading, setLogo2Uploading] = useState(false)
   const [newGame, setNewGame] = useState<Omit<ScheduleGame, 'id'>>({ team1: '', team2: '', logo1: '', logo2: '', league: '', league_logo: '', datetime: '' })
 
   async function loadSchedule() {
@@ -234,11 +237,25 @@ export default function AdminPage() {
     setScheduleSaving(false)
   }
 
+  async function uploadTeamLogo(file: File, team: 1 | 2) {
+    const setter = team === 1 ? setLogo1Uploading : setLogo2Uploading
+    setter(true)
+    const ext = file.name.split('.').pop() ?? 'png'
+    const fileName = `team-logos/${Date.now()}-${team}.${ext}`
+    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType: file.type || 'image/png' })
+    if (!error) {
+      const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
+      setNewGame(p => ({ ...p, [team === 1 ? 'logo1' : 'logo2']: publicUrl }))
+    }
+    setter(false)
+  }
+
   function addGameToSchedule() {
     if (!newGame.team1.trim() || !newGame.team2.trim() || !newGame.datetime) return
     const game: ScheduleGame = { ...newGame, id: Date.now().toString(36) + Math.random().toString(36).slice(2) }
     setScheduleGames(prev => [...prev, game])
     setNewGame({ team1: '', team2: '', logo1: '', logo2: '', league: '', league_logo: '', datetime: '' })
+    setShowAddGameForm(false)
   }
 
   function removeGameFromSchedule(id: string) {
@@ -2479,15 +2496,12 @@ export default function AdminPage() {
               <h2 className="text-lg font-bold text-white">Agenda de Jogos</h2>
               <p className="text-gray-500 text-sm mt-0.5">Jogos exibidos no sino de notificação da navbar.</p>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <span className="text-gray-400 text-sm font-semibold">Ativo</span>
-              <button
-                onClick={() => setScheduleActive(v => !v)}
-                className={`relative w-11 h-6 rounded-full transition-all ${scheduleActive ? 'bg-orange-500' : 'bg-[#2A2A3A]'}`}
-              >
-                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${scheduleActive ? 'left-6' : 'left-1'}`} />
-              </button>
-            </label>
+            <button
+              onClick={() => setScheduleActive(v => !v)}
+              className={`relative w-11 h-6 rounded-full transition-all ${scheduleActive ? 'bg-orange-500' : 'bg-[#2A2A3A]'}`}
+            >
+              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${scheduleActive ? 'left-6' : 'left-1'}`} />
+            </button>
           </div>
 
           {scheduleLoading ? (
@@ -2513,11 +2527,18 @@ export default function AdminPage() {
                   {scheduleGames.map(g => (
                     <div key={g.id} className="flex items-center gap-3 bg-[#12121A] border border-[#2A2A3A] rounded-xl px-4 py-3">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {g.logo1 && <img src={g.logo1} alt="" className="w-7 h-7 object-contain shrink-0" />}
+                        {g.logo1
+                          ? <img src={g.logo1} alt="" className="w-8 h-8 object-contain shrink-0 rounded" />
+                          : <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center shrink-0"><ImageIcon className="w-4 h-4 text-gray-600" /></div>
+                        }
                         <span className="text-white text-sm font-semibold truncate">{g.team1}</span>
-                        <span className="text-gray-600 text-xs font-black">×</span>
-                        {g.logo2 && <img src={g.logo2} alt="" className="w-7 h-7 object-contain shrink-0" />}
+                        <span className="text-gray-600 text-xs font-black px-1">×</span>
+                        {g.logo2
+                          ? <img src={g.logo2} alt="" className="w-8 h-8 object-contain shrink-0 rounded" />
+                          : <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center shrink-0"><ImageIcon className="w-4 h-4 text-gray-600" /></div>
+                        }
                         <span className="text-white text-sm font-semibold truncate">{g.team2}</span>
+                        {g.league && <span className="text-gray-500 text-xs truncate hidden sm:block">· {g.league}</span>}
                       </div>
                       <span className="text-orange-400 text-xs font-bold whitespace-nowrap shrink-0">
                         {new Date(g.datetime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
@@ -2530,54 +2551,124 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {/* Botão para abrir formulário */}
+              {!showAddGameForm && (
+                <button
+                  onClick={() => setShowAddGameForm(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-[#2A2A3A] text-gray-500 hover:border-orange-500/40 hover:text-orange-400 text-xs font-semibold transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Adicionar jogo
+                </button>
+              )}
+
               {/* Formulário de novo jogo */}
-              <div className="bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-5 space-y-4">
-                <p className="text-white font-bold text-sm">Adicionar jogo</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-gray-500 text-xs mb-1">Time 1 *</p>
-                    <input type="text" value={newGame.team1} onChange={e => setNewGame(p => ({ ...p, team1: e.target.value }))}
-                      placeholder="Ex: Flamengo"
-                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+              {showAddGameForm && (
+                <div className="bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-6 space-y-5">
+                  <h3 className="text-white font-bold text-base">Adicionar jogo manualmente</h3>
+
+                  {/* Nomes dos times */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-gray-400 text-sm mb-1.5">Time da casa</p>
+                      <input type="text" value={newGame.team1} onChange={e => setNewGame(p => ({ ...p, team1: e.target.value }))}
+                        placeholder="Ex: Flamengo"
+                        className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm mb-1.5">Time visitante</p>
+                      <input type="text" value={newGame.team2} onChange={e => setNewGame(p => ({ ...p, team2: e.target.value }))}
+                        placeholder="Ex: Vasco"
+                        className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+                    </div>
                   </div>
+
+                  {/* Logo time da casa */}
                   <div>
-                    <p className="text-gray-500 text-xs mb-1">Time 2 *</p>
-                    <input type="text" value={newGame.team2} onChange={e => setNewGame(p => ({ ...p, team2: e.target.value }))}
-                      placeholder="Ex: Palmeiras"
-                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+                    <p className="text-gray-400 text-sm mb-1.5">Logo time da casa</p>
+                    <div className="flex items-center gap-2">
+                      <div className="w-12 h-12 rounded-xl bg-[#0B0B0F] border border-[#2A2A3A] flex items-center justify-center shrink-0 overflow-hidden">
+                        {newGame.logo1
+                          ? <img src={newGame.logo1} alt="" className="w-full h-full object-contain p-1" onError={e => { e.currentTarget.style.display = 'none' }} />
+                          : <ImageIcon className="w-5 h-5 text-gray-600" />
+                        }
+                      </div>
+                      <input
+                        type="text"
+                        value={newGame.logo1}
+                        onChange={e => setNewGame(p => ({ ...p, logo1: e.target.value }))}
+                        placeholder="Cole a URL ou faça upload →"
+                        className="flex-1 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 placeholder-gray-600"
+                      />
+                      <label className="w-12 h-12 rounded-xl bg-[#0B0B0F] border border-[#2A2A3A] flex items-center justify-center shrink-0 cursor-pointer hover:border-orange-500/50 transition-all">
+                        {logo1Uploading
+                          ? <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                          : <ImageIcon className="w-5 h-5 text-gray-500" />
+                        }
+                        <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadTeamLogo(e.target.files[0], 1)} />
+                      </label>
+                    </div>
                   </div>
+
+                  {/* Logo time visitante */}
                   <div>
-                    <p className="text-gray-500 text-xs mb-1">Logo Time 1 (URL)</p>
-                    <input type="url" value={newGame.logo1} onChange={e => setNewGame(p => ({ ...p, logo1: e.target.value }))}
-                      placeholder="https://..."
-                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+                    <p className="text-gray-400 text-sm mb-1.5">Logo time visitante</p>
+                    <div className="flex items-center gap-2">
+                      <div className="w-12 h-12 rounded-xl bg-[#0B0B0F] border border-[#2A2A3A] flex items-center justify-center shrink-0 overflow-hidden">
+                        {newGame.logo2
+                          ? <img src={newGame.logo2} alt="" className="w-full h-full object-contain p-1" onError={e => { e.currentTarget.style.display = 'none' }} />
+                          : <ImageIcon className="w-5 h-5 text-gray-600" />
+                        }
+                      </div>
+                      <input
+                        type="text"
+                        value={newGame.logo2}
+                        onChange={e => setNewGame(p => ({ ...p, logo2: e.target.value }))}
+                        placeholder="Cole a URL ou faça upload →"
+                        className="flex-1 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500 placeholder-gray-600"
+                      />
+                      <label className="w-12 h-12 rounded-xl bg-[#0B0B0F] border border-[#2A2A3A] flex items-center justify-center shrink-0 cursor-pointer hover:border-orange-500/50 transition-all">
+                        {logo2Uploading
+                          ? <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                          : <ImageIcon className="w-5 h-5 text-gray-500" />
+                        }
+                        <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadTeamLogo(e.target.files[0], 2)} />
+                      </label>
+                    </div>
                   </div>
+
+                  {/* Liga */}
                   <div>
-                    <p className="text-gray-500 text-xs mb-1">Logo Time 2 (URL)</p>
-                    <input type="url" value={newGame.logo2} onChange={e => setNewGame(p => ({ ...p, logo2: e.target.value }))}
-                      placeholder="https://..."
-                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-xs mb-1">Competição</p>
+                    <p className="text-gray-400 text-sm mb-1.5">Liga / Campeonato (opcional)</p>
                     <input type="text" value={newGame.league} onChange={e => setNewGame(p => ({ ...p, league: e.target.value }))}
-                      placeholder="Ex: Brasileirão"
-                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+                      placeholder="Ex: Brasileirão Série A"
+                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
                   </div>
+
+                  {/* Data e hora */}
                   <div>
-                    <p className="text-gray-500 text-xs mb-1">Data e hora *</p>
+                    <p className="text-gray-400 text-sm mb-1.5">Data e horário do jogo</p>
                     <input type="datetime-local" value={newGame.datetime} onChange={e => setNewGame(p => ({ ...p, datetime: e.target.value }))}
-                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+
+                  {/* Botões */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={addGameToSchedule}
+                      disabled={!newGame.team1.trim() || !newGame.team2.trim() || !newGame.datetime}
+                      className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all text-sm"
+                    >
+                      Adicionar jogo
+                    </button>
+                    <button
+                      onClick={() => { setShowAddGameForm(false); setNewGame({ team1: '', team2: '', logo1: '', logo2: '', league: '', league_logo: '', datetime: '' }) }}
+                      className="text-gray-400 hover:text-white font-semibold py-3 px-5 transition-colors text-sm"
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={addGameToSchedule}
-                  disabled={!newGame.team1.trim() || !newGame.team2.trim() || !newGame.datetime}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-[#2A2A3A] text-gray-500 hover:border-orange-500/40 hover:text-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold transition-all"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Adicionar à lista
-                </button>
-              </div>
+              )}
 
               {/* Salvar */}
               <button
