@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Zap, ChevronDown } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage, Lang } from '@/contexts/LanguageContext';
@@ -75,11 +75,14 @@ export default function Navbar() {
           <div className="relative" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setLangOpen(v => !v)}
-              className="flex items-center gap-1 text-white/70 hover:text-white text-xs font-bold px-2 py-1.5 rounded-lg hover:bg-white/5 transition-all"
+              className="flex items-center gap-1 text-white/70 hover:text-white text-xs font-bold px-1 py-1.5 rounded-lg hover:bg-white/5 transition-all"
             >
-              <span>{langLabels[lang].flag}</span>
-              <span className="hidden sm:inline">{langLabels[lang].label}</span>
-              <ChevronDown className="w-3 h-3" />
+              <span
+                className="flex items-center justify-center w-8 h-8 rounded-lg text-lg shrink-0"
+                style={{ border: '1.5px solid rgba(255,106,0,0.5)', background: 'transparent' }}
+              >
+                {langLabels[lang].flag}
+              </span>
             </button>
             {langOpen && (
               <div className="absolute right-0 top-full mt-1 bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden shadow-2xl z-50 min-w-[110px]">

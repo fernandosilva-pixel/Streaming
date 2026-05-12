@@ -40,6 +40,8 @@ export default function ChatBox({ streamId }: { streamId: string }) {
   // Check admin status
   useEffect(() => {
     if (!user?.email) { setIsAdmin(false); return }
+    const moderators = (process.env.NEXT_PUBLIC_CHAT_MODERATORS ?? '').split(',').map(e => e.trim())
+    if (moderators.includes(user.email)) { setIsAdmin(true); return }
     supabase
       .from('registrations')
       .select('is_admin')

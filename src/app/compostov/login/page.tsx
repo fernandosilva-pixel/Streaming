@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -14,15 +13,6 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    // Sign in client-side so the session is stored in the browser
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
-    if (authError) {
-      setError('Email ou senha incorretos.')
-      setLoading(false)
-      return
-    }
-
-    // Set the admin_token cookie via API route
     const res = await fetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
