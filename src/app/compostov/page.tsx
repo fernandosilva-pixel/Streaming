@@ -2498,9 +2498,14 @@ export default function AdminPage() {
             </div>
             <button
               onClick={() => setScheduleActive(v => !v)}
-              className={`relative w-11 h-6 rounded-full transition-all ${scheduleActive ? 'bg-orange-500' : 'bg-[#2A2A3A]'}`}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all"
+              style={scheduleActive
+                ? { background: 'rgba(255,106,0,0.12)', border: '1.5px solid rgba(255,106,0,0.6)', color: '#FF6A00' }
+                : { background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.1)', color: '#6b7280' }
+              }
             >
-              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${scheduleActive ? 'left-6' : 'left-1'}`} />
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: scheduleActive ? '#FF6A00' : '#4b5563' }} />
+              {scheduleActive ? 'Ativa' : 'Inativa'}
             </button>
           </div>
 
