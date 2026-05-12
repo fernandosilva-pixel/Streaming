@@ -165,7 +165,15 @@ export default function HomeChatWidget() {
       .eq('stream_id', HOME_STREAM_ID)
       .order('created_at', { ascending: true })
       .limit(120)
-      .then(({ data }) => setMessages((data ?? []) as Msg[]))
+      .then(({ data }) => {
+        setMessages(prev => {
+          const fromDb = (data ?? []) as Msg[]
+          const dbIds = new Set(fromDb.map(m => m.id))
+          // preserve optimistic messages not yet confirmed in DB
+          const pending = prev.filter(m => m.id.startsWith('opt-') && !dbIds.has(m.id))
+          return [...fromDb, ...pending]
+        })
+      })
 
     const ch = supabase
       .channel(`chat:${HOME_STREAM_ID}`)
@@ -173,7 +181,11 @@ export default function HomeChatWidget() {
         event: 'INSERT', schema: 'public', table: 'chat_messages',
         filter: `stream_id=eq.${HOME_STREAM_ID}`,
       }, payload => {
-        setMessages(prev => [...prev, payload.new as Msg])
+        const incoming = payload.new as Msg
+        setMessages(prev => {
+          if (prev.some(m => m.id === incoming.id)) return prev
+          return [...prev.filter(m => m.id !== incoming.id), incoming]
+        })
         if (!openRef.current) setUnread(n => n + 1)
       })
       .on('postgres_changes', {
@@ -251,7 +263,12 @@ export default function HomeChatWidget() {
         setMessages(prev => prev.filter(m => m.id !== optimisticId))
         setText(msgText)
       } else if (data) {
-        setMessages(prev => prev.map(m => m.id === optimisticId ? (data as Msg) : m))
+        const real = data as Msg
+        setMessages(prev => {
+          const withoutOpt = prev.filter(m => m.id !== optimisticId)
+          if (withoutOpt.some(m => m.id === real.id)) return withoutOpt
+          return [...withoutOpt, real]
+        })
       }
     }
     setSending(false)
