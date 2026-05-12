@@ -27,7 +27,6 @@ type Msg = {
   message: string
   created_at: string
   is_pinned: boolean
-  is_admin?: boolean
 }
 
 const IS_MOCK = process.env.NEXT_PUBLIC_SUPABASE_MOCK === 'true'
@@ -234,7 +233,6 @@ export default function HomeChatWidget() {
         message: msgText,
         created_at: new Date().toISOString(),
         is_pinned: false,
-        is_admin: isAdmin,
       }
       const updated = [...mockLoadMsgs(), msg]
       selfSending.current = true
@@ -249,13 +247,12 @@ export default function HomeChatWidget() {
         message: msgText,
         created_at: new Date().toISOString(),
         is_pinned: false,
-        is_admin: isAdmin,
       }
       setMessages(prev => [...prev, optimistic])
 
       const { data, error } = await supabase
         .from('chat_messages')
-        .insert({ stream_id: HOME_STREAM_ID, user_name: userName, message: msgText, is_admin: isAdmin })
+        .insert({ stream_id: HOME_STREAM_ID, user_name: userName, message: msgText })
         .select()
         .single()
 
@@ -417,70 +414,39 @@ export default function HomeChatWidget() {
                 </p>
               )}
               {regularMessages.map(m => (
-                m.is_admin ? (
+                <div key={m.id} className="group flex gap-2">
                   <div
-                    key={m.id}
-                    className="group rounded-2xl px-4 py-3 relative"
-                    style={{
-                      background: 'rgba(161,124,0,0.15)',
-                      border: '1.5px solid rgba(234,179,8,0.35)',
-                    }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-black mt-0.5"
+                    style={{ background: userColor(m.user_name) + '22', color: userColor(m.user_name) }}
                   >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-sm">🔊</span>
-                      <span className="text-yellow-400 text-sm font-bold">{m.user_name}</span>
-                      <span
-                        className="text-[10px] font-black px-2 py-0.5 rounded-md tracking-wide"
-                        style={{ background: 'rgba(234,179,8,0.2)', color: '#facc15', border: '1px solid rgba(234,179,8,0.35)' }}
+                    {m.user_name[0]?.toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xs font-bold" style={{ color: userColor(m.user_name) }}>{m.user_name}</span>
+                      <span className="text-gray-700 text-[10px]">{fmtTime(m.created_at)}</span>
+                    </div>
+                    <p className="text-gray-200 text-sm leading-snug break-words mt-0.5">{m.message}</p>
+                  </div>
+                  {isAdmin && (
+                    <div className="shrink-0 flex items-center gap-0.5 mt-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                      <button onClick={() => pinMessage(m)} className="text-gray-700 hover:text-orange-400 transition-colors" title="Fixar">
+                        <Pin className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => blockUser(m.user_name)}
+                        disabled={blockedUsers.has(m.user_name)}
+                        className={`transition-colors ${blockedUsers.has(m.user_name) ? 'text-yellow-600 cursor-not-allowed' : 'text-gray-700 hover:text-yellow-500'}`}
+                        title={blockedUsers.has(m.user_name) ? 'Já bloqueado' : 'Bloquear usuário'}
                       >
-                        ADMIN
-                      </span>
+                        <Ban className="w-3 h-3" />
+                      </button>
+                      <button onClick={() => deleteMessage(m.id)} className="text-gray-700 hover:text-red-500 transition-colors" title="Excluir">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </div>
-                    <p className="text-white/90 text-sm leading-relaxed whitespace-pre-wrap">{m.message}</p>
-                    <p className="text-right text-yellow-600/60 text-[10px] mt-1.5">{fmtTime(m.created_at)}</p>
-                    {isAdmin && (
-                      <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => deleteMessage(m.id)} className="text-gray-600 hover:text-red-500 transition-colors" title="Excluir">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div key={m.id} className="group flex gap-2">
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-black mt-0.5"
-                      style={{ background: userColor(m.user_name) + '22', color: userColor(m.user_name) }}
-                    >
-                      {m.user_name[0]?.toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-xs font-bold" style={{ color: userColor(m.user_name) }}>{m.user_name}</span>
-                        <span className="text-gray-700 text-[10px]">{fmtTime(m.created_at)}</span>
-                      </div>
-                      <p className="text-gray-200 text-sm leading-snug break-words mt-0.5">{m.message}</p>
-                    </div>
-                    {isAdmin && (
-                      <div className="shrink-0 flex items-center gap-0.5 mt-0.5 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => pinMessage(m)} className="text-gray-700 hover:text-orange-400 transition-colors" title="Fixar">
-                          <Pin className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={() => blockUser(m.user_name)}
-                          disabled={blockedUsers.has(m.user_name)}
-                          className={`transition-colors ${blockedUsers.has(m.user_name) ? 'text-yellow-600 cursor-not-allowed' : 'text-gray-700 hover:text-yellow-500'}`}
-                          title={blockedUsers.has(m.user_name) ? 'Já bloqueado' : 'Bloquear usuário'}
-                        >
-                          <Ban className="w-3 h-3" />
-                        </button>
-                        <button onClick={() => deleteMessage(m.id)} className="text-gray-700 hover:text-red-500 transition-colors" title="Excluir">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )
+                  )}
+                </div>
               ))}
               <div ref={bottomRef} />
             </div>
