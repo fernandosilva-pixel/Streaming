@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown, UserCheck, BarChart2, RefreshCw } from 'lucide-react'
+import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown, UserCheck, BarChart2, RefreshCw, CalendarDays } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 type Fixture = {
@@ -184,7 +184,7 @@ export default function AdminPage() {
   const [addingAdmin, setAddingAdmin] = useState(false)
 
   // Aba ativa
-  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins'>('visual')
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda'>('visual')
 
   // Permissões do admin logado (null = superadmin, array = abas permitidas)
   const [allowedTabs, setAllowedTabs] = useState<string[] | null>(null)
@@ -199,6 +199,53 @@ export default function AdminPage() {
   const [newSubTabs, setNewSubTabs] = useState<string[]>([])
   const [creatingSubAdmin, setCreatingSubAdmin] = useState(false)
   const [subAdminError, setSubAdminError] = useState('')
+
+  // Agenda (schedule_notification)
+  type ScheduleGame = { id: string; team1: string; team2: string; logo1: string; logo2: string; league: string; league_logo: string; datetime: string }
+  const [scheduleId, setScheduleId] = useState<string | null>(null)
+  const [scheduleTitle, setScheduleTitle] = useState('Próximos Jogos')
+  const [scheduleActive, setScheduleActive] = useState(false)
+  const [scheduleGames, setScheduleGames] = useState<ScheduleGame[]>([])
+  const [scheduleSaving, setScheduleSaving] = useState(false)
+  const [scheduleLoading, setScheduleLoading] = useState(false)
+  const [newGame, setNewGame] = useState<Omit<ScheduleGame, 'id'>>({ team1: '', team2: '', logo1: '', logo2: '', league: '', league_logo: '', datetime: '' })
+
+  async function loadSchedule() {
+    setScheduleLoading(true)
+    const { data } = await supabase.from('schedule_notification').select('*').order('updated_at', { ascending: false }).limit(1).maybeSingle()
+    if (data) {
+      setScheduleId(data.id)
+      setScheduleTitle(data.title || 'Próximos Jogos')
+      setScheduleActive(data.is_active ?? false)
+      setScheduleGames(data.games ?? [])
+    }
+    setScheduleLoading(false)
+  }
+
+  async function saveSchedule() {
+    setScheduleSaving(true)
+    const payload = { title: scheduleTitle, is_active: scheduleActive, games: scheduleGames, updated_at: new Date().toISOString() }
+    if (scheduleId) {
+      await supabase.from('schedule_notification').update(payload).eq('id', scheduleId)
+    } else {
+      const { data } = await supabase.from('schedule_notification').insert(payload).select().single()
+      if (data) setScheduleId(data.id)
+    }
+    setScheduleSaving(false)
+  }
+
+  function addGameToSchedule() {
+    if (!newGame.team1.trim() || !newGame.team2.trim() || !newGame.datetime) return
+    const game: ScheduleGame = { ...newGame, id: Date.now().toString(36) + Math.random().toString(36).slice(2) }
+    setScheduleGames(prev => [...prev, game])
+    setNewGame({ team1: '', team2: '', logo1: '', logo2: '', league: '', league_logo: '', datetime: '' })
+  }
+
+  function removeGameFromSchedule(id: string) {
+    setScheduleGames(prev => prev.filter(g => g.id !== id))
+  }
+
+  useEffect(() => { if (activeTab === 'agenda') loadSchedule() }, [activeTab])
 
   // Dashboard
   type DashRegistration = { id?: string; name: string; phone: string; created_at?: string }
@@ -1073,6 +1120,7 @@ export default function AdminPage() {
           { id: 'transmissao', label: 'Transmissão', icon: <Radio className="w-4 h-4" /> },
           { id: 'acesso', label: 'Acesso Gratuito', icon: <Users className="w-4 h-4" /> },
           { id: 'notificar', label: 'Notificar', icon: <Megaphone className="w-4 h-4" /> },
+          { id: 'agenda', label: 'Agenda', icon: <CalendarDays className="w-4 h-4" /> },
           { id: 'afiliados', label: 'Afiliados', icon: <UserCheck className="w-4 h-4" /> },
           { id: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
           ...(allowedTabs === null ? [{ id: 'admins', label: 'Admins', icon: <UserCheck className="w-4 h-4" /> }] : []),
@@ -2420,6 +2468,127 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── ABA: AGENDA ── */}
+      {activeTab === 'agenda' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white">Agenda de Jogos</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Jogos exibidos no sino de notificação da navbar.</p>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <span className="text-gray-400 text-sm font-semibold">Ativo</span>
+              <button
+                onClick={() => setScheduleActive(v => !v)}
+                className={`relative w-11 h-6 rounded-full transition-all ${scheduleActive ? 'bg-orange-500' : 'bg-[#2A2A3A]'}`}
+              >
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${scheduleActive ? 'left-6' : 'left-1'}`} />
+              </button>
+            </label>
+          </div>
+
+          {scheduleLoading ? (
+            <p className="text-gray-500 text-sm">Carregando...</p>
+          ) : (
+            <>
+              {/* Título */}
+              <div>
+                <p className="text-gray-400 text-xs mb-1.5">Título do modal</p>
+                <input
+                  type="text"
+                  value={scheduleTitle}
+                  onChange={e => setScheduleTitle(e.target.value)}
+                  placeholder="Ex: Jogos desta semana"
+                  className="w-full bg-[#12121A] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              {/* Jogos cadastrados */}
+              {scheduleGames.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide">Jogos ({scheduleGames.length})</p>
+                  {scheduleGames.map(g => (
+                    <div key={g.id} className="flex items-center gap-3 bg-[#12121A] border border-[#2A2A3A] rounded-xl px-4 py-3">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {g.logo1 && <img src={g.logo1} alt="" className="w-7 h-7 object-contain shrink-0" />}
+                        <span className="text-white text-sm font-semibold truncate">{g.team1}</span>
+                        <span className="text-gray-600 text-xs font-black">×</span>
+                        {g.logo2 && <img src={g.logo2} alt="" className="w-7 h-7 object-contain shrink-0" />}
+                        <span className="text-white text-sm font-semibold truncate">{g.team2}</span>
+                      </div>
+                      <span className="text-orange-400 text-xs font-bold whitespace-nowrap shrink-0">
+                        {new Date(g.datetime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <button onClick={() => removeGameFromSchedule(g.id)} className="text-gray-600 hover:text-red-500 transition-colors shrink-0">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Formulário de novo jogo */}
+              <div className="bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-5 space-y-4">
+                <p className="text-white font-bold text-sm">Adicionar jogo</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">Time 1 *</p>
+                    <input type="text" value={newGame.team1} onChange={e => setNewGame(p => ({ ...p, team1: e.target.value }))}
+                      placeholder="Ex: Flamengo"
+                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">Time 2 *</p>
+                    <input type="text" value={newGame.team2} onChange={e => setNewGame(p => ({ ...p, team2: e.target.value }))}
+                      placeholder="Ex: Palmeiras"
+                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">Logo Time 1 (URL)</p>
+                    <input type="url" value={newGame.logo1} onChange={e => setNewGame(p => ({ ...p, logo1: e.target.value }))}
+                      placeholder="https://..."
+                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">Logo Time 2 (URL)</p>
+                    <input type="url" value={newGame.logo2} onChange={e => setNewGame(p => ({ ...p, logo2: e.target.value }))}
+                      placeholder="https://..."
+                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">Competição</p>
+                    <input type="text" value={newGame.league} onChange={e => setNewGame(p => ({ ...p, league: e.target.value }))}
+                      placeholder="Ex: Brasileirão"
+                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">Data e hora *</p>
+                    <input type="datetime-local" value={newGame.datetime} onChange={e => setNewGame(p => ({ ...p, datetime: e.target.value }))}
+                      className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+                  </div>
+                </div>
+                <button
+                  onClick={addGameToSchedule}
+                  disabled={!newGame.team1.trim() || !newGame.team2.trim() || !newGame.datetime}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-[#2A2A3A] text-gray-500 hover:border-orange-500/40 hover:text-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Adicionar à lista
+                </button>
+              </div>
+
+              {/* Salvar */}
+              <button
+                onClick={saveSchedule}
+                disabled={scheduleSaving}
+                className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all text-sm"
+              >
+                {scheduleSaving ? 'Salvando...' : 'Salvar agenda'}
+              </button>
+            </>
+          )}
         </div>
       )}
 
