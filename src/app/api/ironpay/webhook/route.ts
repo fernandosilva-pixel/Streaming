@@ -10,30 +10,48 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { transaction_hash, status, amount } = body
+  console.log('IronPay webhook:', JSON.stringify(body))
 
-  if (!transaction_hash) return NextResponse.json({ ok: false }, { status: 400 })
+  const { transaction_hash, payment_status, amount } = body
 
-  const { data: tx } = await supabase
-    .from('ironpay_transactions')
-    .select('*')
-    .eq('transaction_hash', transaction_hash)
-    .maybeSingle()
+  // stream_id e user_email podem vir via utm_source/utm_campaign (checkout redirect)
+  // ou via transaction_hash (API direta)
+  const utmStreamId = body.utm_source && body.utm_source !== 'null' ? body.utm_source : null
+  const utmEmail = body.utm_campaign && body.utm_campaign !== 'null'
+    ? decodeURIComponent(body.utm_campaign)
+    : null
 
-  if (!tx) return NextResponse.json({ ok: true })
+  if (payment_status === 'paid' || payment_status === 'approved') {
+    if (utmStreamId && utmEmail) {
+      // Pagamento via checkout redirect — usa UTM params
+      await supabase.from('payments').insert({
+        stream_id: utmStreamId,
+        user_phone: utmEmail,
+        status: 'PAID',
+        amount: (amount ?? 0) / 100,
+      })
+    } else if (transaction_hash) {
+      // Pagamento via API direta — usa transaction_hash
+      const { data: tx } = await supabase
+        .from('ironpay_transactions')
+        .select('*')
+        .eq('transaction_hash', transaction_hash)
+        .maybeSingle()
 
-  await supabase
-    .from('ironpay_transactions')
-    .update({ status })
-    .eq('transaction_hash', transaction_hash)
+      if (tx) {
+        await supabase.from('payments').insert({
+          stream_id: tx.stream_id,
+          user_phone: tx.user_email,
+          status: 'PAID',
+          amount: (amount ?? tx.amount) / 100,
+        })
 
-  if (status === 'paid' || status === 'approved') {
-    await supabase.from('payments').insert({
-      stream_id: tx.stream_id,
-      user_phone: tx.user_email,
-      status: 'PAID',
-      amount: (amount ?? tx.amount) / 100,
-    })
+        await supabase
+          .from('ironpay_transactions')
+          .update({ status: 'paid' })
+          .eq('transaction_hash', transaction_hash)
+      }
+    }
   }
 
   return NextResponse.json({ ok: true })
