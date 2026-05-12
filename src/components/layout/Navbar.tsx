@@ -6,6 +6,7 @@ import { Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage, Lang } from '@/contexts/LanguageContext';
+import NotificationBell from '@/components/common/NotificationBell';
 
 const langLabels: Record<Lang, { flag: string; label: string }> = {
   pt: { flag: '🇧🇷', label: 'PT' },
@@ -70,6 +71,9 @@ export default function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+
+          {/* Bell */}
+          <NotificationBell homeTeam="" awayTeam="" matchTime="" />
 
           {/* Language selector */}
           <div className="relative" onClick={e => e.stopPropagation()}>
