@@ -206,7 +206,6 @@ export default function AdminPage() {
   const [scheduleTitle, setScheduleTitle] = useState('Próximos Jogos')
   const [scheduleActive, setScheduleActive] = useState(false)
   const [scheduleGames, setScheduleGames] = useState<ScheduleGame[]>([])
-  const [scheduleSaving, setScheduleSaving] = useState(false)
   const [scheduleLoading, setScheduleLoading] = useState(false)
   const [showAddGameForm, setShowAddGameForm] = useState(false)
   const [logo1Uploading, setLogo1Uploading] = useState(false)
@@ -225,16 +224,14 @@ export default function AdminPage() {
     setScheduleLoading(false)
   }
 
-  async function saveSchedule() {
-    setScheduleSaving(true)
-    const payload = { title: scheduleTitle, is_active: scheduleActive, games: scheduleGames, updated_at: new Date().toISOString() }
-    if (scheduleId) {
-      await supabase.from('schedule_notification').update(payload).eq('id', scheduleId)
+  async function persistSchedule(games: ScheduleGame[], isActive: boolean, sid: string | null) {
+    const payload = { title: scheduleTitle, is_active: isActive, games, updated_at: new Date().toISOString() }
+    if (sid) {
+      await supabase.from('schedule_notification').update(payload).eq('id', sid)
     } else {
       const { data } = await supabase.from('schedule_notification').insert(payload).select().single()
       if (data) setScheduleId(data.id)
     }
-    setScheduleSaving(false)
   }
 
   async function uploadTeamLogo(file: File, team: 1 | 2) {
@@ -250,16 +247,26 @@ export default function AdminPage() {
     setter(false)
   }
 
-  function addGameToSchedule() {
+  async function addGameToSchedule() {
     if (!newGame.team1.trim() || !newGame.team2.trim() || !newGame.datetime) return
     const game: ScheduleGame = { ...newGame, id: Date.now().toString(36) + Math.random().toString(36).slice(2) }
-    setScheduleGames(prev => [...prev, game])
+    const updated = [...scheduleGames, game]
+    setScheduleGames(updated)
     setNewGame({ team1: '', team2: '', logo1: '', logo2: '', league: '', league_logo: '', datetime: '' })
     setShowAddGameForm(false)
+    await persistSchedule(updated, scheduleActive, scheduleId)
   }
 
-  function removeGameFromSchedule(id: string) {
-    setScheduleGames(prev => prev.filter(g => g.id !== id))
+  async function removeGameFromSchedule(id: string) {
+    const updated = scheduleGames.filter(g => g.id !== id)
+    setScheduleGames(updated)
+    await persistSchedule(updated, scheduleActive, scheduleId)
+  }
+
+  async function toggleScheduleActive() {
+    const next = !scheduleActive
+    setScheduleActive(next)
+    await persistSchedule(scheduleGames, next, scheduleId)
   }
 
   useEffect(() => { if (activeTab === 'agenda') loadSchedule() }, [activeTab])
@@ -2497,7 +2504,7 @@ export default function AdminPage() {
               <p className="text-gray-500 text-sm mt-0.5">Jogos exibidos no sino de notificação da navbar.</p>
             </div>
             <button
-              onClick={() => setScheduleActive(v => !v)}
+              onClick={toggleScheduleActive}
               className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all"
               style={scheduleActive
                 ? { background: 'rgba(255,106,0,0.12)', border: '1.5px solid rgba(255,106,0,0.6)', color: '#FF6A00' }
@@ -2675,14 +2682,6 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {/* Salvar */}
-              <button
-                onClick={saveSchedule}
-                disabled={scheduleSaving}
-                className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all text-sm"
-              >
-                {scheduleSaving ? 'Salvando...' : 'Salvar agenda'}
-              </button>
             </>
           )}
         </div>
