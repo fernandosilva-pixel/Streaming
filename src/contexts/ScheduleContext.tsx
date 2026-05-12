@@ -64,21 +64,34 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       return () => window.removeEventListener('storage', handler)
     }
 
-    supabase
-      .from('schedule_notification')
-      .select('*')
-      .eq('is_active', true)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => { if (data) setScheduleData(data) })
+    async function loadSchedule() {
+      const { data } = await supabase
+        .from('schedule_notification')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (data) {
+        if (data.is_active) setScheduleData(data)
+        else setScheduleData(null)
+      } else {
+        setScheduleData(null)
+      }
+    }
+
+    loadSchedule()
+
+    const onFocus = () => loadSchedule()
+    const onVisibility = () => { if (document.visibilityState === 'visible') loadSchedule() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
 
     const channel = supabase
       .channel('schedule-notification-ctx')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'schedule_notification' }, payload => {
         const updated = payload.new as ScheduleData
         if (updated.is_active) setScheduleData(updated)
-        else setScheduleData(prev => prev?.id === updated.id ? null : prev)
+        else setScheduleData(null)
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'schedule_notification' }, payload => {
         const row = payload.new as ScheduleData
@@ -86,7 +99,11 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   return (

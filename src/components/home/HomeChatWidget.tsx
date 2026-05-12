@@ -212,11 +212,14 @@ export default function HomeChatWidget() {
     if (!text.trim() || isBlocked) return
     setSending(true)
     const userName = user ? user.name : getGuestName()
+    const msgText = text.trim()
+    setText('')
+
     if (IS_MOCK) {
       const msg: Msg = {
         id: genId(),
         user_name: userName,
-        message: text.trim(),
+        message: msgText,
         created_at: new Date().toISOString(),
         is_pinned: false,
         is_admin: isAdmin,
@@ -227,14 +230,30 @@ export default function HomeChatWidget() {
       selfSending.current = false
       setMessages(updated)
     } else {
-      await supabase.from('chat_messages').insert({
-        stream_id: HOME_STREAM_ID,
+      const optimisticId = 'opt-' + genId()
+      const optimistic: Msg = {
+        id: optimisticId,
         user_name: userName,
-        message: text.trim(),
+        message: msgText,
+        created_at: new Date().toISOString(),
+        is_pinned: false,
         is_admin: isAdmin,
-      })
+      }
+      setMessages(prev => [...prev, optimistic])
+
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({ stream_id: HOME_STREAM_ID, user_name: userName, message: msgText, is_admin: isAdmin })
+        .select()
+        .single()
+
+      if (error) {
+        setMessages(prev => prev.filter(m => m.id !== optimisticId))
+        setText(msgText)
+      } else if (data) {
+        setMessages(prev => prev.map(m => m.id === optimisticId ? (data as Msg) : m))
+      }
     }
-    setText('')
     setSending(false)
   }
 
