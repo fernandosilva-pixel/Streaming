@@ -71,10 +71,11 @@ export default function HomeChatWidget() {
   const [isBlocked, setIsBlocked]     = useState(false)
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set())
   const [unread, setUnread]           = useState(0)
-  const bottomRef    = useRef<HTMLDivElement>(null)
-  const inputRef     = useRef<HTMLInputElement>(null)
-  const openRef      = useRef(false)
-  const selfSending  = useRef(false)
+  const bottomRef        = useRef<HTMLDivElement>(null)
+  const inputRef         = useRef<HTMLInputElement>(null)
+  const openRef          = useRef(false)
+  const selfSending      = useRef(false)
+  const userSentRef      = useRef(false)   // true once user sends first message
 
   useEffect(() => { openRef.current = open }, [open])
 
@@ -165,15 +166,9 @@ export default function HomeChatWidget() {
       .order('created_at', { ascending: true })
       .limit(120)
       .then(({ data }) => {
-        setMessages(prev => {
-          const fromDb = (data ?? []) as Msg[]
-          const dbIds = new Set(fromDb.map(m => m.id))
-          // preserve optimistic messages not yet confirmed
-          const pending = prev.filter(m => m.id.startsWith('opt-') && !dbIds.has(m.id))
-          // preserve confirmed messages that arrived after this fetch started (newer than fromDb)
-          const laterConfirmed = prev.filter(m => !m.id.startsWith('opt-') && !dbIds.has(m.id))
-          return [...fromDb, ...laterConfirmed, ...pending]
-        })
+        // If user already sent a message while this was loading, don't overwrite
+        if (userSentRef.current) return
+        setMessages((data ?? []) as Msg[])
       })
 
     const ch = supabase
@@ -243,6 +238,7 @@ export default function HomeChatWidget() {
       setMessages(updated)
     } else {
       const optimisticId = 'opt-' + genId()
+      userSentRef.current = true
       const optimistic: Msg = {
         id: optimisticId,
         user_name: userName,
