@@ -215,8 +215,14 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
                     {couponEnabled && (
                       <div className="space-y-2 pt-1">
                         {!couponOpen ? (
-                          <button onClick={() => { setCouponOpen(true); setCouponError(''); setCouponCode('') }} className="w-full text-purple-400 font-bold border border-purple-500 rounded-full py-3 text-sm transition-all hover:bg-purple-500/10">
-                            {t('haveCode')}
+                          <button
+                            onClick={() => { setCouponOpen(true); setCouponError(''); setCouponCode('') }}
+                            className="w-full relative overflow-hidden font-black py-3 text-sm transition-all rounded-xl border-2 border-yellow-400 text-yellow-900 hover:brightness-110"
+                            style={{ background: 'linear-gradient(135deg, #f5c518 0%, #fde68a 40%, #f59e0b 60%, #f5c518 100%)' }}
+                          >
+                            <span className="relative z-10 flex items-center justify-center gap-2">
+                              🎟️ {t('haveCode')}
+                            </span>
                           </button>
                         ) : (
                           <div className="space-y-2">
@@ -225,11 +231,16 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
                               value={couponCode}
                               onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError('') }}
                               placeholder={t('codePlaceholder')}
-                              className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none focus:border-purple-500"
+                              className="w-full bg-[#0B0B0F] rounded-xl px-3 py-2.5 text-sm text-center font-mono tracking-widest focus:outline-none text-white placeholder-gray-600 border-2 border-yellow-400/80"
                             />
                             {couponError && <p className="text-red-400 text-xs text-center">{couponError}</p>}
-                            <button disabled={couponLoading || !couponCode.trim()} onClick={handleCoupon} className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition-all text-sm">
-                              {couponLoading ? t('verifying') : t('confirmCode')}
+                            <button
+                              disabled={couponLoading || !couponCode.trim()}
+                              onClick={handleCoupon}
+                              className="w-full relative overflow-hidden font-black py-2.5 rounded-xl transition-all border-2 border-yellow-400 text-yellow-900 disabled:opacity-40 hover:brightness-110 text-sm"
+                              style={{ background: 'linear-gradient(135deg, #f5c518 0%, #fde68a 40%, #f59e0b 60%, #f5c518 100%)' }}
+                            >
+                              {couponLoading ? t('verifying') : '🎟️ ' + t('confirmCode')}
                             </button>
                             <button onClick={() => setCouponOpen(false)} className="w-full text-gray-500 hover:text-white text-xs transition-colors">
                               {t('cancel')}
