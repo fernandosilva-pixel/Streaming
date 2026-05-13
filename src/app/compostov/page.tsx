@@ -110,6 +110,7 @@ export default function AdminPage() {
   const [showOnlineList, setShowOnlineList] = useState(false)
   const [chargedUsersByStream, setChargedUsersByStream] = useState<Record<string, string[]>>({})
   const [newChargedEmail, setNewChargedEmail] = useState<Record<string, string>>({})
+  const [expandedViewers, setExpandedViewers] = useState<Set<string>>(new Set())
 
   // Notificações de novos cadastros
   const [toasts, setToasts] = useState<{ id: string; name: string; phone: string }[]>([])
@@ -1649,11 +1650,13 @@ export default function AdminPage() {
                           <p className="text-white text-sm font-semibold truncate">{s.title}</p>
                           {(viewersByStream[s.id] ?? 0) > 0 && (() => {
                             const watchers = onlineList.filter(u => u.stream_id === s.id)
+                            const isExpanded = expandedViewers.has(s.id)
+                            const visible = isExpanded ? watchers : watchers.slice(0, 3)
                             return (
                               <div className="mt-0.5">
                                 <p className="text-green-400 text-xs font-semibold">● {viewersByStream[s.id]} assistindo agora</p>
                                 <div className="mt-1 space-y-0.5">
-                                  {watchers.map((u, i) => (
+                                  {visible.map((u, i) => (
                                     <div key={i} className="flex items-center gap-1.5">
                                       {u.flag
                                         ? <img src={u.flag} alt={u.country} className="w-4 h-3 object-cover rounded-sm shrink-0" />
@@ -1663,6 +1666,18 @@ export default function AdminPage() {
                                     </div>
                                   ))}
                                 </div>
+                                {watchers.length > 3 && (
+                                  <button
+                                    onClick={() => setExpandedViewers(prev => {
+                                      const next = new Set(prev)
+                                      isExpanded ? next.delete(s.id) : next.add(s.id)
+                                      return next
+                                    })}
+                                    className="text-[10px] text-orange-400 hover:text-orange-300 font-semibold mt-1 transition-colors"
+                                  >
+                                    {isExpanded ? 'Mostrar menos ▲' : `+${watchers.length - 3} mostrar mais ▼`}
+                                  </button>
+                                )}
                               </div>
                             )
                           })()}
