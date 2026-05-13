@@ -105,7 +105,7 @@ export default function AdminPage() {
   // Auth / misc
   const [authChecked, setAuthChecked] = useState(false)
   const [onlineUsers, setOnlineUsers] = useState(0)
-  const [onlineList, setOnlineList] = useState<{ name: string; phone: string }[]>([])
+  const [onlineList, setOnlineList] = useState<{ name: string; phone: string; country: string; flag: string }[]>([])
   const [viewersByStream, setViewersByStream] = useState<Record<string, number>>({})
   const [showOnlineList, setShowOnlineList] = useState(false)
 
@@ -390,8 +390,8 @@ export default function AdminPage() {
       const state = channel.presenceState()
       const users = Object.values(state).flatMap((arr: unknown[]) =>
         arr.map((p: unknown) => {
-          const presence = p as { name?: string; phone?: string; stream_id?: string }
-          return { name: presence.name ?? 'Usuário', phone: presence.phone ?? '', stream_id: presence.stream_id ?? '' }
+          const presence = p as { name?: string; phone?: string; stream_id?: string; country?: string; flag?: string }
+          return { name: presence.name ?? 'Usuário', phone: presence.phone ?? '', stream_id: presence.stream_id ?? '', country: presence.country ?? '', flag: presence.flag ?? '' }
         })
       )
       setOnlineUsers(users.length)
@@ -1135,9 +1135,16 @@ export default function AdminPage() {
                 ) : (
                   <ul className="divide-y divide-[#2A2A3A]">
                     {onlineList.map((u, i) => (
-                      <li key={i} className="px-4 py-2.5">
-                        <p className="text-white text-sm font-medium">{u.name}</p>
-                        <p className="text-gray-500 text-xs">{u.phone}</p>
+                      <li key={i} className="px-4 py-2.5 flex items-center gap-3">
+                        {u.flag ? (
+                          <img src={u.flag} alt={u.country} className="w-6 h-4 object-cover rounded-sm shrink-0" />
+                        ) : (
+                          <span className="w-6 h-4 rounded-sm bg-white/10 shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-white text-sm font-medium truncate">{u.name}</p>
+                          <p className="text-gray-500 text-xs truncate">{u.phone}{u.country ? ` · ${u.country}` : ''}</p>
+                        </div>
                       </li>
                     ))}
                   </ul>

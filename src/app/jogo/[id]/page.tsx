@@ -184,7 +184,14 @@ export default function JogoPage({ params }: Props) {
     })
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await channel.track({ stream_id: id, name: user.name, phone: user.email, at: Date.now() })
+        let country = ''
+        let flag = ''
+        try {
+          const geo = await fetch('https://ipinfo.io/json?token=').then(r => r.json())
+          country = geo.country ?? ''
+          flag = geo.country ? `https://flagcdn.com/24x18/${geo.country.toLowerCase()}.png` : ''
+        } catch {}
+        await channel.track({ stream_id: id, name: user.name, phone: user.email, country, flag, at: Date.now() })
       }
     })
     return () => { supabase.removeChannel(channel) }
