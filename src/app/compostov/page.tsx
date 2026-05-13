@@ -1679,7 +1679,17 @@ export default function AdminPage() {
                                       }
                                       <span className="text-gray-400 text-xs truncate flex-1">{u.phone || u.name}</span>
                                       <button
-                                        onClick={() => supabase.from('user_refresh').upsert({ stream_id: s.id, user_email: u.phone, refresh_at: new Date().toISOString() }, { onConflict: 'stream_id,user_email' })}
+                                        onClick={async (e) => {
+                                          const btn = e.currentTarget
+                                          btn.textContent = '✓'
+                                          btn.style.color = '#22c55e'
+                                          const { error } = await supabase.from('user_refresh').upsert(
+                                            { stream_id: s.id, user_email: u.phone, refresh_at: new Date().toISOString() },
+                                            { onConflict: 'stream_id,user_email' }
+                                          )
+                                          if (error) { btn.textContent = '✗'; btn.style.color = '#ef4444' }
+                                          setTimeout(() => { btn.textContent = '↺'; btn.style.color = '' }, 2000)
+                                        }}
                                         className="opacity-0 group-hover/viewer:opacity-100 transition-opacity text-gray-600 hover:text-orange-400 ml-1 shrink-0"
                                         title="Forçar refresh deste usuário"
                                       >↺</button>
