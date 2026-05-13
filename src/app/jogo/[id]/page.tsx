@@ -238,7 +238,7 @@ export default function JogoPage({ params }: Props) {
       })
   }, [user?.email, id, stream?.charge_enabled])
 
-  // Poll for admin-triggered force refresh every 5s
+  // Poll for admin-triggered force refresh every 5s (stream-level)
   useEffect(() => {
     let initialized = false
     let lastRefreshAt: string | null = null
@@ -250,6 +250,24 @@ export default function JogoPage({ params }: Props) {
     }, 5000)
     return () => clearInterval(interval)
   }, [id])
+
+  // Poll for admin-triggered user-level force refresh every 5s
+  useEffect(() => {
+    if (!user) return
+    let lastRefreshAt: string | null = null
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from('user_refresh')
+        .select('refresh_at')
+        .eq('stream_id', id)
+        .eq('user_email', user.email)
+        .maybeSingle()
+      const val = data?.refresh_at ?? null
+      if (lastRefreshAt === null) { lastRefreshAt = val; return }
+      if (val !== lastRefreshAt) window.location.reload()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [user, id])
 
   // 2m30s preview, separate timer for not-logged-in and logged-in-but-unpaid
   const previewKey = user ? `preview_payment_${id}_${user.email}` : `preview_login_${id}`

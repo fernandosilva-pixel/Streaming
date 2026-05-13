@@ -1657,12 +1657,17 @@ export default function AdminPage() {
                                 <p className="text-green-400 text-xs font-semibold">● {viewersByStream[s.id]} assistindo agora</p>
                                 <div className="mt-1 space-y-0.5">
                                   {visible.map((u, i) => (
-                                    <div key={i} className="flex items-center gap-1.5">
+                                    <div key={i} className="flex items-center gap-1.5 group/viewer">
                                       {u.flag
                                         ? <img src={u.flag} alt={u.country} className="w-4 h-3 object-cover rounded-sm shrink-0" />
                                         : <span className="w-4 h-3 rounded-sm bg-white/10 shrink-0" />
                                       }
-                                      <span className="text-gray-400 text-xs truncate">{u.phone || u.name}</span>
+                                      <span className="text-gray-400 text-xs truncate flex-1">{u.phone || u.name}</span>
+                                      <button
+                                        onClick={() => supabase.from('user_refresh').upsert({ stream_id: s.id, user_email: u.phone, refresh_at: new Date().toISOString() }, { onConflict: 'stream_id,user_email' })}
+                                        className="opacity-0 group-hover/viewer:opacity-100 transition-opacity text-gray-600 hover:text-orange-400 ml-1 shrink-0"
+                                        title="Forçar refresh deste usuário"
+                                      >↺</button>
                                     </div>
                                   ))}
                                 </div>
