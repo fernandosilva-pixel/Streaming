@@ -168,9 +168,11 @@ export default function HomeChatWidget() {
         setMessages(prev => {
           const fromDb = (data ?? []) as Msg[]
           const dbIds = new Set(fromDb.map(m => m.id))
-          // preserve optimistic messages not yet confirmed in DB
+          // preserve optimistic messages not yet confirmed
           const pending = prev.filter(m => m.id.startsWith('opt-') && !dbIds.has(m.id))
-          return [...fromDb, ...pending]
+          // preserve confirmed messages that arrived after this fetch started (newer than fromDb)
+          const laterConfirmed = prev.filter(m => !m.id.startsWith('opt-') && !dbIds.has(m.id))
+          return [...fromDb, ...laterConfirmed, ...pending]
         })
       })
 
