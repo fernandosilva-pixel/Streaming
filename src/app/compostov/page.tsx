@@ -105,7 +105,7 @@ export default function AdminPage() {
   // Auth / misc
   const [authChecked, setAuthChecked] = useState(false)
   const [onlineUsers, setOnlineUsers] = useState(0)
-  const [onlineList, setOnlineList] = useState<{ name: string; phone: string; country: string; flag: string }[]>([])
+  const [onlineList, setOnlineList] = useState<{ name: string; phone: string; country: string; flag: string; stream_id: string }[]>([])
   const [viewersByStream, setViewersByStream] = useState<Record<string, number>>({})
   const [showOnlineList, setShowOnlineList] = useState(false)
 
@@ -1616,9 +1616,25 @@ export default function AdminPage() {
                       <div className="flex items-center gap-2 p-3 pb-2">
                         <div className="flex-1 min-w-0">
                           <p className="text-white text-sm font-semibold truncate">{s.title}</p>
-                          {(viewersByStream[s.id] ?? 0) > 0 && (
-                            <p className="text-green-400 text-xs font-semibold mt-0.5">● {viewersByStream[s.id]} assistindo agora</p>
-                          )}
+                          {(viewersByStream[s.id] ?? 0) > 0 && (() => {
+                            const watchers = onlineList.filter(u => u.stream_id === s.id)
+                            return (
+                              <div className="mt-0.5">
+                                <p className="text-green-400 text-xs font-semibold">● {viewersByStream[s.id]} assistindo agora</p>
+                                <div className="mt-1 space-y-0.5">
+                                  {watchers.map((u, i) => (
+                                    <div key={i} className="flex items-center gap-1.5">
+                                      {u.flag
+                                        ? <img src={u.flag} alt={u.country} className="w-4 h-3 object-cover rounded-sm shrink-0" />
+                                        : <span className="w-4 h-3 rounded-sm bg-white/10 shrink-0" />
+                                      }
+                                      <span className="text-gray-400 text-xs truncate">{u.phone || u.name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          })()}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           {s.charge_enabled && (
