@@ -49,6 +49,8 @@ export default function JogoPage({ params }: Props) {
   const [isFreeAccess, setIsFreeAccess] = useState(false)
   const [hasCoupon, setHasCoupon] = useState(false)
   const [isTargetCharged, setIsTargetCharged] = useState(false)
+  const [targetPaymentMethod, setTargetPaymentMethod] = useState<'bspay' | 'fixed_qr' | 'ironpay' | null>(null)
+  const [targetChargeAmount, setTargetChargeAmount] = useState<number | null>(null)
 
   const [soopBroadNo, setSoopBroadNo] = useState<string | null>(null)
   const [soopLoading, setSoopLoading] = useState(false)
@@ -113,11 +115,17 @@ export default function JogoPage({ params }: Props) {
     if (!user || !stream) return
     supabase
       .from('stream_charged_users')
-      .select('id')
+      .select('id, payment_method, charge_amount')
       .eq('stream_id', stream.id)
       .eq('user_email', user.email)
       .maybeSingle()
-      .then(({ data }) => setIsTargetCharged(!!data))
+      .then(({ data }) => {
+        setIsTargetCharged(!!data)
+        if (data) {
+          setTargetPaymentMethod((data.payment_method as 'bspay' | 'ironpay' | 'fixed_qr') ?? null)
+          setTargetChargeAmount(data.charge_amount ?? null)
+        }
+      })
   }, [user, stream])
 
   useEffect(() => {
@@ -517,7 +525,7 @@ export default function JogoPage({ params }: Props) {
                 <div className="text-center">
                   <p className="text-white font-bold text-lg">{t('paidContent')}</p>
                   <p className="text-white text-sm mt-1">
-                    R$ {stream.charge_amount.toFixed(2).replace('.', ',')} {t('viaPix')}
+                    R$ {(targetChargeAmount ?? stream.charge_amount).toFixed(2).replace('.', ',')} {t('viaPix')}
                   </p>
                 </div>
                 <button
@@ -536,13 +544,13 @@ export default function JogoPage({ params }: Props) {
               </div>
             )}
 
-            {paymentModalOpen && user && stream.charge_enabled && !hasPaid && (
+            {paymentModalOpen && user && (stream.charge_enabled || isTargetCharged) && !hasPaid && (
               <PaymentModal
                 streamId={stream.id}
                 userEmail={user.email}
                 userName={user.name}
-                amount={stream.charge_amount}
-                paymentMethod={stream.payment_method ?? 'bspay'}
+                amount={targetChargeAmount ?? stream.charge_amount}
+                paymentMethod={targetPaymentMethod ?? stream.payment_method ?? 'bspay'}
                 fixedQrUrl={stream.fixed_qr_url}
                 couponEnabled={stream.coupon_enabled}
                 onPaid={() => { setHasPaid(true); setPaymentModalOpen(false) }}

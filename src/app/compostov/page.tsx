@@ -111,6 +111,9 @@ export default function AdminPage() {
   const [chargedUsersByStream, setChargedUsersByStream] = useState<Record<string, string[]>>({})
   const [newChargedEmail, setNewChargedEmail] = useState<Record<string, string>>({})
   const [expandedViewers, setExpandedViewers] = useState<Set<string>>(new Set())
+  const [chargeModal, setChargeModal] = useState<{ streamId: string; email: string } | null>(null)
+  const [chargeModalMethod, setChargeModalMethod] = useState<'ironpay' | 'bspay' | 'fixed_qr'>('ironpay')
+  const [chargeModalAmount, setChargeModalAmount] = useState('10.00')
 
   // Notificações de novos cadastros
   const [toasts, setToasts] = useState<{ id: string; name: string; phone: string }[]>([])
@@ -551,15 +554,27 @@ export default function AdminPage() {
     }
   }
 
-  async function addChargedUser(streamId: string) {
+  function addChargedUser(streamId: string) {
     const email = (newChargedEmail[streamId] ?? '').trim().toLowerCase()
     if (!email) return
-    await supabase.from('stream_charged_users').upsert({ stream_id: streamId, user_email: email }, { onConflict: 'stream_id,user_email' })
+    setChargeModal({ streamId, email })
+    setChargeModalMethod('ironpay')
+    setChargeModalAmount('10.00')
+  }
+
+  async function confirmChargedUser() {
+    if (!chargeModal) return
+    const { streamId, email } = chargeModal
+    await supabase.from('stream_charged_users').upsert(
+      { stream_id: streamId, user_email: email, payment_method: chargeModalMethod, charge_amount: parseFloat(chargeModalAmount) },
+      { onConflict: 'stream_id,user_email' }
+    )
     setChargedUsersByStream(prev => ({
       ...prev,
       [streamId]: [...new Set([...(prev[streamId] ?? []), email])],
     }))
     setNewChargedEmail(prev => ({ ...prev, [streamId]: '' }))
+    setChargeModal(null)
   }
 
   async function removeChargedUser(streamId: string, email: string) {
@@ -2195,6 +2210,67 @@ export default function AdminPage() {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal — cobrança individual por usuário */}
+      {chargeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setChargeModal(null)} />
+          <div className="relative w-full max-w-sm bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-6 space-y-5 shadow-2xl">
+            <button onClick={() => setChargeModal(null)} className="absolute top-4 right-4 text-gray-600 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-black text-white">Cobrança individual</h2>
+              <p className="text-gray-500 text-sm mt-1">
+                Cobrar <span className="text-orange-400 font-semibold">{chargeModal.email}</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs mb-2">Gateway de pagamento</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setChargeModalMethod('bspay')}
+                  className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-sm font-bold ${chargeModalMethod === 'bspay' ? 'border-green-500 bg-green-500/10 text-green-400' : 'border-[#2A2A3A] text-gray-500 hover:border-gray-500'}`}
+                >
+                  <span>🇧🇷 PIX</span>
+                  <span className="text-xs font-normal opacity-70">Asap Bank</span>
+                </button>
+                <button
+                  onClick={() => setChargeModalMethod('ironpay')}
+                  className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-sm font-bold ${chargeModalMethod === 'ironpay' ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-[#2A2A3A] text-gray-500 hover:border-gray-500'}`}
+                >
+                  <span>💳 Cartão</span>
+                  <span className="text-xs font-normal opacity-70">IronPay</span>
+                </button>
+              </div>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Valor (R$)</p>
+              <div className="flex items-center gap-2 bg-[#0B0B0F] border border-[#2A2A3A] rounded-xl px-3 focus-within:border-orange-500 transition-colors">
+                <span className="text-gray-500 text-sm">R$</span>
+                <input
+                  autoFocus
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={chargeModalAmount}
+                  onChange={e => setChargeModalAmount(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && confirmChargedUser()}
+                  placeholder="0,00"
+                  className="flex-1 bg-transparent text-white py-2.5 text-sm focus:outline-none"
+                />
+              </div>
+            </div>
+            <button
+              onClick={confirmChargedUser}
+              disabled={!chargeModalAmount || parseFloat(chargeModalAmount) <= 0}
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
+            >
+              Cobrar usuário
+            </button>
           </div>
         </div>
       )}
