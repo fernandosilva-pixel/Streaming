@@ -48,6 +48,7 @@ export default function JogoPage({ params }: Props) {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [isFreeAccess, setIsFreeAccess] = useState(false)
   const [hasCoupon, setHasCoupon] = useState(false)
+  const [isTargetCharged, setIsTargetCharged] = useState(false)
 
   const [soopBroadNo, setSoopBroadNo] = useState<string | null>(null)
   const [soopLoading, setSoopLoading] = useState(false)
@@ -107,8 +108,22 @@ export default function JogoPage({ params }: Props) {
       .finally(() => setSoopLoading(false))
   }, [stream])
 
+  // Check if this user is individually targeted for payment
   useEffect(() => {
-    if (!user || !stream || !stream.charge_enabled) return
+    if (!user || !stream) return
+    supabase
+      .from('stream_charged_users')
+      .select('id')
+      .eq('stream_id', stream.id)
+      .eq('user_email', user.email)
+      .maybeSingle()
+      .then(({ data }) => setIsTargetCharged(!!data))
+  }, [user, stream])
+
+  useEffect(() => {
+    if (!user || !stream) return
+    const needsPaymentCheck = stream.charge_enabled || isTargetCharged
+    if (!needsPaymentCheck) return
     setCheckingPayment(true)
     Promise.all([
       supabase.from('payments').select('id').eq('stream_id', stream.id).eq('user_phone', user.email).eq('status', 'PAID').maybeSingle(),
@@ -120,12 +135,12 @@ export default function JogoPage({ params }: Props) {
       setHasCoupon(!!coupon.data)
       setCheckingPayment(false)
     })
-  }, [user, stream])
+  }, [user, stream, isTargetCharged])
 
   // ── CAMADA 2: Polling contínuo no DB a cada 4s (independente do modal) ──────
   // Garante liberação mesmo que o modal tenha sido fechado antes da confirmação
   useEffect(() => {
-    if (!user || !stream?.charge_enabled || hasPaid || isFreeAccess || hasCoupon) return
+    if (!user || !(stream?.charge_enabled || isTargetCharged) || hasPaid || isFreeAccess || hasCoupon) return
 
     async function recheckDB() {
       const { data } = await supabase
@@ -140,7 +155,6 @@ export default function JogoPage({ params }: Props) {
 
     const interval = setInterval(recheckDB, 4000)
 
-    // Camada 3: dispara imediatamente quando o usuário volta para a aba
     const onVisibility = () => { if (document.visibilityState === 'visible') recheckDB() }
     document.addEventListener('visibilitychange', onVisibility)
 
@@ -148,11 +162,11 @@ export default function JogoPage({ params }: Props) {
       clearInterval(interval)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [user, stream, hasPaid, isFreeAccess, hasCoupon])
+  }, [user, stream, isTargetCharged, hasPaid, isFreeAccess, hasCoupon])
 
   // ── CAMADA 4: Realtime Supabase — libera instantaneamente quando webhook atualiza ──
   useEffect(() => {
-    if (!user || !stream?.charge_enabled || hasPaid || isFreeAccess || hasCoupon) return
+    if (!user || !(stream?.charge_enabled || isTargetCharged) || hasPaid || isFreeAccess || hasCoupon) return
 
     const channel = supabase
       .channel(`pay-watch:${id}:${user.email}`)
@@ -168,12 +182,12 @@ export default function JogoPage({ params }: Props) {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [user, stream, hasPaid, isFreeAccess, hasCoupon, id])
+  }, [user, stream, isTargetCharged, hasPaid, isFreeAccess, hasCoupon, id])
 
   // Track presence only when user is confirmed watching (logged in + paid/free)
   useEffect(() => {
     if (!stream) return
-    const canWatch = !!user && !checkingPayment && (!stream.charge_enabled || hasPaid || isFreeAccess || hasCoupon)
+    const canWatch = !!user && !checkingPayment && (!(stream.charge_enabled || isTargetCharged) || hasPaid || isFreeAccess || hasCoupon)
     if (!canWatch) return
 
     let sid = sessionStorage.getItem('futzone_sid')
@@ -209,7 +223,7 @@ export default function JogoPage({ params }: Props) {
 
   // Block preview for logged-in users who already used it (cross-browser)
   useEffect(() => {
-    if (!user || !stream || !stream.charge_enabled) return
+    if (!user || !stream || !(stream.charge_enabled || isTargetCharged)) return
     supabase.from('preview_used')
       .select('user_phone')
       .eq('user_phone', user.email)
@@ -269,7 +283,7 @@ export default function JogoPage({ params }: Props) {
         // Persist for logged-in users so other browsers also block
         const u = userRef.current
         const s = streamRef.current
-        if (u && s?.charge_enabled) {
+        if (u && (s?.charge_enabled || isTargetCharged)) {
           fetch('/api/preview/use', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -400,7 +414,7 @@ export default function JogoPage({ params }: Props) {
   }
 
   const wouldNeedLogin = !user
-  const wouldNeedPayment = !!user && stream.charge_enabled && !hasPaid && !checkingPayment && !isFreeAccess && !hasCoupon
+  const wouldNeedPayment = !!user && (stream.charge_enabled || isTargetCharged) && !hasPaid && !checkingPayment && !isFreeAccess && !hasCoupon
 
   const needsLogin = wouldNeedLogin && !previewActive
   const needsPayment = wouldNeedPayment && !previewActive

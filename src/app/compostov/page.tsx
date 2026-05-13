@@ -108,6 +108,8 @@ export default function AdminPage() {
   const [onlineList, setOnlineList] = useState<{ name: string; phone: string; country: string; flag: string; stream_id: string }[]>([])
   const [viewersByStream, setViewersByStream] = useState<Record<string, number>>({})
   const [showOnlineList, setShowOnlineList] = useState(false)
+  const [chargedUsersByStream, setChargedUsersByStream] = useState<Record<string, string[]>>({})
+  const [newChargedEmail, setNewChargedEmail] = useState<Record<string, string>>({})
 
   // Notificações de novos cadastros
   const [toasts, setToasts] = useState<{ id: string; name: string; phone: string }[]>([])
@@ -536,6 +538,35 @@ export default function AdminPage() {
     setEditYoutubeUrls(initialYoutubeUrls)
     setEditAmounts(initialAmounts)
     loadCouponUsedCounts(list.map((s: Stream) => s.id))
+    // Load individually charged users for all streams
+    const { data: charged } = await supabase.from('stream_charged_users').select('stream_id, user_email')
+    if (charged) {
+      const map: Record<string, string[]> = {}
+      charged.forEach((r: { stream_id: string; user_email: string }) => {
+        if (!map[r.stream_id]) map[r.stream_id] = []
+        map[r.stream_id].push(r.user_email)
+      })
+      setChargedUsersByStream(map)
+    }
+  }
+
+  async function addChargedUser(streamId: string) {
+    const email = (newChargedEmail[streamId] ?? '').trim().toLowerCase()
+    if (!email) return
+    await supabase.from('stream_charged_users').upsert({ stream_id: streamId, user_email: email }, { onConflict: 'stream_id,user_email' })
+    setChargedUsersByStream(prev => ({
+      ...prev,
+      [streamId]: [...new Set([...(prev[streamId] ?? []), email])],
+    }))
+    setNewChargedEmail(prev => ({ ...prev, [streamId]: '' }))
+  }
+
+  async function removeChargedUser(streamId: string, email: string) {
+    await supabase.from('stream_charged_users').delete().eq('stream_id', streamId).eq('user_email', email)
+    setChargedUsersByStream(prev => ({
+      ...prev,
+      [streamId]: (prev[streamId] ?? []).filter(e => e !== email),
+    }))
   }
 
   function extractYoutubeId(input: string): string {
@@ -1637,6 +1668,37 @@ export default function AdminPage() {
                           })()}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
+                          {/* Cobrança individual */}
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="text"
+                              placeholder="email@cobrar.com"
+                              value={newChargedEmail[s.id] ?? ''}
+                              onChange={e => setNewChargedEmail(prev => ({ ...prev, [s.id]: e.target.value }))}
+                              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addChargedUser(s.id) } }}
+                              className="bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-2 py-1.5 text-xs w-36 focus:outline-none focus:border-orange-500 placeholder-gray-600"
+                            />
+                            <button
+                              onClick={() => addChargedUser(s.id)}
+                              className="text-xs font-bold px-2 py-1.5 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/30 hover:bg-orange-500/20 transition-all"
+                              title="Cobrar este usuário"
+                            >
+                              +
+                            </button>
+                          </div>
+                          {(chargedUsersByStream[s.id] ?? []).length > 0 && (
+                            <div className="flex items-center gap-1 flex-wrap max-w-[200px]">
+                              {(chargedUsersByStream[s.id] ?? []).map(email => (
+                                <span
+                                  key={email}
+                                  className="flex items-center gap-1 text-[10px] bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-md px-1.5 py-0.5"
+                                >
+                                  {email.split('@')[0]}
+                                  <button onClick={() => removeChargedUser(s.id, email)} className="hover:text-red-400 transition-colors">×</button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
                           {s.charge_enabled && (
                             <div className="flex items-center gap-1">
                               <span className="text-gray-500 text-xs">R$</span>
