@@ -119,6 +119,7 @@ export default function AdminPage() {
   const [isLogoDragging, setIsLogoDragging] = useState(false)
   const [settingsId, setSettingsId] = useState<string | null>(null)
   const [logoSaved, setLogoSaved] = useState(false)
+  const [homeChatEnabled, setHomeChatEnabled] = useState(true)
 
   // Favicon
   const [faviconUrl, setFaviconUrl] = useState<string | null>(null)
@@ -728,6 +729,7 @@ export default function AdminPage() {
       setSettingsId(data.id)
       if (data.logo_url) setLogoUrl(data.logo_url)
       if (data.favicon_url) setFaviconUrl(data.favicon_url)
+      setHomeChatEnabled(data.home_chat_enabled !== false)
     }
   }
 
@@ -883,6 +885,18 @@ export default function AdminPage() {
       if (data) setSettingsId(data.id)
     }
     setFaviconUrl(publicUrl); setFaviconUploading(false); setFaviconSaved(true)
+  }
+
+  async function toggleHomeChat() {
+    const next = !homeChatEnabled
+    setHomeChatEnabled(next)
+    const payload = { home_chat_enabled: next, updated_at: new Date().toISOString() }
+    if (settingsId) {
+      await supabase.from('site_settings').update(payload).eq('id', settingsId)
+    } else {
+      const { data } = await supabase.from('site_settings').insert(payload).select('id').single()
+      if (data) setSettingsId(data.id)
+    }
   }
 
   async function loadFreeAccess() {
@@ -1221,6 +1235,25 @@ export default function AdminPage() {
               </div>
             </div>
             {faviconSaved && <p className="text-green-500 text-xs">Favicon salvo! Recarregue a página para ver no navegador.</p>}
+          </div>
+
+          {/* Chat da Torcida */}
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-bold text-white">Chat da Torcida</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Controla o botão flutuante de chat na página inicial.</p>
+            </div>
+            <button
+              onClick={toggleHomeChat}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all"
+              style={homeChatEnabled
+                ? { background: 'rgba(255,106,0,0.12)', border: '1.5px solid rgba(255,106,0,0.6)', color: '#FF6A00' }
+                : { background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.1)', color: '#6b7280' }
+              }
+            >
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: homeChatEnabled ? '#FF6A00' : '#4b5563' }} />
+              {homeChatEnabled ? 'Ativo' : 'Inativo'}
+            </button>
           </div>
 
           {/* Banners */}

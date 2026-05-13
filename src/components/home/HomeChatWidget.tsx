@@ -63,6 +63,7 @@ function genId() {
 
 export default function HomeChatWidget() {
   const { user } = useAuth()
+  const [enabled, setEnabled]         = useState<boolean | null>(null)
   const [open, setOpen]               = useState(false)
   const [messages, setMessages]       = useState<Msg[]>([])
   const [text, setText]               = useState('')
@@ -78,6 +79,16 @@ export default function HomeChatWidget() {
   const userSentRef      = useRef(false)   // true once user sends first message
 
   useEffect(() => { openRef.current = open }, [open])
+
+  /* Verifica se o chat está habilitado nas configurações do site */
+  useEffect(() => {
+    if (IS_MOCK) { setEnabled(true); return }
+    supabase
+      .from('site_settings')
+      .select('home_chat_enabled')
+      .maybeSingle()
+      .then(({ data }) => setEnabled(data?.home_chat_enabled !== false))
+  }, [])
 
   const pinnedMessage   = messages.find(m => m.is_pinned) ?? null
   const regularMessages = messages.filter(m => !m.is_pinned)
@@ -326,6 +337,8 @@ export default function HomeChatWidget() {
     }
     supabase.from('chat_messages').delete().eq('stream_id', HOME_STREAM_ID)
   }
+
+  if (!enabled) return null
 
   return (
     <>
