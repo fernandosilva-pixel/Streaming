@@ -24,11 +24,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, reason: 'no_whatsapp' })
     }
 
-    // Add to group — Z-API expects phone (string) + groupId with -group suffix
-    const addRes = await fetch(`${BASE}/add-participant`, {
+    // Add to group
+    const addRes = await fetch(`${BASE}/group/add-participant`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Client-Token': CLIENT_TOKEN },
-      body: JSON.stringify({ phone: withCountry, groupId: GROUP_ID }),
+      body: JSON.stringify({ autoInvite: true, groupId: GROUP_ID, phones: [withCountry] }),
     })
     const addData = await addRes.json()
 
