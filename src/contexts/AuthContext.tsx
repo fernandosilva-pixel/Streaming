@@ -16,7 +16,7 @@ type AuthContextType = {
   modalVisible: boolean
   modalInitialView: 'login' | 'register'
   login: (email: string, password: string) => Promise<boolean>
-  register: (name: string, email: string, password: string) => Promise<void>
+  register: (name: string, email: string, password: string, phone?: string) => Promise<void>
   loginDirect: (userObj: SiteUser) => void
   logout: () => void
 }
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false
   }
 
-  async function register(name: string, email: string, password: string) {
+  async function register(name: string, email: string, password: string, phone?: string) {
     const normalizedEmail = email.trim().toLowerCase()
 
     const { data: existing } = await supabase
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { error } = await supabase
       .from('registrations')
-      .insert({ name, email: normalizedEmail, phone: normalizedEmail, password })
+      .insert({ name, email: normalizedEmail, phone: phone ?? normalizedEmail, password })
 
     if (error) throw new Error('supabase:' + error.message)
 
