@@ -291,7 +291,7 @@ export default function AdminPage() {
   const [waBatch, setWaBatch] = useState<{ running: boolean; total: number; done: number; skipped: number; errors: number } | null>(null)
 
   async function runWaBatch() {
-    setWaBatch({ running: true, total: 0, done: 0, errors: 0 })
+    setWaBatch({ running: true, total: 0, done: 0, skipped: 0, errors: 0 })
 
     // Always reload all registrations from DB (no limit) to catch all BR numbers
     const { data } = await supabase
