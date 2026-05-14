@@ -10,6 +10,7 @@ import PresenceTracker from '@/components/analytics/PresenceTracker';
 import ReferralTracker from '@/components/analytics/ReferralTracker';
 import PopupBanner from '@/components/common/PopupBanner';
 import ScheduleNotification from '@/components/common/ScheduleNotification';
+import LanguageSelectModal from '@/components/common/LanguageSelectModal';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseAdmin = createClient(
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <ReferralTracker />
               <PopupBanner />
               <ScheduleNotification />
+              <LanguageSelectModal />
             </ScheduleProvider>
           </AuthProvider>
         </LanguageProvider>
