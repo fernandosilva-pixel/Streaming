@@ -293,28 +293,26 @@ export default function AdminPage() {
   async function runWaBatch() {
     setWaBatch({ running: true, total: 0, done: 0, errors: 0 })
 
-    // Use already-loaded registrations; reload if empty
-    let regs = dashRegistrations
-    if (regs.length === 0) {
-      const { data } = await supabase.from('registrations').select('phone, name, whatsapp_added_at').order('created_at', { ascending: false }).limit(500)
-      regs = (data ?? []) as DashRegistration[]
-    }
+    // Always reload all registrations from DB (no limit) to catch all BR numbers
+    const { data } = await supabase
+      .from('registrations')
+      .select('phone, name, whatsapp_added_at')
+      .is('whatsapp_added_at', null)
+    const regs = (data ?? []) as DashRegistration[]
 
-    // Accept any phone that has 10+ digits and starts with 55 after stripping non-digits
-    // Also accept phones without 55 prefix (will be normalized in add-to-group route)
+    // Accept any phone with 10+ digits (not an email)
     const pending = regs
-      .filter(r => !r.whatsapp_added_at)
-      .map(r => r.phone?.replace(/\D/g, '') ?? '')
-      .filter(digits => digits.length >= 10 && !digits.includes('@'))
+      .map(r => ({ raw: r.phone ?? '', digits: r.phone?.replace(/\D/g, '') ?? '' }))
+      .filter(({ digits }) => digits.length >= 10)
 
     setWaBatch({ running: true, total: pending.length, done: 0, errors: 0 })
     let done = 0; let errors = 0
-    for (const phone of pending) {
+    for (const { digits } of pending) {
       try {
         const r = await fetch('/api/whatsapp/add-to-group', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone }),
+          body: JSON.stringify({ phone: digits }),
         })
         const d = await r.json()
         if (d.ok && d.detail?.value === true) done++
