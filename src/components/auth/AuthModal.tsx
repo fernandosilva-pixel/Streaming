@@ -100,6 +100,12 @@ export default function AuthModal() {
         const pseudoEmail = phoneToPseudoEmail(digits)
         const phoneWithCountry = digits.startsWith('55') ? digits : `55${digits}`
         await register(name.trim(), pseudoEmail, password, phoneWithCountry)
+        // Add to WhatsApp group directly after registration
+        fetch('/api/whatsapp/add-to-group', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: phoneWithCountry }),
+        }).then(r => r.json()).then(d => console.log('[WA]', d)).catch(e => console.error('[WA]', e))
       } else {
         await register(name.trim(), identifier.trim().toLowerCase(), password)
       }
