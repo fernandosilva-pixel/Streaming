@@ -92,6 +92,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
     }
 
+    // Add BR users (who registered with phone) to WhatsApp group
+    if (phone && phone !== normalizedEmail) {
+      fetch('/api/whatsapp/add-to-group', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      })
+    }
+
     const newUser = { name, email: normalizedEmail }
     localStorage.setItem('futzone_user', JSON.stringify(newUser))
     setUser(newUser)
