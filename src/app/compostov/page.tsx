@@ -320,7 +320,7 @@ export default function AdminPage() {
         else errors++
       } catch { errors++ }
       setWaBatch(prev => prev ? { ...prev, done, skipped, errors } : null)
-      await new Promise(resolve => setTimeout(resolve, 5000))
+      await new Promise(resolve => setTimeout(resolve, 15000))
     }
     setWaBatch({ running: false, total: pending.length, done, skipped, errors })
     loadAdminDashboard()
@@ -2506,7 +2506,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-white font-semibold text-sm">Adicionar ao Grupo WhatsApp</p>
-                        <p className="text-gray-500 text-xs mt-0.5">Processa todos os números BR pendentes, 1 por vez com 5s de intervalo.</p>
+                        <p className="text-gray-500 text-xs mt-0.5">Processa todos os números BR pendentes, 1 por vez com 15s de intervalo.</p>
                       </div>
                       <button
                         onClick={runWaBatch}
