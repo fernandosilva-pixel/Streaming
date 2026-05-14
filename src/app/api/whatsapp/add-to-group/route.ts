@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 const INSTANCE_ID = process.env.ZAPI_INSTANCE_ID!
 const TOKEN = process.env.ZAPI_TOKEN!
 const CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN!
-const GROUP_ID = process.env.ZAPI_GROUP_ID! // ex: "120363407173912995-group"
+const RAW_GROUP_ID = process.env.ZAPI_GROUP_ID! // ex: "120363407173912995-group"
+// Z-API add-participant expects @g.us format
+const GROUP_ID = RAW_GROUP_ID.replace(/-group$/, '@g.us')
 const BASE = `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN}`
 
 export async function POST(req: NextRequest) {
