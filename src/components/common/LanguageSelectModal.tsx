@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useLanguage, Lang } from '@/contexts/LanguageContext'
+import { supabase } from '@/lib/supabase'
 
 const options: { lang: Lang; flag: string; label: string }[] = [
   { lang: 'pt', flag: '🇧🇷', label: 'Português' },
@@ -12,10 +13,14 @@ const options: { lang: Lang; flag: string; label: string }[] = [
 export default function LanguageSelectModal() {
   const { setLang } = useLanguage()
   const [visible, setVisible] = useState(false)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('futzone_lang')
     if (!saved) setVisible(true)
+    supabase.from('site_settings').select('logo_url').single().then(({ data }) => {
+      if (data?.logo_url) setLogoUrl(data.logo_url)
+    })
   }, [])
 
   function select(lang: Lang) {
@@ -44,9 +49,12 @@ export default function LanguageSelectModal() {
           boxShadow: '0 24px 64px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.1)',
         }}
       >
-        <div className="text-center mb-7">
-          <h2 className="text-xl font-black text-white">Choose your language</h2>
-          <p className="text-white/40 text-sm mt-1">Selecione o idioma / Elige el idioma</p>
+        <div className="flex justify-center mb-7">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" style={{ height: 48, width: 'auto', maxWidth: 180, objectFit: 'contain' }} />
+          ) : (
+            <div className="h-12 w-32 rounded-lg bg-white/5" />
+          )}
         </div>
 
         <div className="flex items-center justify-center gap-4">
