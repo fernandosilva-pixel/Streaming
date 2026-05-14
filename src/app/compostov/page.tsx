@@ -279,7 +279,7 @@ export default function AdminPage() {
   useEffect(() => { if (activeTab === 'agenda') loadSchedule() }, [activeTab])
 
   // Dashboard
-  type DashRegistration = { id?: string; name: string; phone: string; created_at?: string }
+  type DashRegistration = { id?: string; name: string; phone: string; created_at?: string; whatsapp_added_at?: string | null }
   type DashPayment = { id: string; stream_id: string; user_phone: string; amount?: number; status: string; referral_code?: string | null; created_at?: string }
   const [dashLoading, setDashLoading] = useState(false)
   const [dashRegistrations, setDashRegistrations] = useState<DashRegistration[]>([])
@@ -2451,6 +2451,7 @@ export default function AdminPage() {
                 return true
               }
               const filteredRegs = dashRegistrations.filter(r => matchDate(r.created_at))
+              const waCount = dashRegistrations.filter(r => r.whatsapp_added_at && matchDate(r.whatsapp_added_at)).length
               const filteredPays = dashPayments
                 .filter(p => dashStreamFilter === 'all' || p.stream_id === dashStreamFilter)
                 .filter(p => matchDate(p.created_at))
@@ -2465,9 +2466,10 @@ export default function AdminPage() {
                 <div className="space-y-6">
                   {/* Cards de métricas — respeitam todos os filtros */}
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                       {[
                         { label: 'Cadastros', value: filteredRegs.length },
+                        { label: 'No Grupo WA', value: waCount },
                         { label: 'QR Gerados', value: qrCount },
                         { label: 'Pagamentos', value: paidCount },
                         { label: 'Receita', value: `R$ ${revenue.toFixed(2).replace('.', ',')}`, raw: true },
