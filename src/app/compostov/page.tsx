@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown, UserCheck, BarChart2, RefreshCw, CalendarDays } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -289,8 +289,15 @@ export default function AdminPage() {
   const [regLimit, setRegLimit] = useState(5)
   const [payLimit, setPayLimit] = useState(5)
   const [waBatch, setWaBatch] = useState<{ running: boolean; total: number; done: number; skipped: number; errors: number } | null>(null)
+  const waBatchStopRef = useRef(false)
+
+  function stopWaBatch() {
+    waBatchStopRef.current = true
+    setWaBatch(prev => prev ? { ...prev, running: false } : null)
+  }
 
   async function runWaBatch() {
+    waBatchStopRef.current = false
     setWaBatch({ running: true, total: 0, done: 0, skipped: 0, errors: 0 })
 
     // Always reload all registrations from DB (no limit) to catch all BR numbers
@@ -320,7 +327,9 @@ export default function AdminPage() {
         else errors++
       } catch { errors++ }
       setWaBatch(prev => prev ? { ...prev, done, skipped, errors } : null)
+      if (waBatchStopRef.current) break
       await new Promise(resolve => setTimeout(resolve, 300000))
+      if (waBatchStopRef.current) break
     }
     setWaBatch({ running: false, total: pending.length, done, skipped, errors })
     loadAdminDashboard()
@@ -2508,13 +2517,24 @@ export default function AdminPage() {
                         <p className="text-white font-semibold text-sm">Adicionar ao Grupo WhatsApp</p>
                         <p className="text-gray-500 text-xs mt-0.5">Processa todos os números BR pendentes, 1 por vez com 5min de intervalo.</p>
                       </div>
-                      <button
-                        onClick={runWaBatch}
-                        disabled={waBatch?.running}
-                        className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all"
-                      >
-                        {waBatch?.running ? 'Processando...' : 'Iniciar'}
-                      </button>
+                      <div className="flex gap-2">
+                        {waBatch?.running ? (
+                          <button onClick={stopWaBatch} className="bg-red-600 hover:bg-red-500 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all">
+                            Parar
+                          </button>
+                        ) : (
+                          <>
+                            <button onClick={runWaBatch} className="bg-green-600 hover:bg-green-500 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all">
+                              {waBatch ? 'Reiniciar' : 'Iniciar'}
+                            </button>
+                            {waBatch && !waBatch.running && (
+                              <button onClick={runWaBatch} className="bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all">
+                                Continuar
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
                     {waBatch && (
                       <div className="space-y-2">
