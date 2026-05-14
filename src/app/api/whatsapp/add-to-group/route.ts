@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 const INSTANCE_ID = process.env.ZAPI_INSTANCE_ID!
 const TOKEN = process.env.ZAPI_TOKEN!
 const CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN!
-const GROUP_ID = process.env.ZAPI_GROUP_ID! // ex: "120363407173912995-group"
+const GROUP_ID = process.env.ZAPI_GROUP_ID!
 const BASE = `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN}`
 
 const supabase = createClient(
@@ -20,17 +20,6 @@ export async function POST(req: NextRequest) {
   const withCountry = digits.startsWith('55') ? digits : `55${digits}`
 
   try {
-    // Check if number has WhatsApp
-    const checkRes = await fetch(`${BASE}/phone-exists/${withCountry}`, {
-      headers: { 'Client-Token': CLIENT_TOKEN },
-    })
-    const checkData = await checkRes.json()
-
-    if (!checkData.exists) {
-      return NextResponse.json({ ok: false, reason: 'no_whatsapp' })
-    }
-
-    // Add to group
     const addRes = await fetch(`${BASE}/add-participant`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Client-Token': CLIENT_TOKEN },
@@ -38,15 +27,15 @@ export async function POST(req: NextRequest) {
     })
     const addData = await addRes.json()
 
-    if (addRes.ok && addData?.value === true) {
-      // Mark whatsapp_added_at in registrations
+    const success = addRes.ok && addData?.value === true
+    if (success) {
       await supabase
         .from('registrations')
         .update({ whatsapp_added_at: new Date().toISOString() })
         .eq('phone', withCountry)
     }
 
-    return NextResponse.json({ ok: addRes.ok, detail: addData })
+    return NextResponse.json({ ok: success, detail: addData })
   } catch (err) {
     return NextResponse.json({ ok: false, reason: String(err) }, { status: 500 })
   }

@@ -288,7 +288,7 @@ export default function AdminPage() {
   const [dashDateFilter, setDashDateFilter] = useState<string>('all')
   const [regLimit, setRegLimit] = useState(5)
   const [payLimit, setPayLimit] = useState(5)
-  const [waBatch, setWaBatch] = useState<{ running: boolean; total: number; done: number; errors: number } | null>(null)
+  const [waBatch, setWaBatch] = useState<{ running: boolean; total: number; done: number; skipped: number; errors: number } | null>(null)
 
   async function runWaBatch() {
     setWaBatch({ running: true, total: 0, done: 0, errors: 0 })
@@ -305,8 +305,8 @@ export default function AdminPage() {
       .map(r => ({ raw: r.phone ?? '', digits: r.phone?.replace(/\D/g, '') ?? '' }))
       .filter(({ digits }) => digits.length >= 10)
 
-    setWaBatch({ running: true, total: pending.length, done: 0, errors: 0 })
-    let done = 0; let errors = 0
+    setWaBatch({ running: true, total: pending.length, done: 0, skipped: 0, errors: 0 })
+    let done = 0; let skipped = 0; let errors = 0
     for (const { digits } of pending) {
       try {
         const r = await fetch('/api/whatsapp/add-to-group', {
@@ -315,13 +315,14 @@ export default function AdminPage() {
           body: JSON.stringify({ phone: digits }),
         })
         const d = await r.json()
-        if (d.ok && d.detail?.value === true) done++
+        if (d.ok) done++
+        else if (d.detail?.value === false) skipped++ // sem WhatsApp
         else errors++
       } catch { errors++ }
-      setWaBatch(prev => prev ? { ...prev, done, errors } : null)
+      setWaBatch(prev => prev ? { ...prev, done, skipped, errors } : null)
       await new Promise(resolve => setTimeout(resolve, 5000))
     }
-    setWaBatch({ running: false, total: pending.length, done, errors })
+    setWaBatch({ running: false, total: pending.length, done, skipped, errors })
     loadAdminDashboard()
   }
 
@@ -2518,13 +2519,13 @@ export default function AdminPage() {
                     {waBatch && (
                       <div className="space-y-2">
                         <div className="flex justify-between text-xs text-gray-400">
-                          <span>{waBatch.done} adicionados · {waBatch.errors} erros</span>
-                          <span>{waBatch.done + waBatch.errors}/{waBatch.total}</span>
+                          <span>{waBatch.done} adicionados · {waBatch.skipped} sem WA · {waBatch.errors} erros</span>
+                          <span>{waBatch.done + waBatch.skipped + waBatch.errors}/{waBatch.total}</span>
                         </div>
                         <div className="w-full bg-[#2A2A3A] rounded-full h-2">
                           <div
                             className="bg-green-500 h-2 rounded-full transition-all"
-                            style={{ width: waBatch.total > 0 ? `${((waBatch.done + waBatch.errors) / waBatch.total) * 100}%` : '0%' }}
+                            style={{ width: waBatch.total > 0 ? `${((waBatch.done + waBatch.skipped + waBatch.errors) / waBatch.total) * 100}%` : '0%' }}
                           />
                         </div>
                         {!waBatch.running && <p className="text-green-400 text-xs">Concluído.</p>}
