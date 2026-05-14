@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
-      })
+      }).catch(err => console.error('[WA] add-to-group failed:', err))
     }
 
     const newUser = { name, email: normalizedEmail }

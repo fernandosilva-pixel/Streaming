@@ -41,13 +41,15 @@ export default function AuthModal() {
     })
   }, [])
 
-  // Detect country once on first register view open
+  // Detect country — cache in localStorage to avoid rate limits
   useEffect(() => {
     if (!modalVisible || isBR !== null) return
+    const cached = localStorage.getItem('futzone_is_br')
+    if (cached !== null) { setIsBR(cached === '1'); return }
     fetch('https://ipinfo.io/json')
       .then(r => r.json())
-      .then(d => setIsBR(d.country === 'BR'))
-      .catch(() => setIsBR(false))
+      .then(d => { const br = d.country === 'BR'; setIsBR(br); localStorage.setItem('futzone_is_br', br ? '1' : '0') })
+      .catch(() => { setIsBR(true); localStorage.setItem('futzone_is_br', '1') }) // default BR on failure
   }, [modalVisible])
 
   useEffect(() => {
