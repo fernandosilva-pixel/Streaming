@@ -288,6 +288,31 @@ export default function AdminPage() {
   const [dashDateFilter, setDashDateFilter] = useState<string>('all')
   const [regLimit, setRegLimit] = useState(5)
   const [payLimit, setPayLimit] = useState(5)
+  const [waBatch, setWaBatch] = useState<{ running: boolean; total: number; done: number; errors: number } | null>(null)
+
+  async function runWaBatch() {
+    setWaBatch({ running: true, total: 0, done: 0, errors: 0 })
+    const res = await fetch('/api/whatsapp/pending-numbers')
+    const { phones } = await res.json()
+    setWaBatch({ running: true, total: phones.length, done: 0, errors: 0 })
+    let done = 0; let errors = 0
+    for (const phone of phones) {
+      try {
+        const r = await fetch('/api/whatsapp/add-to-group', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone }),
+        })
+        const d = await r.json()
+        if (d.ok && d.detail?.value === true) done++
+        else errors++
+      } catch { errors++ }
+      setWaBatch(prev => prev ? { ...prev, done: done, errors } : null)
+      await new Promise(resolve => setTimeout(resolve, 5000))
+    }
+    setWaBatch({ running: false, total: phones.length, done, errors })
+    loadAdminDashboard()
+  }
 
   async function loadAdminDashboard() {
     setDashLoading(true)
@@ -2464,6 +2489,38 @@ export default function AdminPage() {
               const affiliatePaid = filteredPays.filter(p => p.referral_code && p.status === 'PAID').length
               return (
                 <div className="space-y-6">
+                  {/* Adicionar ao grupo WA em lote */}
+                  <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white font-semibold text-sm">Adicionar ao Grupo WhatsApp</p>
+                        <p className="text-gray-500 text-xs mt-0.5">Processa todos os números BR pendentes, 1 por vez com 5s de intervalo.</p>
+                      </div>
+                      <button
+                        onClick={runWaBatch}
+                        disabled={waBatch?.running}
+                        className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all"
+                      >
+                        {waBatch?.running ? 'Processando...' : 'Iniciar'}
+                      </button>
+                    </div>
+                    {waBatch && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs text-gray-400">
+                          <span>{waBatch.done} adicionados · {waBatch.errors} erros</span>
+                          <span>{waBatch.done + waBatch.errors}/{waBatch.total}</span>
+                        </div>
+                        <div className="w-full bg-[#2A2A3A] rounded-full h-2">
+                          <div
+                            className="bg-green-500 h-2 rounded-full transition-all"
+                            style={{ width: waBatch.total > 0 ? `${((waBatch.done + waBatch.errors) / waBatch.total) * 100}%` : '0%' }}
+                          />
+                        </div>
+                        {!waBatch.running && <p className="text-green-400 text-xs">Concluído.</p>}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Cards de métricas — respeitam todos os filtros */}
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
