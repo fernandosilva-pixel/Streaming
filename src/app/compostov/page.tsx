@@ -1026,17 +1026,16 @@ export default function AdminPage() {
   }
 
   async function addAdminUser() {
-    const email = newAdminPhone.trim().toLowerCase()
-    if (!email) return
+    const value = newAdminPhone.trim().toLowerCase()
+    if (!value) return
     setAddingAdmin(true)
-    const { data, error } = await supabase
-      .from('registrations')
-      .update({ is_admin: true })
-      .eq('email', email)
-      .select('id, name, email')
-      .single()
+    const isPhone = /^\+?\d[\d\s\-()]{6,}$/.test(value)
+    const query = supabase.from('registrations').update({ is_admin: true }).select('id, name, email')
+    const { data, error } = await (isPhone
+      ? query.eq('phone', value.replace(/\D/g, '')).single()
+      : query.eq('email', value).single())
     if (error || !data) {
-      alert(error ? 'Erro: ' + error.message : 'E-mail não encontrado.')
+      alert('Usuário não encontrado. Verifique o e-mail ou telefone.')
       setAddingAdmin(false)
       return
     }
@@ -1950,8 +1949,8 @@ export default function AdminPage() {
           </div>
           <div className="flex gap-2">
             <input
-              type="email"
-              placeholder="E-mail do usuário"
+              type="text"
+              placeholder="E-mail ou telefone do usuário"
               value={newFreePhone}
               onChange={e => setNewFreePhone(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addFreeAccess()}
@@ -1990,8 +1989,8 @@ export default function AdminPage() {
             </div>
             <div className="flex gap-2">
               <input
-                type="email"
-                placeholder="E-mail do usuário"
+                type="text"
+                placeholder="E-mail ou telefone do usuário"
                 value={newAdminPhone}
                 onChange={e => setNewAdminPhone(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addAdminUser()}
