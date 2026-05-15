@@ -11,9 +11,9 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
-  if (error) {
+  if (error || !data.session) {
     return NextResponse.json({ error: 'Email ou senha incorretos.' }, { status: 401 })
   }
 
@@ -22,7 +22,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Configuração inválida.' }, { status: 500 })
   }
 
-  const res = NextResponse.json({ ok: true })
+  const res = NextResponse.json({
+    ok: true,
+    access_token: data.session.access_token,
+    refresh_token: data.session.refresh_token,
+  })
   res.cookies.set('admin_token', secret, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

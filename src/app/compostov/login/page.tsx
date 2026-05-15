@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -24,6 +25,9 @@ export default function LoginPage() {
       setLoading(false)
       return
     }
+
+    const { access_token, refresh_token } = await res.json()
+    await supabase.auth.setSession({ access_token, refresh_token })
 
     window.location.href = '/compostov'
   }
