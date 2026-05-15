@@ -83,3 +83,20 @@ export async function DELETE(req: NextRequest) {
 
   return NextResponse.json({ ok: true })
 }
+
+// Atualizar abas de sub-admin
+export async function PATCH(req: NextRequest) {
+  if (!await isAuthorized(req)) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
+  const { email, allowed_tabs } = await req.json()
+  if (!email || !allowed_tabs?.length) {
+    return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
+  }
+
+  const { error } = await supabase.from('admin_permissions').update({ allowed_tabs }).eq('email', email)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ ok: true })
+}

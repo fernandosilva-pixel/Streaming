@@ -207,6 +207,8 @@ export default function AdminPage() {
   const [newSubTabs, setNewSubTabs] = useState<string[]>([])
   const [creatingSubAdmin, setCreatingSubAdmin] = useState(false)
   const [subAdminError, setSubAdminError] = useState('')
+  const [editingSubEmail, setEditingSubEmail] = useState<string | null>(null)
+  const [editingSubTabs, setEditingSubTabs] = useState<string[]>([])
 
   // Agenda (schedule_notification)
   type ScheduleGame = { id: string; team1: string; team2: string; logo1: string; logo2: string; league: string; league_logo: string; datetime: string }
@@ -1185,6 +1187,14 @@ export default function AdminPage() {
     if (!confirm(`Remover acesso de ${email}?`)) return
     await fetch('/api/admin/sub', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
     setSubAdmins(prev => prev.filter(a => a.email !== email))
+  }
+
+  async function updateSubAdmin() {
+    if (!editingSubEmail || !editingSubTabs.length) return
+    await fetch('/api/admin/sub', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: editingSubEmail, allowed_tabs: editingSubTabs }) })
+    setSubAdmins(prev => prev.map(a => a.email === editingSubEmail ? { ...a, allowed_tabs: editingSubTabs } : a))
+    setEditingSubEmail(null)
+    setEditingSubTabs([])
   }
 
   if (!authChecked) {
@@ -2791,11 +2801,62 @@ export default function AdminPage() {
             ) : (
               <div className="space-y-2">
                 {subAdmins.map(a => (
-                  <div key={a.email} className="flex items-start justify-between gap-4 bg-[#12121A] border border-[#2A2A3A] rounded-xl px-4 py-3">
-                    <div className="space-y-1 min-w-0">
-                      <p className="text-white font-semibold text-sm">{a.name}</p>
-                      <p className="text-gray-500 text-xs">{a.email}</p>
-                      <div className="flex flex-wrap gap-1 mt-1">
+                  <div key={a.email} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl px-4 py-3 space-y-2">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-0.5 min-w-0">
+                        <p className="text-white font-semibold text-sm">{a.name}</p>
+                        <p className="text-gray-500 text-xs">{a.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => { setEditingSubEmail(a.email); setEditingSubTabs(a.allowed_tabs) }}
+                          className="text-gray-500 hover:text-orange-400 transition-colors text-xs border border-[#2A2A3A] hover:border-orange-500/40 px-2 py-1 rounded-lg"
+                          title="Editar abas"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => deleteSubAdmin(a.email)}
+                          className="text-gray-600 hover:text-red-400 transition-colors"
+                          title="Remover acesso"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {editingSubEmail === a.email ? (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex flex-wrap gap-2">
+                          {([
+                            { id: 'visual', label: 'Visual' },
+                            { id: 'transmissao', label: 'Transmissão' },
+                            { id: 'acesso', label: 'Acesso Gratuito' },
+                            { id: 'notificar', label: 'Notificar' },
+                            { id: 'afiliados', label: 'Afiliados' },
+                            { id: 'dashboard', label: 'Dashboard' },
+                            { id: 'suporte', label: 'Suporte' },
+                          ]).map(tab => {
+                            const sel = editingSubTabs.includes(tab.id)
+                            return (
+                              <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setEditingSubTabs(prev => sel ? prev.filter(t => t !== tab.id) : [...prev, tab.id])}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${sel ? 'bg-orange-500/20 border-orange-500 text-orange-400' : 'bg-[#0B0B0F] border-[#2A2A3A] text-gray-500 hover:border-orange-500/40 hover:text-gray-300'}`}
+                              >
+                                {tab.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={updateSubAdmin} className="px-4 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-bold rounded-lg transition-all">Salvar</button>
+                          <button onClick={() => setEditingSubEmail(null)} className="px-4 py-1.5 bg-[#1A1A26] text-gray-400 text-xs font-bold rounded-lg border border-[#2A2A3A] hover:text-white transition-all">Cancelar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
                         {a.allowed_tabs.map(tab => (
                           <span key={tab} className="text-[10px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-full">
                             {tab === 'visual' ? 'Visual'
@@ -2809,14 +2870,7 @@ export default function AdminPage() {
                           </span>
                         ))}
                       </div>
-                    </div>
-                    <button
-                      onClick={() => deleteSubAdmin(a.email)}
-                      className="text-gray-600 hover:text-red-400 transition-colors shrink-0 mt-0.5"
-                      title="Remover acesso"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    )}
                   </div>
                 ))}
               </div>
