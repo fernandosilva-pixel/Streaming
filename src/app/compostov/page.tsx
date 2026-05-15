@@ -1349,25 +1349,6 @@ export default function AdminPage() {
             {faviconSaved && <p className="text-green-500 text-xs">Favicon salvo! Recarregue a página para ver no navegador.</p>}
           </div>
 
-          {/* Chat da Torcida */}
-          <div className="space-y-3">
-            <div>
-              <h2 className="text-lg font-bold text-white">Chat da Torcida</h2>
-              <p className="text-gray-500 text-sm mt-0.5">Controla o botão flutuante de chat na página inicial.</p>
-            </div>
-            <button
-              onClick={toggleHomeChat}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all"
-              style={homeChatEnabled
-                ? { background: 'rgba(255,106,0,0.12)', border: '1.5px solid rgba(255,106,0,0.6)', color: '#FF6A00' }
-                : { background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.1)', color: '#6b7280' }
-              }
-            >
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: homeChatEnabled ? '#FF6A00' : '#4b5563' }} />
-              {homeChatEnabled ? 'Ativo' : 'Inativo'}
-            </button>
-          </div>
-
           {/* Banners */}
           <div className="space-y-3">
             <div>
