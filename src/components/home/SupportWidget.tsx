@@ -159,6 +159,7 @@ export default function SupportWidget() {
       const all = loadAllMsgs()
       saveAllMsgs([...all, msg])
     } else {
+      setMessages(prev => [...prev, msg])
       await supabase.from('support_messages').insert(msg)
     }
     setSending(false)

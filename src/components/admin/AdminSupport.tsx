@@ -83,6 +83,7 @@ export default function AdminSupport() {
     return Array.from(map.values()).sort((a, b) => b.last_at.localeCompare(a.last_at))
   }
 
+  // Mock mode: seed + localStorage
   useEffect(() => {
     if (!IS_MOCK) return
     seedDemoData()
@@ -122,6 +123,62 @@ export default function AdminSupport() {
     setConversations(prev => prev.map(c => c.session_id === selected ? { ...c, unread: 0 } : c))
   }, [selected])
 
+  // Production mode: load from Supabase + realtime
+  useEffect(() => {
+    if (IS_MOCK) return
+    async function load() {
+      const { data: msgs } = await supabase
+        .from('support_messages')
+        .select('*')
+        .order('created_at', { ascending: true })
+      const { data: sts } = await supabase
+        .from('support_statuses')
+        .select('session_id, status')
+      const stsMap: Record<string, TicketStatus> = {}
+      sts?.forEach(s => { stsMap[s.session_id] = s.status as TicketStatus })
+      setStatuses(stsMap)
+      if (msgs) setConversations(buildConversations(msgs as SupportMsg[], stsMap))
+    }
+    load()
+    const channel = supabase
+      .channel('admin-support')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages' }, payload => {
+        const msg = payload.new as SupportMsg
+        setConversations(prev => {
+          const existing = prev.find(c => c.session_id === msg.session_id)
+          if (existing) {
+            return prev.map(c => c.session_id === msg.session_id
+              ? { ...c, last_message: msg.message, last_at: msg.created_at, unread: msg.is_admin ? c.unread : c.unread + 1 }
+              : c
+            ).sort((a, b) => b.last_at.localeCompare(a.last_at))
+          }
+          const newConv: Conversation = {
+            session_id: msg.session_id, user_name: msg.user_name,
+            user_email: msg.user_email, last_message: msg.message,
+            last_at: msg.created_at, unread: msg.is_admin ? 0 : 1, status: 'open',
+          }
+          return [newConv, ...prev]
+        })
+        setMessages(prev => {
+          if (prev.length > 0 && prev[0].session_id === msg.session_id) return [...prev, msg]
+          return prev
+        })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  useEffect(() => {
+    if (IS_MOCK || !selected) return
+    supabase
+      .from('support_messages')
+      .select('*')
+      .eq('session_id', selected)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => { if (data) setMessages(data as SupportMsg[]) })
+    setConversations(prev => prev.map(c => c.session_id === selected ? { ...c, unread: 0 } : c))
+  }, [selected])
+
   useEffect(() => {
     const el = messagesRef.current
     if (el) el.scrollTop = el.scrollHeight
@@ -146,6 +203,7 @@ export default function AdminSupport() {
       const all = loadAllMsgs()
       saveAllMsgs([...all, msg])
     } else {
+      setMessages(prev => [...prev, msg])
       await supabase.from('support_messages').insert(msg)
     }
     setSending(false)
@@ -166,10 +224,13 @@ export default function AdminSupport() {
       const all = loadAllMsgs()
       saveAllMsgs([...all, autoMsg])
       const sts = { ...loadStatuses(), [selected]: 'closed' as TicketStatus }
+
       saveStatuses(sts)
       setStatuses(sts)
       setConversations(prev => prev.map(c => c.session_id === selected ? { ...c, status: 'closed' } : c))
     } else {
+      setMessages(prev => [...prev, autoMsg])
+      setConversations(prev => prev.map(c => c.session_id === selected ? { ...c, status: 'closed' } : c))
       await supabase.from('support_messages').insert(autoMsg)
       await supabase.from('support_statuses').upsert({ session_id: selected, status: 'closed' })
     }
