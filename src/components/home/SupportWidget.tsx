@@ -130,7 +130,10 @@ export default function SupportWidget() {
       .channel(`support:${session.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages', filter: `session_id=eq.${session.id}` }, payload => {
         const msg = payload.new as SupportMsg
-        setMessages(prev => [...prev, msg])
+        setMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev
+          return [...prev, msg]
+        })
         if (msg.is_admin && !openRef.current) setUnread(n => n + 1)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'support_statuses', filter: `session_id=eq.${session.id}` }, payload => {

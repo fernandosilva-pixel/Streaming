@@ -160,6 +160,7 @@ export default function AdminSupport() {
           return [newConv, ...prev]
         })
         setMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev
           if (prev.length > 0 && prev[0].session_id === msg.session_id) return [...prev, msg]
           return prev
         })
