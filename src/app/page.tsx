@@ -1,7 +1,7 @@
 import HeroBanner from '@/components/home/HeroBanner';
 import GameCarousel from '@/components/home/GameCarousel';
 import NewsSection from '@/components/home/NewsSection';
-import HomeChatWidget from '@/components/home/HomeChatWidget';
+import SupportWidget from '@/components/home/SupportWidget';
 
 export default function HomePage() {
   return (
@@ -11,7 +11,7 @@ export default function HomePage() {
         <GameCarousel />
         <NewsSection />
       </div>
-      <HomeChatWidget />
+      <SupportWidget />
     </>
   );
 }

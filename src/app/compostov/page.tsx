@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown, UserCheck, BarChart2, RefreshCw, CalendarDays } from 'lucide-react'
+import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown, UserCheck, BarChart2, RefreshCw, CalendarDays, Headphones } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import AdminSupport from '@/components/admin/AdminSupport'
 
 type Fixture = {
   fixture: {
@@ -191,7 +192,7 @@ export default function AdminPage() {
   const [addingAdmin, setAddingAdmin] = useState(false)
 
   // Aba ativa
-  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda'>('visual')
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte'>('visual')
 
   // Permissões do admin logado (null = superadmin, array = abas permitidas)
   const [allowedTabs, setAllowedTabs] = useState<string[] | null>(null)
@@ -1261,6 +1262,7 @@ export default function AdminPage() {
           { id: 'agenda', label: 'Agenda', icon: <CalendarDays className="w-4 h-4" /> },
           { id: 'afiliados', label: 'Afiliados', icon: <UserCheck className="w-4 h-4" /> },
           { id: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
+          { id: 'suporte', label: 'Suporte', icon: <Headphones className="w-4 h-4" /> },
           ...(allowedTabs === null ? [{ id: 'admins', label: 'Admins', icon: <UserCheck className="w-4 h-4" /> }] : []),
         ] as { id: string; label: string; icon: React.ReactNode }[])
           .filter(tab => allowedTabs === null || allowedTabs.includes(tab.id))
@@ -2668,6 +2670,17 @@ export default function AdminPage() {
                 </div>
               )
             })()}
+        </div>
+      )}
+
+      {/* ── ABA: SUPORTE ── */}
+      {activeTab === 'suporte' && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-bold text-white">Suporte</h2>
+            <p className="text-gray-500 text-sm mt-0.5">Responda as mensagens dos usuários em tempo real</p>
+          </div>
+          <AdminSupport />
         </div>
       )}
 

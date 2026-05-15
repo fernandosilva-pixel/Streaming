@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -13,13 +14,9 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const res = await fetch('/api/admin/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (!res.ok) {
+    if (authError) {
       setError('Email ou senha incorretos.')
       setLoading(false)
       return
