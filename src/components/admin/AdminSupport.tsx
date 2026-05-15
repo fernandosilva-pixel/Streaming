@@ -222,8 +222,11 @@ export default function AdminSupport() {
       closedIds.forEach(id => delete sts[id])
       saveStatuses(sts)
     } else {
-      await supabase.from('support_messages').delete().in('session_id', closedIds)
-      await supabase.from('support_statuses').delete().in('session_id', closedIds)
+      await fetch('/api/admin/support-clear', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_ids: closedIds }),
+      })
     }
     if (closedIds.includes(selected ?? '')) setSelected(null)
     setConversations(prev => prev.filter(c => c.status !== 'closed'))
