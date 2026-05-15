@@ -118,12 +118,27 @@ export default function SupportWidget() {
       window.addEventListener('storage', handler)
       return () => window.removeEventListener('storage', handler)
     }
+    // também carrega status inicial
+    supabase
+      .from('support_statuses')
+      .select('status')
+      .eq('session_id', session.id)
+      .single()
+      .then(({ data }) => { if (data?.status === 'closed') setIsClosed(true) })
+
     const channel = supabase
       .channel(`support:${session.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages', filter: `session_id=eq.${session.id}` }, payload => {
         const msg = payload.new as SupportMsg
         setMessages(prev => [...prev, msg])
         if (msg.is_admin && !openRef.current) setUnread(n => n + 1)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_statuses', filter: `session_id=eq.${session.id}` }, payload => {
+        const row = payload.new as { status: string }
+        if (row?.status === 'closed') {
+          setIsClosed(true)
+          if (!openRef.current) setUnread(n => n + 1)
+        }
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
@@ -236,6 +251,29 @@ export default function SupportWidget() {
                   </button>
                 </div>
               </div>
+            ) : isClosed ? (
+              <div className="flex-1 flex flex-col items-center justify-center px-6 gap-4">
+                <div className="text-center space-y-1">
+                  <p className="text-3xl">✅</p>
+                  <p className="text-white font-bold text-sm">Atendimento encerrado</p>
+                  <p className="text-gray-500 text-xs">Seu ticket foi resolvido pela nossa equipe.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('support_session')
+                    localStorage.removeItem('support_statuses')
+                    setSession(null)
+                    setMessages([])
+                    setIsClosed(false)
+                    setNameInput('')
+                    setEmailInput('')
+                  }}
+                  className="w-full py-2.5 rounded-xl text-sm font-black text-white transition-all"
+                  style={{ background: 'linear-gradient(135deg, #FF6A00 0%, #FF8533 100%)', boxShadow: '0 0 16px rgba(255,106,0,0.3)' }}
+                >
+                  Abrir novo atendimento
+                </button>
+              </div>
             ) : (
               <>
                 <div ref={messagesRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
@@ -275,60 +313,37 @@ export default function SupportWidget() {
                   ))}
                 </div>
 
-                {isClosed ? (
-                  <div className="px-4 py-3 shrink-0 border-t border-white/5 space-y-2">
-                    <div className="flex items-center justify-center gap-2 py-1">
-                      <span className="text-gray-500 text-xs">✅ Atendimento encerrado</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        localStorage.removeItem('support_session')
-                        localStorage.removeItem('support_statuses')
-                        setSession(null)
-                        setMessages([])
-                        setIsClosed(false)
-                        setNameInput('')
-                        setEmailInput('')
-                      }}
-                      className="w-full py-2 rounded-xl text-xs font-black text-white transition-all"
-                      style={{ background: 'linear-gradient(135deg, #FF6A00 0%, #FF8533 100%)' }}
-                    >
-                      Abrir novo atendimento
-                    </button>
-                  </div>
-                ) : (
-                  <div className="px-3 py-2.5 shrink-0 border-t border-white/5">
-                    <form onSubmit={send} className="flex items-center gap-2 relative">
-                      {showEmoji && (
-                        <EmojiPicker
-                          onSelect={emoji => { setText(t => t + emoji); setShowEmoji(false); inputRef.current?.focus() }}
-                          onClose={() => setShowEmoji(false)}
-                        />
-                      )}
-                      <button type="button" onClick={() => setShowEmoji(v => !v)}
-                        className="shrink-0 text-gray-500 hover:text-orange-400 transition-colors">
-                        <Smile className="w-4 h-4" />
-                      </button>
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        value={text}
-                        onChange={e => setText(e.target.value)}
-                        maxLength={500}
-                        placeholder="Escreva sua mensagem..."
-                        className="flex-1 min-w-0 text-sm text-white placeholder-gray-600 bg-transparent focus:outline-none"
+                <div className="px-3 py-2.5 shrink-0 border-t border-white/5">
+                  <form onSubmit={send} className="flex items-center gap-2 relative">
+                    {showEmoji && (
+                      <EmojiPicker
+                        onSelect={emoji => { setText(t => t + emoji); setShowEmoji(false); inputRef.current?.focus() }}
+                        onClose={() => setShowEmoji(false)}
                       />
-                      <button
-                        type="submit"
-                        disabled={sending || !text.trim()}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all"
-                        style={{ background: sending || !text.trim() ? 'rgba(255,106,0,0.2)' : 'linear-gradient(135deg, #FF6A00 0%, #FF8533 100%)' }}
-                      >
-                        <Send className="w-3.5 h-3.5" style={{ color: sending || !text.trim() ? 'rgba(255,106,0,0.35)' : '#fff' }} />
-                      </button>
-                    </form>
-                  </div>
-                )}
+                    )}
+                    <button type="button" onClick={() => setShowEmoji(v => !v)}
+                      className="shrink-0 text-gray-500 hover:text-orange-400 transition-colors">
+                      <Smile className="w-4 h-4" />
+                    </button>
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={text}
+                      onChange={e => setText(e.target.value)}
+                      maxLength={500}
+                      placeholder="Escreva sua mensagem..."
+                      className="flex-1 min-w-0 text-sm text-white placeholder-gray-600 bg-transparent focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={sending || !text.trim()}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all"
+                      style={{ background: sending || !text.trim() ? 'rgba(255,106,0,0.2)' : 'linear-gradient(135deg, #FF6A00 0%, #FF8533 100%)' }}
+                    >
+                      <Send className="w-3.5 h-3.5" style={{ color: sending || !text.trim() ? 'rgba(255,106,0,0.35)' : '#fff' }} />
+                    </button>
+                  </form>
+                </div>
               </>
             )}
           </motion.div>
