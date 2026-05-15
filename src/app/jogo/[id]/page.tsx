@@ -135,7 +135,14 @@ export default function JogoPage({ params }: Props) {
     setCheckingPayment(true)
     Promise.all([
       supabase.from('payments').select('id').eq('stream_id', stream.id).eq('user_phone', user.email).eq('status', 'PAID').maybeSingle(),
-      supabase.from('free_access').select('id').eq('user_phone', user.email).maybeSingle(),
+      (() => {
+        // BR users have email like "5512997208763@futzone.app" — also match by phone digits
+        const phone = user.email.endsWith('@futzone.app') ? user.email.split('@')[0] : null
+        const filter = phone
+          ? supabase.from('free_access').select('id').or(`user_phone.eq.${user.email},user_phone.eq.${phone}`)
+          : supabase.from('free_access').select('id').eq('user_phone', user.email)
+        return filter.maybeSingle()
+      })(),
       supabase.from('coupon_uses').select('id').eq('stream_id', stream.id).eq('user_phone', user.email).maybeSingle(),
     ]).then(([payment, free, coupon]) => {
       setHasPaid(!!payment.data)
