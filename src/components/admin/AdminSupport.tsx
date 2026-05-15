@@ -211,6 +211,25 @@ export default function AdminSupport() {
     inputRef.current?.focus()
   }
 
+  async function clearClosed() {
+    const closedIds = conversations.filter(c => c.status === 'closed').map(c => c.session_id)
+    if (closedIds.length === 0) return
+    if (!confirm(`Apagar ${closedIds.length} conversa(s) encerrada(s)? Esta ação não pode ser desfeita.`)) return
+    if (IS_MOCK) {
+      const all = loadAllMsgs().filter(m => !closedIds.includes(m.session_id))
+      saveAllMsgs(all)
+      const sts = loadStatuses()
+      closedIds.forEach(id => delete sts[id])
+      saveStatuses(sts)
+    } else {
+      await supabase.from('support_messages').delete().in('session_id', closedIds)
+      await supabase.from('support_statuses').delete().in('session_id', closedIds)
+    }
+    if (closedIds.includes(selected ?? '')) setSelected(null)
+    setConversations(prev => prev.filter(c => c.status !== 'closed'))
+    setMessages([])
+  }
+
   async function closeTicket() {
     if (!selected || !conv || closing) return
     setClosing(true)
@@ -272,6 +291,15 @@ export default function AdminSupport() {
               </button>
             ))}
           </div>
+          {conversations.some(c => c.status === 'closed') && (
+            <button
+              onClick={clearClosed}
+              className="w-full py-1 rounded-lg text-[10px] font-bold transition-all hover:opacity-80"
+              style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}
+            >
+              Limpar encerrados
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto">
