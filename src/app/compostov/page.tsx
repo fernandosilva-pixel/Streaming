@@ -2738,6 +2738,7 @@ export default function AdminPage() {
                   { id: 'notificar', label: 'Notificar' },
                   { id: 'afiliados', label: 'Afiliados' },
                   { id: 'dashboard', label: 'Dashboard' },
+                  { id: 'suporte', label: 'Suporte' },
                 ]).map(tab => {
                   const selected = newSubTabs.includes(tab.id)
                   return (
@@ -2803,6 +2804,7 @@ export default function AdminPage() {
                               : tab === 'notificar' ? 'Notificar'
                               : tab === 'afiliados' ? 'Afiliados'
                               : tab === 'dashboard' ? 'Dashboard'
+                              : tab === 'suporte' ? 'Suporte'
                               : tab}
                           </span>
                         ))}
