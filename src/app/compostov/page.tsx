@@ -220,6 +220,10 @@ export default function AdminPage() {
   const [showAddGameForm, setShowAddGameForm] = useState(false)
   const [logo1Uploading, setLogo1Uploading] = useState(false)
   const [logo2Uploading, setLogo2Uploading] = useState(false)
+  const [editingGameId, setEditingGameId] = useState<string | null>(null)
+  const [editingGame, setEditingGame] = useState<Omit<ScheduleGame, 'id'>>({ team1: '', team2: '', logo1: '', logo2: '', league: '', league_logo: '', datetime: '' })
+  const [editLogo1Uploading, setEditLogo1Uploading] = useState(false)
+  const [editLogo2Uploading, setEditLogo2Uploading] = useState(false)
   const [newGame, setNewGame] = useState<Omit<ScheduleGame, 'id'>>({ team1: '', team2: '', logo1: '', logo2: '', league: '', league_logo: '', datetime: '' })
 
   async function loadSchedule() {
@@ -264,6 +268,27 @@ export default function AdminPage() {
     setScheduleGames(updated)
     setNewGame({ team1: '', team2: '', logo1: '', logo2: '', league: '', league_logo: '', datetime: '' })
     setShowAddGameForm(false)
+    await persistSchedule(updated, scheduleActive, scheduleId)
+  }
+
+  async function uploadEditLogo(file: File, team: 1 | 2) {
+    const setter = team === 1 ? setEditLogo1Uploading : setEditLogo2Uploading
+    setter(true)
+    const ext = file.name.split('.').pop() ?? 'png'
+    const fileName = `team-logos/${Date.now()}-edit-${team}.${ext}`
+    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType: file.type || 'image/png' })
+    if (!error) {
+      const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
+      setEditingGame(p => ({ ...p, [team === 1 ? 'logo1' : 'logo2']: publicUrl }))
+    }
+    setter(false)
+  }
+
+  async function saveEditedGame() {
+    if (!editingGameId || !editingGame.team1.trim() || !editingGame.team2.trim() || !editingGame.datetime) return
+    const updated = scheduleGames.map(g => g.id === editingGameId ? { ...editingGame, id: editingGameId } : g)
+    setScheduleGames(updated)
+    setEditingGameId(null)
     await persistSchedule(updated, scheduleActive, scheduleId)
   }
 
@@ -2901,27 +2926,97 @@ export default function AdminPage() {
                 <div className="space-y-2">
                   <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide">Jogos ({scheduleGames.length})</p>
                   {scheduleGames.map(g => (
-                    <div key={g.id} className="flex items-center gap-3 bg-[#12121A] border border-[#2A2A3A] rounded-xl px-4 py-3">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {g.logo1
-                          ? <img src={g.logo1} alt="" className="w-8 h-8 object-contain shrink-0 rounded" />
-                          : <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center shrink-0"><ImageIcon className="w-4 h-4 text-gray-600" /></div>
-                        }
-                        <span className="text-white text-sm font-semibold truncate">{g.team1}</span>
-                        <span className="text-gray-600 text-xs font-black px-1">×</span>
-                        {g.logo2
-                          ? <img src={g.logo2} alt="" className="w-8 h-8 object-contain shrink-0 rounded" />
-                          : <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center shrink-0"><ImageIcon className="w-4 h-4 text-gray-600" /></div>
-                        }
-                        <span className="text-white text-sm font-semibold truncate">{g.team2}</span>
-                        {g.league && <span className="text-gray-500 text-xs truncate hidden sm:block">· {g.league}</span>}
-                      </div>
-                      <span className="text-orange-400 text-xs font-bold whitespace-nowrap shrink-0">
-                        {new Date(g.datetime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <button onClick={() => removeGameFromSchedule(g.id)} className="text-gray-600 hover:text-red-500 transition-colors shrink-0">
-                        <X className="w-4 h-4" />
-                      </button>
+                    <div key={g.id} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
+                      {editingGameId === g.id ? (
+                        <div className="p-4 space-y-4">
+                          <p className="text-orange-400 text-xs font-bold uppercase tracking-wide">Editando jogo</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-gray-400 text-xs mb-1">Time da casa</p>
+                              <input type="text" value={editingGame.team1} onChange={e => setEditingGame(p => ({ ...p, team1: e.target.value }))}
+                                className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+                            </div>
+                            <div>
+                              <p className="text-gray-400 text-xs mb-1">Time visitante</p>
+                              <input type="text" value={editingGame.team2} onChange={e => setEditingGame(p => ({ ...p, team2: e.target.value }))}
+                                className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-gray-400 text-xs mb-1">Logo time da casa</p>
+                              <div className="flex items-center gap-2">
+                                <div className="w-9 h-9 rounded-lg bg-[#0B0B0F] border border-[#2A2A3A] flex items-center justify-center shrink-0 overflow-hidden">
+                                  {editingGame.logo1 ? <img src={editingGame.logo1} alt="" className="w-full h-full object-contain p-0.5" /> : <ImageIcon className="w-4 h-4 text-gray-600" />}
+                                </div>
+                                <input type="text" value={editingGame.logo1} onChange={e => setEditingGame(p => ({ ...p, logo1: e.target.value }))}
+                                  placeholder="URL" className="flex-1 min-w-0 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-orange-500" />
+                                <label className="w-9 h-9 rounded-lg bg-[#0B0B0F] border border-[#2A2A3A] flex items-center justify-center shrink-0 cursor-pointer hover:border-orange-500/50 transition-all">
+                                  {editLogo1Uploading ? <div className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" /> : <ImageIcon className="w-4 h-4 text-gray-500" />}
+                                  <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadEditLogo(e.target.files[0], 1)} />
+                                </label>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-gray-400 text-xs mb-1">Logo time visitante</p>
+                              <div className="flex items-center gap-2">
+                                <div className="w-9 h-9 rounded-lg bg-[#0B0B0F] border border-[#2A2A3A] flex items-center justify-center shrink-0 overflow-hidden">
+                                  {editingGame.logo2 ? <img src={editingGame.logo2} alt="" className="w-full h-full object-contain p-0.5" /> : <ImageIcon className="w-4 h-4 text-gray-600" />}
+                                </div>
+                                <input type="text" value={editingGame.logo2} onChange={e => setEditingGame(p => ({ ...p, logo2: e.target.value }))}
+                                  placeholder="URL" className="flex-1 min-w-0 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-orange-500" />
+                                <label className="w-9 h-9 rounded-lg bg-[#0B0B0F] border border-[#2A2A3A] flex items-center justify-center shrink-0 cursor-pointer hover:border-orange-500/50 transition-all">
+                                  {editLogo2Uploading ? <div className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" /> : <ImageIcon className="w-4 h-4 text-gray-500" />}
+                                  <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadEditLogo(e.target.files[0], 2)} />
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-gray-400 text-xs mb-1">Liga / Campeonato</p>
+                              <input type="text" value={editingGame.league} onChange={e => setEditingGame(p => ({ ...p, league: e.target.value }))}
+                                placeholder="Ex: Brasileirão" className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+                            </div>
+                            <div>
+                              <p className="text-gray-400 text-xs mb-1">Data e horário</p>
+                              <input type="datetime-local" value={editingGame.datetime} onChange={e => setEditingGame(p => ({ ...p, datetime: e.target.value }))}
+                                className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={saveEditedGame} disabled={!editingGame.team1.trim() || !editingGame.team2.trim() || !editingGame.datetime}
+                              className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl text-sm transition-all">
+                              Salvar
+                            </button>
+                            <button onClick={() => setEditingGameId(null)}
+                              className="px-4 py-2.5 bg-[#0B0B0F] border border-[#2A2A3A] text-gray-400 hover:text-white font-bold rounded-xl text-sm transition-all">
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {g.logo1 ? <img src={g.logo1} alt="" className="w-8 h-8 object-contain shrink-0 rounded" /> : <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center shrink-0"><ImageIcon className="w-4 h-4 text-gray-600" /></div>}
+                            <span className="text-white text-sm font-semibold truncate">{g.team1}</span>
+                            <span className="text-gray-600 text-xs font-black px-1">×</span>
+                            {g.logo2 ? <img src={g.logo2} alt="" className="w-8 h-8 object-contain shrink-0 rounded" /> : <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center shrink-0"><ImageIcon className="w-4 h-4 text-gray-600" /></div>}
+                            <span className="text-white text-sm font-semibold truncate">{g.team2}</span>
+                            {g.league && <span className="text-gray-500 text-xs truncate hidden sm:block">· {g.league}</span>}
+                          </div>
+                          <span className="text-orange-400 text-xs font-bold whitespace-nowrap shrink-0">
+                            {new Date(g.datetime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <button onClick={() => { setEditingGameId(g.id); setEditingGame({ team1: g.team1, team2: g.team2, logo1: g.logo1, logo2: g.logo2, league: g.league, league_logo: g.league_logo, datetime: g.datetime }) }}
+                            className="text-gray-600 hover:text-orange-400 transition-colors shrink-0">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => removeGameFromSchedule(g.id)} className="text-gray-600 hover:text-red-500 transition-colors shrink-0">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
