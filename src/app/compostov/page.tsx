@@ -2754,6 +2754,7 @@ export default function AdminPage() {
                   { id: 'afiliados', label: 'Afiliados' },
                   { id: 'dashboard', label: 'Dashboard' },
                   { id: 'suporte', label: 'Suporte' },
+                  { id: 'agenda', label: 'Agenda' },
                 ]).map(tab => {
                   const selected = newSubTabs.includes(tab.id)
                   return (
@@ -2841,6 +2842,7 @@ export default function AdminPage() {
                             { id: 'afiliados', label: 'Afiliados' },
                             { id: 'dashboard', label: 'Dashboard' },
                             { id: 'suporte', label: 'Suporte' },
+                            { id: 'agenda', label: 'Agenda' },
                           ]).map(tab => {
                             const sel = editingSubTabs.includes(tab.id)
                             return (
@@ -2871,6 +2873,7 @@ export default function AdminPage() {
                               : tab === 'afiliados' ? 'Afiliados'
                               : tab === 'dashboard' ? 'Dashboard'
                               : tab === 'suporte' ? 'Suporte'
+                              : tab === 'agenda' ? 'Agenda'
                               : tab}
                           </span>
                         ))}
