@@ -288,7 +288,7 @@ export default function JogoPage({ params }: Props) {
   const previewKey = user ? `preview_payment_${id}_${user.email}` : `preview_login_${id}`
 
   useEffect(() => {
-    const stored = sessionStorage.getItem(previewKey)
+    const stored = localStorage.getItem(previewKey)
     const now = Date.now()
     let endsAt: number
 
@@ -301,7 +301,7 @@ export default function JogoPage({ params }: Props) {
       }
     } else {
       endsAt = now + 300_000
-      sessionStorage.setItem(previewKey, String(endsAt))
+      localStorage.setItem(previewKey, String(endsAt))
     }
 
     setPreviewActive(true)
