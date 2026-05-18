@@ -2,9 +2,17 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Copy, X, LogOut, ShieldCheck, Clock, Zap } from 'lucide-react'
+import { Check, Copy, X, LogOut, ShieldCheck, Clock, Zap, Camera } from 'lucide-react'
 import { useAuth, isPlanActive, ContentPreference } from '@/contexts/AuthContext'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { supabase } from '@/lib/supabase'
 import QRCode from 'react-qr-code'
+
+function userNumber(email: string): string {
+  let h = 5381
+  for (let i = 0; i < email.length; i++) h = (Math.imul(h, 33) ^ email.charCodeAt(i)) | 0
+  return '#' + (Math.abs(h) % 100000000).toString().padStart(8, '0')
+}
 
 const PLAN_PRICE = 19.90
 
@@ -15,9 +23,12 @@ const PREFERENCES: { value: ContentPreference; icon: string; label: string; desc
 ]
 
 export default function PerfilPage() {
-  const { user, logout, refreshUser, updatePreference, initialized } = useAuth()
+  const { user, logout, refreshUser, updatePreference, updateAvatar, initialized } = useAuth()
+  const { lang } = useLanguage()
   const router = useRouter()
 
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [idCopied, setIdCopied] = useState(false)
   const [planModalOpen, setPlanModalOpen] = useState(false)
   const [qrcode, setQrcode] = useState<string | null>(null)
   const [transactionId, setTransactionId] = useState<string | null>(null)
@@ -106,6 +117,25 @@ export default function PerfilPage() {
     setPrefSaving(false)
   }
 
+  async function handleAvatarFile(file: File) {
+    if (!user || !file.type.startsWith('image/')) return
+    setAvatarUploading(true)
+    const ext = file.name.split('.').pop()
+    const fileName = `avatar-${user.email.replace(/[^a-z0-9]/gi, '_')}.${ext}`
+    const { error } = await supabase.storage.from('banners').upload(fileName, file, { upsert: true, contentType: file.type })
+    if (error) { alert('Erro no upload.'); setAvatarUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
+    await updateAvatar(publicUrl)
+    setAvatarUploading(false)
+  }
+
+  function copyUserId() {
+    if (!user) return
+    navigator.clipboard.writeText(user.email)
+    setIdCopied(true)
+    setTimeout(() => setIdCopied(false), 2000)
+  }
+
   function openPlanModal() {
     setQrcode(null)
     setTransactionId(null)
@@ -124,29 +154,74 @@ export default function PerfilPage() {
   const expiringSoon = active && daysLeft !== null && daysLeft <= 7
 
   const initials = user.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+  const flagEmoji = lang === 'en' ? '🇺🇸' : lang === 'es' ? '🇪🇸' : '🇧🇷'
+  const shortId = user.email.length > 16 ? user.email.slice(0, 14) + '…' : user.email
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10 space-y-6">
 
-      {/* Cabeçalho */}
-      <div className="flex items-center gap-5">
+      {/* Cabeçalho — card estilo perfil */}
+      <div className="rounded-2xl overflow-hidden border border-[#2A2A3A]">
+        {/* Cover */}
         <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-black text-white shrink-0"
-          style={{ background: 'linear-gradient(135deg, #FF6A00, #FF8533)' }}
+          className="relative h-28"
+          style={{ background: 'linear-gradient(135deg, #1A1020 0%, #0B0B0F 50%, #1A1A26 100%)' }}
         >
-          {initials}
+          {/* Grade decorativa sutil */}
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 24px,rgba(255,255,255,.05) 24px,rgba(255,255,255,.05) 25px),repeating-linear-gradient(90deg,transparent,transparent 24px,rgba(255,255,255,.05) 24px,rgba(255,255,255,.05) 25px)' }} />
+
+          {/* Botão sair */}
+          <button
+            onClick={() => { logout(); router.push('/') }}
+            className="absolute top-4 right-4 flex items-center gap-1.5 text-gray-400 hover:text-red-400 transition-colors text-sm"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sair</span>
+          </button>
+
+          {/* Avatar sobrepondo o cover */}
+          <div className="absolute -bottom-10 left-6">
+            <div className="relative w-20 h-20">
+              <div className="w-20 h-20 rounded-full border-4 border-orange-500 overflow-hidden bg-[#1A1A26] flex items-center justify-center">
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                ) : avatarUploading ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <span className="text-2xl font-black text-white" style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)', position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {initials}
+                  </span>
+                )}
+              </div>
+              {/* Botão câmera para upload */}
+              <label className="absolute inset-0 rounded-full cursor-pointer flex items-center justify-center bg-black/0 hover:bg-black/50 transition-all group">
+                <Camera className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
+                <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleAvatarFile(e.target.files[0])} />
+              </label>
+            </div>
+          </div>
+
+          {/* Número do usuário */}
+          <span className="absolute bottom-3 left-32 text-gray-500 text-sm font-bold tracking-wide">
+            {userNumber(user.email)}
+          </span>
         </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-black text-white truncate">{user.name}</h1>
-          <p className="text-gray-500 text-sm truncate">{user.email}</p>
+
+        {/* Informações abaixo do cover */}
+        <div className="bg-[#12121A] pt-12 pb-5 px-6 space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span>{flagEmoji}</span>
+            <h1 className="text-white font-black text-xl">{user.name}</h1>
+          </div>
+          <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <span>ID: {shortId}</span>
+            <button onClick={copyUserId} className="hover:text-white transition-colors">
+              {idCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => { logout(); router.push('/') }}
-          className="flex items-center gap-2 text-gray-500 hover:text-red-400 transition-colors text-sm"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="hidden sm:inline">Sair</span>
-        </button>
       </div>
 
       {/* Card do Plano */}

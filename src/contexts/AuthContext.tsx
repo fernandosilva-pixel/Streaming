@@ -11,6 +11,7 @@ export type SiteUser = {
   plan: 'free' | 'mensal'
   plan_expires_at: string | null
   content_preference: ContentPreference
+  avatar_url: string | null
 }
 
 type AuthContextType = {
@@ -26,6 +27,7 @@ type AuthContextType = {
   logout: () => void
   refreshUser: () => Promise<void>
   updatePreference: (pref: ContentPreference) => Promise<void>
+  updateAvatar: (url: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -36,16 +38,17 @@ function isPlanActive(user: SiteUser | null): boolean {
   return new Date(user.plan_expires_at) > new Date()
 }
 
-async function fetchPlanData(email: string): Promise<Pick<SiteUser, 'plan' | 'plan_expires_at' | 'content_preference'>> {
+async function fetchPlanData(email: string): Promise<Pick<SiteUser, 'plan' | 'plan_expires_at' | 'content_preference' | 'avatar_url'>> {
   const { data } = await supabase
     .from('registrations')
-    .select('plan, plan_expires_at, content_preference')
+    .select('plan, plan_expires_at, content_preference, avatar_url')
     .eq('email', email)
     .maybeSingle()
   return {
     plan: (data?.plan as 'free' | 'mensal') ?? 'free',
     plan_expires_at: data?.plan_expires_at ?? null,
     content_preference: (data?.content_preference as ContentPreference) ?? 'luta',
+    avatar_url: data?.avatar_url ?? null,
   }
 }
 
@@ -67,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           plan: parsed.plan ?? 'free',
           plan_expires_at: parsed.plan_expires_at ?? null,
           content_preference: parsed.content_preference ?? 'luta',
+          avatar_url: parsed.avatar_url ?? null,
         }
         setUser(base)
         // Refresh plan data from DB in background
@@ -89,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string): Promise<boolean> {
     const { data } = await supabase
       .from('registrations')
-      .select('name, email, plan, plan_expires_at, content_preference')
+      .select('name, email, plan, plan_expires_at, content_preference, avatar_url')
       .eq('email', email.trim().toLowerCase())
       .eq('password', password)
       .single()
@@ -101,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         plan: (data.plan as 'free' | 'mensal') ?? 'free',
         plan_expires_at: data.plan_expires_at ?? null,
         content_preference: (data.content_preference as ContentPreference) ?? 'luta',
+        avatar_url: data.avatar_url ?? null,
       }
       localStorage.setItem('futzone_user', JSON.stringify(userObj))
       setUser(userObj)
@@ -142,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       plan: 'free',
       plan_expires_at: null,
       content_preference: 'luta',
+      avatar_url: null,
     }
     localStorage.setItem('futzone_user', JSON.stringify(newUser))
     setUser(newUser)
@@ -155,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       plan: 'free',
       plan_expires_at: null,
       content_preference: 'luta',
+      avatar_url: null,
     }
     localStorage.setItem('futzone_user', JSON.stringify(fullUser))
     setUser(fullUser)
@@ -179,6 +186,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('futzone_user', JSON.stringify(updated))
   }
 
+  async function updateAvatar(url: string) {
+    if (!user) return
+    await supabase.from('registrations').update({ avatar_url: url }).eq('email', user.email)
+    const updated = { ...user, avatar_url: url }
+    setUser(updated)
+    localStorage.setItem('futzone_user', JSON.stringify(updated))
+  }
+
   async function updatePreference(pref: ContentPreference) {
     if (!user) return
     await supabase.from('registrations').update({ content_preference: pref }).eq('email', user.email)
@@ -188,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, initialized, showModal, hideModal, modalVisible, modalInitialView, login, register, loginDirect, logout, refreshUser, updatePreference }}>
+    <AuthContext.Provider value={{ user, initialized, showModal, hideModal, modalVisible, modalInitialView, login, register, loginDirect, logout, refreshUser, updatePreference, updateAvatar }}>
       {children}
     </AuthContext.Provider>
   )
