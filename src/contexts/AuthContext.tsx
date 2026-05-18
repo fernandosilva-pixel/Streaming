@@ -49,10 +49,6 @@ async function fetchPlanData(email: string): Promise<Pick<SiteUser, 'plan' | 'pl
   }
 }
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  return <>{children}</>
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SiteUser | null>(null)
   const [initialized, setInitialized] = useState(false)
