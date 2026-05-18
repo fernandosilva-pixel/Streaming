@@ -17,7 +17,8 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
     if (!video) return
     setErrorMsg(null)
 
-    const proxied = `/api/hls-proxy?url=${encodeURIComponent(src)}`
+    // Use proxy only for HTTP sources (no CORS). HTTPS CDN URLs load directly.
+    const proxied = src.startsWith('https://') ? src : `/api/hls-proxy?url=${encodeURIComponent(src)}`
 
     // Use native HLS only on real Safari (not Chrome on macOS, which also reports HLS support
     // but can't handle proxy-rewritten segment URLs correctly)
