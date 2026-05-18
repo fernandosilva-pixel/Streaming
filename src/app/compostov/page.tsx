@@ -12,6 +12,7 @@ type Banner = {
   game_id: number | null
   stream_id: string | null
   display_order: number
+  category: 'futebol' | 'basquete' | null
 }
 
 type Stream = {
@@ -45,6 +46,8 @@ export default function AdminPage() {
   const [extraBanners, setExtraBanners] = useState<Banner[]>([])
   const [extraUploading, setExtraUploading] = useState(false)
   const [movingBanner, setMovingBanner] = useState<string | null>(null)
+  const [pendingBannerFile, setPendingBannerFile] = useState<File | null>(null)
+  const [bannerCategoryModal, setBannerCategoryModal] = useState(false)
 
   // Próximos Jogos (carousel_banners)
   const [carouselBanners, setCarouselBanners] = useState<{ id: string; image_url: string; mobile_image_url: string | null; display_order: number }[]>([])
@@ -736,10 +739,18 @@ export default function AdminPage() {
   }
 
 
-  // Carrossel extra: upload direto, salva como nova linha
-  async function handleExtraFile(file: File) {
+  // Intercepta o drop/click — abre modal de categoria antes de fazer upload
+  function requestBannerCategory(file: File) {
     if (!isImageFile(file)) return
+    setPendingBannerFile(file)
+    setBannerCategoryModal(true)
+  }
+
+  // Carrossel extra: upload direto, salva como nova linha
+  async function handleExtraFile(file: File, category: 'futebol' | 'basquete' | null) {
     setExtraUploading(true)
+    setBannerCategoryModal(false)
+    setPendingBannerFile(null)
     const ext = file.name.split('.').pop()
     const fileName = `banner-extra-${Date.now()}.${ext}`
     const contentType = getContentType(file)
@@ -747,9 +758,14 @@ export default function AdminPage() {
     if (error) { alert('Erro no upload: ' + error.message); setExtraUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName)
     const nextOrder = [banner, ...extraBanners].filter(Boolean).length
-    await supabase.from('banner').insert({ image_url: publicUrl, game_id: null, display_order: nextOrder })
+    await supabase.from('banner').insert({ image_url: publicUrl, game_id: null, display_order: nextOrder, category })
     await loadAllBanners()
     setExtraUploading(false)
+  }
+
+  async function updateBannerCategory(id: string, category: 'futebol' | 'basquete' | null) {
+    await supabase.from('banner').update({ category }).eq('id', id)
+    await loadAllBanners()
   }
 
   async function deleteExtraBanner(id: string) {
@@ -1330,7 +1346,7 @@ export default function AdminPage() {
               <p className="text-gray-500 text-sm mt-0.5">Adicione uma ou mais imagens — quando houver mais de uma, o sistema rotaciona automaticamente.</p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <input id="extraInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => e.target.files?.[0] && handleExtraFile(e.target.files[0])} />
+              <input id="extraInput" type="file" accept="image/*,.svg" className="hidden" onChange={e => { if (e.target.files?.[0]) { requestBannerCategory(e.target.files[0]); e.target.value = '' } }} />
               {[banner, ...extraBanners].filter(Boolean).map((b, i, arr) => {
                 const isMain = i === 0
                 const isMoving = movingBanner === b!.id
@@ -1355,13 +1371,24 @@ export default function AdminPage() {
                     <span className={`absolute top-1.5 left-1.5 text-white text-xs font-bold px-1.5 py-0.5 rounded ${isMain ? 'bg-orange-500' : 'bg-black/70'}`}>
                       #{i + 1}{isMain ? ' principal' : ''}
                     </span>
+                    <button
+                      title="Clique para trocar categoria"
+                      onClick={() => {
+                        const next = b!.category === null ? 'futebol' : b!.category === 'futebol' ? 'basquete' : null
+                        updateBannerCategory(b!.id, next)
+                      }}
+                      className="absolute bottom-1.5 left-1.5 opacity-0 group-hover:opacity-100 text-xs font-bold px-1.5 py-0.5 rounded transition-all z-10"
+                      style={{ background: b!.category === 'futebol' ? '#16a34a' : b!.category === 'basquete' ? '#2563eb' : 'rgba(0,0,0,0.7)' }}
+                    >
+                      {b!.category === 'futebol' ? '⚽ Futebol' : b!.category === 'basquete' ? '🏀 Basquete' : '🌐 Todos'}
+                    </button>
                   </div>
                 )
               })}
               <div
                 onClick={() => document.getElementById('extraInput')?.click()}
                 onDragOver={e => { e.preventDefault() }}
-                onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleExtraFile(f) }}
+                onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) requestBannerCategory(f) }}
                 className="border-2 border-dashed border-[#2A2A3A] hover:border-orange-500/40 rounded-xl bg-[#12121A] cursor-pointer flex flex-col items-center justify-center gap-1 text-gray-500 hover:text-orange-400 transition-all"
                 style={{ aspectRatio: '16/9' }}
               >
@@ -2197,6 +2224,39 @@ export default function AdminPage() {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal — categoria do banner */}
+      {bannerCategoryModal && pendingBannerFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => { setBannerCategoryModal(false); setPendingBannerFile(null) }} />
+          <div className="relative w-full max-w-sm bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-6 space-y-5 shadow-2xl">
+            <button onClick={() => { setBannerCategoryModal(false); setPendingBannerFile(null) }} className="absolute top-4 right-4 text-gray-600 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-black text-white">Esse banner é para qual público?</h2>
+              <p className="text-gray-500 text-sm mt-1">Usuários que escolheram outra categoria não verão esse banner.</p>
+            </div>
+            <div className="flex gap-3">
+              {([
+                { label: '⚽ Futebol', value: 'futebol' as const, color: '#16a34a' },
+                { label: '🏀 Basquete', value: 'basquete' as const, color: '#2563eb' },
+                { label: '🌐 Todos', value: null, color: '#f97316' },
+              ] as { label: string; value: 'futebol' | 'basquete' | null; color: string }[]).map(opt => (
+                <button
+                  key={String(opt.value)}
+                  onClick={() => handleExtraFile(pendingBannerFile, opt.value)}
+                  className="flex-1 flex flex-col items-center gap-2 py-4 rounded-xl font-bold text-white text-sm transition-all hover:scale-105 active:scale-95"
+                  style={{ background: opt.color + '22', border: `1px solid ${opt.color}55` }}
+                >
+                  <span style={{ fontSize: 32 }}>{opt.label.split(' ')[0]}</span>
+                  <span>{opt.label.split(' ').slice(1).join(' ')}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

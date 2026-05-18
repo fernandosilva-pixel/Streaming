@@ -10,6 +10,7 @@ type Banner = {
   image_url: string
   game_id: number | null
   stream_id: string | null
+  category: 'futebol' | 'basquete' | null
 }
 
 type LiveStream = {
@@ -33,12 +34,18 @@ export default function HeroBanner() {
   }, [])
 
   useEffect(() => {
+    const storedSport = typeof window !== 'undefined' ? localStorage.getItem('futzone_sport') : null
+    const pref = user?.content_preference ?? (storedSport as 'futebol' | 'basquete' | 'hibrido' | null) ?? 'hibrido'
     supabase.from('banner').select('*').order('display_order').then(({ data }) => {
-      const list = (data ?? []).filter(b => b.image_url)
+      const list = (data ?? []).filter(b => {
+        if (!b.image_url) return false
+        if (pref === 'hibrido') return true
+        return !b.category || b.category === pref
+      })
       setBanners(list)
       setLoading(false)
     })
-  }, [])
+  }, [user?.content_preference])
 
   // rotação automática a cada 5s quando há mais de um banner
   useEffect(() => {
@@ -99,7 +106,7 @@ export default function HeroBanner() {
         <div className="flex flex-wrap gap-3 justify-center">
           {liveStreams.filter(s => {
             const storedSport = typeof window !== 'undefined' ? localStorage.getItem('futzone_sport') : null
-            const pref = user?.content_preference ?? (storedSport as 'futebol' | 'basquete' | 'hibrido' | null) ?? 'hibrido'
+            const pref = user?.content_preference ?? (storedSport as 'futebol' | 'basquete' | null) ?? 'hibrido'
             if (pref === 'hibrido') return true
             return !s.category || s.category === pref
           }).map(s => (
