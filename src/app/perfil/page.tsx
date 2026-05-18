@@ -8,11 +8,6 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { supabase } from '@/lib/supabase'
 import QRCode from 'react-qr-code'
 
-function userNumber(email: string): string {
-  let h = 5381
-  for (let i = 0; i < email.length; i++) h = (Math.imul(h, 33) ^ email.charCodeAt(i)) | 0
-  return '#' + (Math.abs(h) % 100000000).toString().padStart(8, '0')
-}
 
 const PLAN_PRICE = 19.90
 
@@ -179,8 +174,8 @@ export default function PerfilPage() {
             <span>Sair</span>
           </button>
 
-          {/* Avatar sobrepondo o cover */}
-          <div className="absolute -bottom-10 left-6">
+          {/* Avatar sobrepondo o cover — centralizado */}
+          <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
             <div className="relative w-20 h-20">
               <div className="w-20 h-20 rounded-full border-4 border-orange-500 overflow-hidden bg-[#1A1A26] flex items-center justify-center">
                 {user.avatar_url ? (
@@ -203,14 +198,10 @@ export default function PerfilPage() {
             </div>
           </div>
 
-          {/* Número do usuário */}
-          <span className="absolute bottom-3 left-32 text-gray-500 text-sm font-bold tracking-wide">
-            {userNumber(user.email)}
-          </span>
         </div>
 
         {/* Informações abaixo do cover */}
-        <div className="bg-[#12121A] pt-12 pb-5 px-6 space-y-1.5">
+        <div className="bg-[#12121A] pt-12 pb-5 px-6 space-y-1.5 flex flex-col items-center text-center">
           <div className="flex items-center gap-2">
             <span>{flagEmoji}</span>
             <h1 className="text-white font-black text-xl">{user.name}</h1>
