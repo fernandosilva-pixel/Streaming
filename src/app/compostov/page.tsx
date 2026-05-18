@@ -6,20 +6,6 @@ import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp,
 import { supabase } from '@/lib/supabase'
 import AdminSupport from '@/components/admin/AdminSupport'
 
-type Fixture = {
-  fixture: {
-    id: number
-    date: string
-    status: { short: string; elapsed: number | null }
-  }
-  league: { id: number; name: string; country: string; logo: string }
-  teams: {
-    home: { name: string; logo: string }
-    away: { name: string; logo: string }
-  }
-  goals: { home: number | null; away: number | null }
-}
-
 type Banner = {
   id: string
   image_url: string
@@ -42,44 +28,12 @@ type Stream = {
   crop_enabled: boolean
   charge_enabled: boolean
   charge_amount: number
-  payment_method: 'bspay' | 'fixed_qr' | 'ironpay' | null
+  payment_method: 'bspay' | 'fixed_qr' | null
   fixed_qr_url: string | null
   chat_enabled: boolean
   coupon_enabled: boolean
   coupon_code: string | null
   coupon_quantity: number
-}
-
-function FixtureRow({ f, selected, onSelect }: { f: Fixture; selected: boolean; onSelect: () => void }) {
-  const isLive = ['1H', '2H', 'HT'].includes(f.fixture.status.short)
-  return (
-    <button
-      onClick={onSelect}
-      className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
-        selected ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#12121A] hover:border-orange-500/30'
-      }`}
-    >
-      <img src={f.league.logo} alt="" className="w-6 h-6 object-contain shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-white text-sm font-semibold truncate">{f.teams.home.name} vs {f.teams.away.name}</p>
-        <p className="text-gray-500 text-xs truncate">{f.league.name}</p>
-      </div>
-      <div className="text-right shrink-0 space-y-0.5">
-        {isLive ? (
-          <>
-            <p className="text-white text-xs font-bold tabular-nums">{f.goals.home ?? 0} - {f.goals.away ?? 0}</p>
-            <p className="text-orange-500 text-[10px] font-bold">{f.fixture.status.elapsed}' AO VIVO</p>
-          </>
-        ) : f.fixture.status.short === 'FT' ? (
-          <p className="text-gray-500 text-xs">Encerrado</p>
-        ) : (
-          <p className="text-gray-400 text-xs">
-            {new Date(f.fixture.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-          </p>
-        )}
-      </div>
-    </button>
-  )
 }
 
 export default function AdminPage() {
@@ -96,13 +50,6 @@ export default function AdminPage() {
   const [carouselUploading, setCarouselUploading] = useState(false)
   const [isCarouselDragging, setIsCarouselDragging] = useState(false)
 
-  // Fixtures / jogo em destaque
-  const [fixtures, setFixtures] = useState<Fixture[]>([])
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
-  const [search, setSearch] = useState('')
-  const [selectedGameId, setSelectedGameId] = useState<number | null>(null)
-  const [loadingFixtures, setLoadingFixtures] = useState(false)
-
   // Auth / misc
   const [authChecked, setAuthChecked] = useState(false)
   const [onlineUsers, setOnlineUsers] = useState(0)
@@ -113,7 +60,6 @@ export default function AdminPage() {
   const [newChargedEmail, setNewChargedEmail] = useState<Record<string, string>>({})
   const [expandedViewers, setExpandedViewers] = useState<Set<string>>(new Set())
   const [chargeModal, setChargeModal] = useState<{ streamId: string; email: string } | null>(null)
-  const [chargeModalMethod, setChargeModalMethod] = useState<'ironpay' | 'bspay' | 'fixed_qr'>('ironpay')
   const [chargeModalAmount, setChargeModalAmount] = useState('10.00')
 
   // Notificações de novos cadastros
@@ -160,7 +106,6 @@ export default function AdminPage() {
   const [chargeAmountModal, setChargeAmountModal] = useState<{ id: string } | null>(null)
   const [chargeAmountInput, setChargeAmountInput] = useState('')
   const [chargeAmountSaving, setChargeAmountSaving] = useState(false)
-  const [chargeGateway, setChargeGateway] = useState<'bspay' | 'ironpay'>('bspay')
   const [savingChannel, setSavingChannel] = useState<string | null>(null)
   const [detectingBroad, setDetectingBroad] = useState<string | null>(null)
   const [editingStreamId, setEditingStreamId] = useState<string | null>(null)
@@ -192,7 +137,7 @@ export default function AdminPage() {
   const [addingAdmin, setAddingAdmin] = useState(false)
 
   // Aba ativa
-  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte'>('visual')
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte' | 'status'>('visual')
 
   // Permissões do admin logado (null = superadmin, array = abas permitidas)
   const [allowedTabs, setAllowedTabs] = useState<string[] | null>(null)
@@ -318,6 +263,28 @@ export default function AdminPage() {
   const [payLimit, setPayLimit] = useState(5)
   const [waBatch, setWaBatch] = useState<{ running: boolean; total: number; done: number; skipped: number; errors: number } | null>(null)
   const waBatchStopRef = useRef(false)
+
+  // Status das integrações
+  type ServiceStatus = { ok: boolean; latencyMs: number; name: string; status?: number }
+  type HealthData = { checkedAt: string; services: Record<string, ServiceStatus> }
+  const [healthData, setHealthData] = useState<HealthData | null>(null)
+  const [healthLoading, setHealthLoading] = useState(false)
+  const [costAlert, setCostAlert] = useState<string | null>(null)
+
+  async function checkHealth() {
+    setHealthLoading(true)
+    try {
+      const res = await fetch('/api/status/health')
+      const data = await res.json()
+      setHealthData(data)
+      const downServices = Object.values(data.services as Record<string, ServiceStatus>).filter(s => !s.ok).map(s => s.name)
+      if (downServices.length > 0) setCostAlert(`Serviço(s) com problema: ${downServices.join(', ')}`)
+      else setCostAlert(null)
+    } catch {
+      setCostAlert('Erro ao verificar integrações')
+    }
+    setHealthLoading(false)
+  }
 
   function stopWaBatch() {
     waBatchStopRef.current = true
@@ -462,7 +429,6 @@ export default function AdminPage() {
     setAffiliatesList(prev => prev.filter(a => a.id !== id))
   }
 
-  useEffect(() => { if (authChecked) loadFixtures() }, [date, authChecked])
 
   useEffect(() => {
     const channel = supabase.channel('site-presence')
@@ -569,7 +535,6 @@ export default function AdminPage() {
     if (!data || data.length === 0) { setBanner(null); setExtraBanners([]); return }
     const [first, ...rest] = data
     setBanner(first)
-    setSelectedGameId(first.game_id)
     setExtraBanners(rest)
   }
 
@@ -632,7 +597,6 @@ export default function AdminPage() {
     const email = (newChargedEmail[streamId] ?? '').trim().toLowerCase()
     if (!email) return
     setChargeModal({ streamId, email })
-    setChargeModalMethod('ironpay')
     setChargeModalAmount('10.00')
   }
 
@@ -640,7 +604,7 @@ export default function AdminPage() {
     if (!chargeModal) return
     const { streamId, email } = chargeModal
     await supabase.from('stream_charged_users').upsert(
-      { stream_id: streamId, user_email: email, payment_method: chargeModalMethod, charge_amount: parseFloat(chargeModalAmount) },
+      { stream_id: streamId, user_email: email, payment_method: 'bspay', charge_amount: parseFloat(chargeModalAmount) },
       { onConflict: 'stream_id,user_email' }
     )
     setChargedUsersByStream(prev => ({
@@ -760,16 +724,7 @@ export default function AdminPage() {
     setStreams(prev => prev.filter(s => s.id !== id))
   }
 
-  async function loadFixtures() {
-    setLoadingFixtures(true)
-    try {
-      const res = await fetch(`/api/football/fixtures?date=${date}`)
-      const data = await res.json()
-      setFixtures(data.response ?? [])
-    } finally {
-      setLoadingFixtures(false)
-    }
-  }
+
 
   function isImageFile(file: File) {
     return file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.svg')
@@ -1115,13 +1070,13 @@ export default function AdminPage() {
     setChargeAmountSaving(true)
     const { error } = await supabase.from('streams').update({
       charge_enabled: true,
-      payment_method: chargeGateway,
+      payment_method: 'bspay',
       fixed_qr_url: null,
       charge_amount: amount,
     }).eq('id', chargeAmountModal.id)
     if (error) { alert('Erro: ' + error.message); setChargeAmountSaving(false); return }
     setStreams(prev => prev.map(s => s.id === chargeAmountModal.id
-      ? { ...s, charge_enabled: true, payment_method: chargeGateway, fixed_qr_url: null, charge_amount: amount }
+      ? { ...s, charge_enabled: true, payment_method: 'bspay', fixed_qr_url: null, charge_amount: amount }
       : s
     ))
     setChargeAmountModal(null)
@@ -1229,13 +1184,6 @@ export default function AdminPage() {
     )
   }
 
-  const INTERNATIONAL_LEAGUES = new Set([2, 3, 13, 14])
-  const searchMatch = (f: Fixture) =>
-    f.teams.home.name.toLowerCase().includes(search.toLowerCase()) ||
-    f.teams.away.name.toLowerCase().includes(search.toLowerCase()) ||
-    f.league.name.toLowerCase().includes(search.toLowerCase())
-  const brazilFixtures = fixtures.filter(f => f.league.country === 'Brazil').filter(searchMatch)
-  const internationalFixtures = fixtures.filter(f => INTERNATIONAL_LEAGUES.has(f.league.id)).filter(searchMatch)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
@@ -1297,6 +1245,7 @@ export default function AdminPage() {
           { id: 'afiliados', label: 'Afiliados', icon: <UserCheck className="w-4 h-4" /> },
           { id: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
           { id: 'suporte', label: 'Suporte', icon: <Headphones className="w-4 h-4" /> },
+          { id: 'status', label: 'Status', icon: <RefreshCw className="w-4 h-4" /> },
           ...(allowedTabs === null ? [{ id: 'admins', label: 'Admins', icon: <UserCheck className="w-4 h-4" /> }] : []),
         ] as { id: string; label: string; icon: React.ReactNode }[])
           .filter(tab => allowedTabs === null || allowedTabs.includes(tab.id))
@@ -1917,51 +1866,6 @@ export default function AdminPage() {
             )}
           </div>
 
-          {/* Jogo em destaque */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-white">Jogo em destaque</h2>
-            <div className="flex gap-3 flex-wrap">
-              <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                className="bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-orange-500" />
-              <input type="text" placeholder="Buscar time ou liga..." value={search} onChange={e => setSearch(e.target.value)}
-                className="flex-1 min-w-48 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
-              <button onClick={loadFixtures} disabled={loadingFixtures}
-                className="bg-[#1A1A26] hover:bg-[#2A2A3A] border border-[#2A2A3A] text-gray-400 hover:text-white rounded-xl px-4 py-2 text-sm transition-all disabled:opacity-50">
-                {loadingFixtures ? 'Atualizando...' : 'Atualizar'}
-              </button>
-            </div>
-            <div className="space-y-2">
-              <button onClick={() => setSelectedGameId(null)}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${selectedGameId === null ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#12121A] hover:border-orange-500/30'}`}>
-                <span className="text-gray-400 text-sm">Sem jogo selecionado</span>
-              </button>
-            </div>
-            {loadingFixtures ? (
-              <div className="py-8 text-center text-gray-500 text-sm">Carregando jogos...</div>
-            ) : brazilFixtures.length === 0 && internationalFixtures.length === 0 ? (
-              <div className="py-8 text-center text-gray-600 text-sm">Nenhum jogo encontrado para esta data</div>
-            ) : (
-              <div className="space-y-5">
-                {brazilFixtures.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Brasil</p>
-                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                      {brazilFixtures.map(f => <FixtureRow key={f.fixture.id} f={f} selected={selectedGameId === f.fixture.id} onSelect={() => setSelectedGameId(f.fixture.id)} />)}
-                    </div>
-                  </div>
-                )}
-                {internationalFixtures.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Internacional</p>
-                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                      {internationalFixtures.map(f => <FixtureRow key={f.fixture.id} f={f} selected={selectedGameId === f.fixture.id} onSelect={() => setSelectedGameId(f.fixture.id)} />)}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
         </div>
       )}
 
@@ -2302,25 +2206,6 @@ export default function AdminPage() {
               </p>
             </div>
             <div>
-              <p className="text-gray-500 text-xs mb-2">Gateway de pagamento</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setChargeModalMethod('bspay')}
-                  className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-sm font-bold ${chargeModalMethod === 'bspay' ? 'border-green-500 bg-green-500/10 text-green-400' : 'border-[#2A2A3A] text-gray-500 hover:border-gray-500'}`}
-                >
-                  <span>🇧🇷 PIX</span>
-                  <span className="text-xs font-normal opacity-70">Asap Bank</span>
-                </button>
-                <button
-                  onClick={() => setChargeModalMethod('ironpay')}
-                  className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-sm font-bold ${chargeModalMethod === 'ironpay' ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-[#2A2A3A] text-gray-500 hover:border-gray-500'}`}
-                >
-                  <span>💳 Cartão</span>
-                  <span className="text-xs font-normal opacity-70">IronPay</span>
-                </button>
-              </div>
-            </div>
-            <div>
               <p className="text-gray-500 text-xs mb-1">Valor (R$)</p>
               <div className="flex items-center gap-2 bg-[#0B0B0F] border border-[#2A2A3A] rounded-xl px-3 focus-within:border-orange-500 transition-colors">
                 <span className="text-gray-500 text-sm">R$</span>
@@ -2359,25 +2244,6 @@ export default function AdminPage() {
             <div>
               <h2 className="text-xl font-black text-white">Definir valor da cobrança</h2>
               <p className="text-gray-500 text-sm mt-1">Quanto cada espectador vai pagar para acessar a transmissão.</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs mb-2">Gateway de pagamento</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setChargeGateway('bspay')}
-                  className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-sm font-bold ${chargeGateway === 'bspay' ? 'border-green-500 bg-green-500/10 text-green-400' : 'border-[#2A2A3A] text-gray-500 hover:border-gray-500'}`}
-                >
-                  <span>🇧🇷 PIX</span>
-                  <span className="text-xs font-normal opacity-70">Asap Bank</span>
-                </button>
-                <button
-                  onClick={() => setChargeGateway('ironpay')}
-                  className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-sm font-bold ${chargeGateway === 'ironpay' ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-[#2A2A3A] text-gray-500 hover:border-gray-500'}`}
-                >
-                  <span>💳 Cartão</span>
-                  <span className="text-xs font-normal opacity-70">IronPay</span>
-                </button>
-              </div>
             </div>
             <div>
               <p className="text-gray-500 text-xs mb-1">Valor (R$)</p>
@@ -2696,6 +2562,114 @@ export default function AdminPage() {
             <p className="text-gray-500 text-sm mt-0.5">Responda as mensagens dos usuários em tempo real</p>
           </div>
           <AdminSupport />
+        </div>
+      )}
+
+      {/* ── ABA: STATUS ── */}
+      {activeTab === 'status' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white">Saúde das Integrações</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Verifique se todos os serviços estão operacionais.</p>
+            </div>
+            <button
+              onClick={checkHealth}
+              disabled={healthLoading}
+              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm"
+            >
+              <RefreshCw className={`w-4 h-4 ${healthLoading ? 'animate-spin' : ''}`} />
+              {healthLoading ? 'Verificando...' : 'Verificar Tudo'}
+            </button>
+          </div>
+
+          {costAlert && (
+            <div className="bg-red-500/10 border border-red-500/40 rounded-2xl px-5 py-4 flex items-start gap-3">
+              <span className="text-red-400 text-xl">⚠️</span>
+              <div>
+                <p className="text-red-400 font-bold text-sm">Alerta de Integração</p>
+                <p className="text-red-300 text-sm mt-0.5">{costAlert}</p>
+              </div>
+              <button onClick={() => setCostAlert(null)} className="ml-auto text-red-500 hover:text-red-300 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {!healthData && !healthLoading && (
+            <div className="border border-dashed border-[#2A2A3A] rounded-2xl py-12 text-center">
+              <p className="text-gray-500 text-sm">Clique em "Verificar Tudo" para checar o status de cada integração.</p>
+            </div>
+          )}
+
+          {healthData && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(healthData.services).map(([key, svc]) => {
+                  const statusColor = svc.ok ? 'green' : 'red'
+                  const label = svc.ok ? 'Operacional' : 'Com problema'
+                  const descriptions: Record<string, string> = {
+                    railway: 'Servidor principal da aplicação',
+                    bunny: 'CDN de entrega de vídeo (live.futzonejogos.site)',
+                    stream: 'Servidor de stream próprio (187.77.55.131)',
+                    supabase: 'Banco de dados e autenticação',
+                    asap: 'Gateway de pagamento PIX',
+                  }
+                  return (
+                    <div
+                      key={key}
+                      className={`bg-[#12121A] border rounded-2xl p-5 space-y-3 ${svc.ok ? 'border-green-500/20' : 'border-red-500/30'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-white font-bold text-sm">{svc.name}</span>
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${
+                          svc.ok ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${svc.ok ? 'bg-green-400' : 'bg-red-400'} ${svc.ok ? 'animate-pulse' : ''}`} />
+                          {label}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 text-xs">{descriptions[key] ?? ''}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500 text-xs">Latência</span>
+                        <span className={`font-mono text-xs font-bold ${svc.latencyMs < 300 ? 'text-green-400' : svc.latencyMs < 1000 ? 'text-yellow-400' : 'text-red-400'}`}>
+                          {svc.latencyMs}ms
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="text-gray-600 text-xs text-center">
+                Última verificação: {new Date(healthData.checkedAt).toLocaleString('pt-BR')}
+              </p>
+            </>
+          )}
+
+          {/* Estimativa de custos */}
+          <div className="bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-5 space-y-4">
+            <h3 className="text-white font-bold text-sm">Estimativa de Custos Mensais</h3>
+            <div className="space-y-2">
+              {[
+                { name: 'Railway (app + proxy)', range: 'R$ 50 – R$ 80', note: 'Depende do tráfego HTTP' },
+                { name: 'Bunny CDN (vídeo)', range: 'R$ 5 – R$ 30', note: '~R$0,01/GB · custo principal das lives' },
+                { name: 'Supabase', range: 'R$ 0 – R$ 150', note: 'Free tier até 500MB de DB' },
+                { name: 'Servidor de Stream (VPS)', range: 'Fixo contratado', note: '187.77.55.131' },
+                { name: 'ASAP Bank', range: 'Taxa por transação', note: 'Variável por pagamento PIX' },
+              ].map(row => (
+                <div key={row.name} className="flex items-center justify-between py-2 border-b border-[#2A2A3A] last:border-0">
+                  <div>
+                    <p className="text-white text-sm">{row.name}</p>
+                    <p className="text-gray-600 text-xs">{row.note}</p>
+                  </div>
+                  <span className="text-orange-400 font-bold text-sm">{row.range}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-gray-600 text-xs">
+              💡 Dica: Lives com URL HTTPS carregam direto da Bunny CDN, sem passar pelo Railway. Mantenha as URLs de stream sempre com HTTPS para reduzir custos.
+            </p>
+          </div>
         </div>
       )}
 

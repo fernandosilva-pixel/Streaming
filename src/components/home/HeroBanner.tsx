@@ -16,17 +16,10 @@ type LiveStream = {
   title: string
 }
 
-type GameData = {
-  teams: { home: { name: string }; away: { name: string } }
-  goals: { home: number | null; away: number | null }
-  fixture: { status: { elapsed: number | null; short: string } }
-}
-
 export default function HeroBanner() {
   const router = useRouter()
   const [banners, setBanners] = useState<Banner[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [game, setGame] = useState<GameData | null>(null)
   const [loading, setLoading] = useState(true)
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
 
@@ -41,13 +34,6 @@ export default function HeroBanner() {
       const list = (data ?? []).filter(b => b.image_url)
       setBanners(list)
       setLoading(false)
-      // carrega placar do banner principal (primeiro)
-      if (list[0]?.game_id) {
-        fetch(`/api/football/live?id=${list[0].game_id}`)
-          .then(r => r.json())
-          .then(d => { if (d.response?.[0]) setGame(d.response[0]) })
-          .catch(() => {})
-      }
     })
   }, [])
 
@@ -59,10 +45,6 @@ export default function HeroBanner() {
     }, 5000)
     return () => clearInterval(interval)
   }, [banners.length])
-
-  const isLive = game?.fixture.status.short === '1H' ||
-    game?.fixture.status.short === '2H' ||
-    game?.fixture.status.short === 'HT'
 
   if (loading) {
     return <section className="w-full rounded-2xl border border-[#2A2A3A] bg-[#12121A] animate-pulse h-40 md:h-96 lg:h-[480px]" />
@@ -93,20 +75,6 @@ export default function HeroBanner() {
               className="w-full block h-auto md:h-96 lg:h-[480px] md:object-cover"
               style={{ objectPosition: 'center' }}
             />
-
-            {currentIndex === 0 && game && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-6 py-5">
-                <div className="flex items-center justify-center gap-4 flex-wrap">
-                  {isLive && <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded animate-pulse">AO VIVO</span>}
-                  <span className="text-white font-bold">{game.teams.home.name}</span>
-                  <span className="bg-[#2A2A3A] text-white font-black px-4 py-1.5 rounded-xl text-lg tabular-nums">
-                    {game.goals.home ?? 0} — {game.goals.away ?? 0}
-                  </span>
-                  <span className="text-white font-bold">{game.teams.away.name}</span>
-                  {game.fixture.status.elapsed && <span className="text-orange-500 font-bold">{game.fixture.status.elapsed}'</span>}
-                </div>
-              </div>
-            )}
 
             {banners.length > 1 && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 flex gap-1.5">

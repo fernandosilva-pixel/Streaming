@@ -29,7 +29,7 @@ type Stream = {
   crop_enabled: boolean
   charge_enabled: boolean
   charge_amount: number
-  payment_method: 'bspay' | 'fixed_qr' | 'ironpay' | null
+  payment_method: 'bspay' | 'fixed_qr' | null
   fixed_qr_url: string | null
   chat_enabled: boolean
   coupon_enabled: boolean
@@ -49,7 +49,7 @@ export default function JogoPage({ params }: Props) {
   const [isFreeAccess, setIsFreeAccess] = useState(false)
   const [hasCoupon, setHasCoupon] = useState(false)
   const [isTargetCharged, setIsTargetCharged] = useState(false)
-  const [targetPaymentMethod, setTargetPaymentMethod] = useState<'bspay' | 'fixed_qr' | 'ironpay' | null>(null)
+  const [targetPaymentMethod, setTargetPaymentMethod] = useState<'bspay' | 'fixed_qr' | null>(null)
   const [targetChargeAmount, setTargetChargeAmount] = useState<number | null>(null)
 
   const [soopBroadNo, setSoopBroadNo] = useState<string | null>(null)
@@ -122,7 +122,7 @@ export default function JogoPage({ params }: Props) {
       .then(({ data }) => {
         setIsTargetCharged(!!data)
         if (data) {
-          setTargetPaymentMethod((data.payment_method as 'bspay' | 'ironpay' | 'fixed_qr') ?? null)
+          setTargetPaymentMethod((data.payment_method as 'bspay' | 'fixed_qr') ?? null)
           setTargetChargeAmount(data.charge_amount ?? null)
         }
       })

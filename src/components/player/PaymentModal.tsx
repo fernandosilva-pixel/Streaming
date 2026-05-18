@@ -4,14 +4,13 @@ import { useEffect, useState, useRef } from 'react'
 import QRCode from 'react-qr-code'
 import { Copy, Check, X } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
-import IronPayCardForm from './IronPayCardForm'
 
 interface Props {
   streamId: string
   userEmail: string
   userName: string
   amount: number
-  paymentMethod: 'bspay' | 'fixed_qr' | 'ironpay'
+  paymentMethod: 'bspay' | 'fixed_qr'
   fixedQrUrl?: string | null
   couponEnabled?: boolean
   onPaid: () => void
@@ -141,15 +140,7 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
           <X className="w-5 h-5" />
         </button>
 
-        {paymentMethod === 'ironpay' ? (
-          <IronPayCardForm
-            streamId={streamId}
-            userEmail={userEmail}
-            userName={userName}
-            amount={amount}
-            onPaid={onPaid}
-          />
-        ) : paid ? (
+        {paid ? (
           <div className="py-8 text-center space-y-3">
             <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto">
               <Check className="w-8 h-8 text-green-500" />
