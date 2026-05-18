@@ -11,7 +11,7 @@ const PLAN_PRICE = 19.90
 const PREFERENCES: { value: ContentPreference; icon: string; label: string; desc: string }[] = [
   { value: 'futebol',  icon: '⚽', label: 'Futebol',  desc: 'Só transmissões de futebol' },
   { value: 'basquete', icon: '🏀', label: 'Basquete', desc: 'Só transmissões de basquete' },
-  { value: 'hibrido',  icon: '🎮', label: 'Híbrido',  desc: 'Todos os esportes' },
+  { value: 'luta',     icon: '🥊', label: 'Luta',     desc: 'Todos os esportes' },
 ]
 
 export default function PerfilPage() {

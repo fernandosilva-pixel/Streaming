@@ -73,6 +73,10 @@ const translations = {
 
     // Sound hint
     soundHint: 'Som desativado? Coloque em tela cheia e aumente o volume.',
+
+    // Onboarding
+    chooseLang: 'Escolha seu idioma',
+    whatToWatch: 'O que você quer assistir?',
   },
   en: {
     signIn: 'Sign In',
@@ -135,6 +139,10 @@ const translations = {
     checkManually: 'I already paid',
 
     soundHint: 'No sound? Go fullscreen and turn up the volume.',
+
+    // Onboarding
+    chooseLang: 'Choose your language',
+    whatToWatch: 'What do you want to watch?',
   },
   es: {
     signIn: 'Entrar',
@@ -197,6 +205,10 @@ const translations = {
     checkManually: 'Ya pagué',
 
     soundHint: '¿Sin sonido? Pon pantalla completa y sube el volumen.',
+
+    // Onboarding
+    chooseLang: 'Elige tu idioma',
+    whatToWatch: '¿Qué quieres ver?',
   },
 } satisfies Record<Lang, Record<string, string>>
 

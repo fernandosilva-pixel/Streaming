@@ -35,11 +35,11 @@ export default function HeroBanner() {
 
   useEffect(() => {
     const storedSport = typeof window !== 'undefined' ? localStorage.getItem('futzone_sport') : null
-    const pref = user?.content_preference ?? (storedSport as 'futebol' | 'basquete' | 'hibrido' | null) ?? 'hibrido'
+    const pref = user?.content_preference ?? (storedSport as 'futebol' | 'basquete' | 'luta' | null) ?? 'luta'
     supabase.from('banner').select('*').order('display_order').then(({ data }) => {
       const list = (data ?? []).filter(b => {
         if (!b.image_url) return false
-        if (pref === 'hibrido') return true
+        if (pref === 'luta') return true
         return !b.category || b.category === pref
       })
       setBanners(list)
@@ -106,8 +106,8 @@ export default function HeroBanner() {
         <div className="flex flex-wrap gap-3 justify-center">
           {liveStreams.filter(s => {
             const storedSport = typeof window !== 'undefined' ? localStorage.getItem('futzone_sport') : null
-            const pref = user?.content_preference ?? (storedSport as 'futebol' | 'basquete' | null) ?? 'hibrido'
-            if (pref === 'hibrido') return true
+            const pref = user?.content_preference ?? (storedSport as 'futebol' | 'basquete' | null) ?? 'luta'
+            if (pref === 'luta') return true
             return !s.category || s.category === pref
           }).map(s => (
             <button

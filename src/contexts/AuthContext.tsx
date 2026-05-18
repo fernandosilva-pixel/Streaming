@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export type ContentPreference = 'futebol' | 'basquete' | 'hibrido'
+export type ContentPreference = 'futebol' | 'basquete' | 'luta'
 
 export type SiteUser = {
   name: string
@@ -45,7 +45,7 @@ async function fetchPlanData(email: string): Promise<Pick<SiteUser, 'plan' | 'pl
   return {
     plan: (data?.plan as 'free' | 'mensal') ?? 'free',
     plan_expires_at: data?.plan_expires_at ?? null,
-    content_preference: (data?.content_preference as ContentPreference) ?? 'hibrido',
+    content_preference: (data?.content_preference as ContentPreference) ?? 'luta',
   }
 }
 
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: parsed.email,
           plan: parsed.plan ?? 'free',
           plan_expires_at: parsed.plan_expires_at ?? null,
-          content_preference: parsed.content_preference ?? 'hibrido',
+          content_preference: parsed.content_preference ?? 'luta',
         }
         setUser(base)
         // Refresh plan data from DB in background
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: data.email,
         plan: (data.plan as 'free' | 'mensal') ?? 'free',
         plan_expires_at: data.plan_expires_at ?? null,
-        content_preference: (data.content_preference as ContentPreference) ?? 'hibrido',
+        content_preference: (data.content_preference as ContentPreference) ?? 'luta',
       }
       localStorage.setItem('futzone_user', JSON.stringify(userObj))
       setUser(userObj)
@@ -141,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: normalizedEmail,
       plan: 'free',
       plan_expires_at: null,
-      content_preference: 'hibrido',
+      content_preference: 'luta',
     }
     localStorage.setItem('futzone_user', JSON.stringify(newUser))
     setUser(newUser)
@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: userObj.email,
       plan: 'free',
       plan_expires_at: null,
-      content_preference: 'hibrido',
+      content_preference: 'luta',
     }
     localStorage.setItem('futzone_user', JSON.stringify(fullUser))
     setUser(fullUser)

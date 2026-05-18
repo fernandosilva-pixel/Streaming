@@ -14,13 +14,13 @@ const LANGS: { lang: Lang; flag: string; label: string }[] = [
 const SPORTS: { value: ContentPreference; icon: string; label: string }[] = [
   { value: 'futebol',  icon: '⚽', label: 'Futebol' },
   { value: 'basquete', icon: '🏀', label: 'Basquete' },
-  { value: 'hibrido',  icon: '🎮', label: 'Híbrido' },
+  { value: 'luta',     icon: '🥊', label: 'Luta' },
 ]
 
 type Step = 'lang' | 'sport' | 'done'
 
 export default function OnboardingModals() {
-  const { setLang } = useLanguage()
+  const { setLang, t } = useLanguage()
   const { user, updatePreference } = useAuth()
   const [step, setStep] = useState<Step>('done')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
@@ -100,7 +100,7 @@ export default function OnboardingModals() {
 
         {/* Título */}
         <p className="text-center text-gray-400 text-sm mb-5">
-          {step === 'lang' ? 'Escolha seu idioma' : 'O que você quer assistir?'}
+          {step === 'lang' ? t('chooseLang') : t('whatToWatch')}
         </p>
 
         {/* Opções */}
