@@ -227,9 +227,10 @@ export default function PerfilPage() {
           active ? 'bg-orange-500/10 border-orange-500/30' : expired ? 'bg-red-500/10 border-red-500/20' : 'bg-[#0B0B0F] border-[#2A2A3A]'
         }`}>
           <div className="flex items-center gap-3">
-            {active ? <ShieldCheck className="w-5 h-5 text-orange-400 shrink-0" /> : expired ? <Clock className="w-5 h-5 text-red-400 shrink-0" /> : <Zap className="w-5 h-5 text-gray-600 shrink-0" />}
+            {active && <ShieldCheck className="w-5 h-5 text-orange-400 shrink-0" />}
+            {expired && <Clock className="w-5 h-5 text-red-400 shrink-0" />}
             <div>
-              <p className={`font-black ${active ? 'text-orange-400' : expired ? 'text-red-400' : 'text-gray-400'}`}>
+              <p className={`font-black ${active ? 'text-orange-400' : expired ? 'text-red-400' : 'text-white'}`}>
                 {active ? (user.plan === 'semanal' ? 'Plano Semanal' : 'Plano Mensal') : expired ? 'Plano Vencido' : 'Plano Gratuito'}
               </p>
               {active && expiresAt && (
@@ -264,54 +265,54 @@ export default function PerfilPage() {
             <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest">
               {active ? 'Renovar plano' : 'Escolha um plano'}
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
               {/* Semanal */}
-              <div className="relative rounded-2xl border border-[#2A2A3A] bg-[#0B0B0F] p-4 flex flex-col gap-3">
+              <div className="relative rounded-2xl border border-[#2A2A3A] bg-[#0B0B0F] p-5 flex flex-col gap-4">
                 <div>
-                  <p className="text-white font-black">Semanal</p>
+                  <p className="text-white font-black text-lg">Semanal</p>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-2xl font-black text-white">R$9,90</span>
-                    <span className="text-gray-500 text-xs">/sem</span>
+                    <span className="text-3xl font-black text-white">R$9,90</span>
+                    <span className="text-gray-500 text-sm">/semana</span>
                   </div>
                 </div>
-                <div className="space-y-1 flex-1">
-                  <p className="text-gray-400 text-xs">✓ Todos os jogos da semana</p>
-                  <p className="text-gray-400 text-xs">✓ Sem pagamento avulso</p>
-                  <p className="text-gray-400 text-xs">✓ Conteúdo personalizado</p>
-                  <p className="text-gray-400 text-xs">✓ Badge PRO na conta</p>
+                <div className="space-y-2 flex-1">
+                  <p className="text-gray-400 text-sm">✓ Todos os jogos da semana</p>
+                  <p className="text-gray-400 text-sm">✓ Sem pagamento avulso</p>
+                  <p className="text-gray-400 text-sm">✓ Conteúdo personalizado</p>
+                  <p className="text-gray-400 text-sm">✓ Badge PRO na conta</p>
                 </div>
                 <button
                   onClick={() => openPlanModal('semanal')}
-                  className="w-full py-2.5 rounded-xl font-black text-white text-sm border border-orange-500/40 hover:bg-orange-500/10 transition-all"
+                  className="w-full py-3 rounded-xl font-black text-white text-sm border border-orange-500/40 hover:bg-orange-500/10 transition-all"
                 >
                   Assinar
                 </button>
               </div>
 
               {/* Mensal — destaque */}
-              <div className="relative rounded-2xl border border-orange-500/50 bg-orange-500/5 p-4 flex flex-col gap-3">
+              <div className="relative rounded-2xl border border-orange-500/50 bg-orange-500/5 p-5 flex flex-col gap-4 mt-4 sm:mt-0">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-orange-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full whitespace-nowrap">MAIS POPULAR</span>
+                  <span className="bg-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full whitespace-nowrap">MAIS POPULAR</span>
                 </div>
                 <div>
-                  <p className="text-white font-black">Mensal</p>
+                  <p className="text-white font-black text-lg">Mensal</p>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-2xl font-black text-orange-400">R$19,90</span>
-                    <span className="text-gray-500 text-xs">/mês</span>
+                    <span className="text-3xl font-black text-orange-400">R$19,90</span>
+                    <span className="text-gray-500 text-sm">/mês</span>
                   </div>
                 </div>
-                <div className="space-y-1 flex-1">
-                  <p className="text-orange-300 text-xs">✓ 30 dias corridos sem interrupção</p>
-                  <p className="text-orange-300 text-xs">✓ Todos os campeonatos do mês</p>
-                  <p className="text-orange-300 text-xs">✓ Sem pagamento avulso</p>
-                  <p className="text-orange-300 text-xs">✓ Economia vs pagar por live</p>
-                  <p className="text-orange-300 text-xs">✓ Badge PRO na conta</p>
-                  <p className="text-orange-300 text-xs">✓ Conteúdo personalizado</p>
+                <div className="space-y-2 flex-1">
+                  <p className="text-orange-300 text-sm">✓ 30 dias corridos sem interrupção</p>
+                  <p className="text-orange-300 text-sm">✓ Todos os campeonatos do mês</p>
+                  <p className="text-orange-300 text-sm">✓ Sem pagamento avulso</p>
+                  <p className="text-orange-300 text-sm">✓ Economia vs pagar por live</p>
+                  <p className="text-orange-300 text-sm">✓ Badge PRO na conta</p>
+                  <p className="text-orange-300 text-sm">✓ Conteúdo personalizado</p>
                 </div>
                 <button
                   onClick={() => openPlanModal('mensal')}
-                  className="w-full py-2.5 rounded-xl font-black text-white text-sm transition-all hover:brightness-110"
+                  className="w-full py-3 rounded-xl font-black text-white text-sm transition-all hover:brightness-110"
                   style={{ background: 'linear-gradient(135deg, #FF6A00, #FF8533)', boxShadow: '0 0 16px rgba(255,106,0,0.3)' }}
                 >
                   Assinar
