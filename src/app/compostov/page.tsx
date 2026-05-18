@@ -34,6 +34,7 @@ type Stream = {
   coupon_enabled: boolean
   coupon_code: string | null
   coupon_quantity: number
+  category: 'futebol' | 'basquete' | null
 }
 
 export default function AdminPage() {
@@ -1798,6 +1799,15 @@ export default function AdminPage() {
                           onClick={() => toggleChat(s.id, !s.chat_enabled)}
                           className={`text-xs font-bold px-3 py-2 rounded-lg transition-all text-center ${s.chat_enabled !== false ? 'bg-blue-600/20 text-blue-400 hover:bg-red-600/20 hover:text-red-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-blue-600/20 hover:text-blue-400'}`}>
                           {s.chat_enabled !== false ? 'Chat ON' : 'Chat OFF'}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const next = s.category === 'basquete' ? 'futebol' : 'basquete'
+                            await supabase.from('streams').update({ category: next }).eq('id', s.id)
+                            setStreams(prev => prev.map(x => x.id === s.id ? { ...x, category: next } : x))
+                          }}
+                          className={`text-xs font-bold px-3 py-2 rounded-lg transition-all text-center ${s.category === 'basquete' ? 'bg-orange-600/20 text-orange-400' : 'bg-[#2A2A3A] text-gray-400 hover:bg-orange-600/20 hover:text-orange-400'}`}>
+                          {s.category === 'basquete' ? '🏀 Basquete' : '⚽ Futebol'}
                         </button>
                         <button
                           onClick={() => toggleCoupon(s.id, !s.coupon_enabled)}

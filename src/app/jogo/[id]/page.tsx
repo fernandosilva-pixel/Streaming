@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, Lock, DollarSign, Maximize } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth, isPlanActive } from '@/contexts/AuthContext'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { use } from 'react'
 import ChatBox from '@/components/player/ChatBox'
@@ -132,6 +132,8 @@ export default function JogoPage({ params }: Props) {
     if (!user || !stream) return
     const needsPaymentCheck = stream.charge_enabled || isTargetCharged
     if (!needsPaymentCheck) return
+    // Plano mensal ativo: acesso direto sem verificar pagamento avulso
+    if (isPlanActive(user)) { setHasPaid(true); return }
     setCheckingPayment(true)
     Promise.all([
       supabase.from('payments').select('id').eq('stream_id', stream.id).eq('user_phone', user.email).eq('status', 'PAID').maybeSingle(),

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, isPlanActive } from '@/contexts/AuthContext';
 import { useLanguage, Lang } from '@/contexts/LanguageContext';
 import NotificationBell from '@/components/common/NotificationBell';
 
@@ -16,6 +16,7 @@ const langLabels: Record<Lang, { flag: string; label: string }> = {
 
 export default function Navbar() {
   const { user, showModal, logout } = useAuth();
+  const planActive = isPlanActive(user);
   const { lang, setLang, t } = useLanguage();
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [langOpen, setLangOpen] = useState(false);
@@ -106,7 +107,21 @@ export default function Navbar() {
 
           {/* Auth buttons */}
           {user ? (
-            <SkewButton onClick={logout} variant="outline">{t('logout')}</SkewButton>
+            <div className="flex items-center gap-2">
+              <Link href="/perfil" className="relative flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-white/5 transition-all">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #FF6A00, #FF8533)' }}
+                >
+                  {user.name.slice(0, 2).toUpperCase()}
+                </div>
+                <span className="text-white text-sm font-semibold hidden sm:inline max-w-24 truncate">{user.name.split(' ')[0]}</span>
+                {planActive && (
+                  <span className="bg-orange-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none">PRO</span>
+                )}
+              </Link>
+              <SkewButton onClick={logout} variant="outline">{t('logout')}</SkewButton>
+            </div>
           ) : (
             <>
               <SkewButton onClick={() => showModal('login')} variant="outline" z={1}>{t('signIn')}</SkewButton>

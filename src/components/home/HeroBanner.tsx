@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 type Banner = {
   id: string
@@ -14,17 +15,19 @@ type Banner = {
 type LiveStream = {
   id: string
   title: string
+  category: string | null
 }
 
 export default function HeroBanner() {
   const router = useRouter()
+  const { user } = useAuth()
   const [banners, setBanners] = useState<Banner[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
 
   useEffect(() => {
-    supabase.from('streams').select('id, title').eq('is_live', true).then(({ data }) => {
+    supabase.from('streams').select('id, title, category').eq('is_live', true).then(({ data }) => {
       setLiveStreams(data ?? [])
     })
   }, [])
@@ -94,7 +97,11 @@ export default function HeroBanner() {
       {/* Botões por stream ao vivo */}
       {liveStreams.length > 0 && (
         <div className="flex flex-wrap gap-3 justify-center">
-          {liveStreams.map(s => (
+          {liveStreams.filter(s => {
+            const pref = user?.content_preference ?? 'hibrido'
+            if (pref === 'hibrido') return true
+            return !s.category || s.category === pref
+          }).map(s => (
             <button
               key={s.id}
               onClick={() => router.push(`/jogo/${s.id}`)}
