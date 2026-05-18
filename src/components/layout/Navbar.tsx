@@ -108,14 +108,16 @@ export default function Navbar() {
           {/* Auth buttons */}
           {user ? (
             <div className="flex items-center gap-2">
-              <Link href="/perfil" className="relative flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-white/5 transition-all">
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0"
+              <Link href="/perfil" className="relative flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+                <div className="relative w-8 h-8 rounded-full border-2 border-orange-500 overflow-hidden flex items-center justify-center shrink-0"
                   style={{ background: 'linear-gradient(135deg, #FF6A00, #FF8533)' }}
                 >
-                  {user.name.slice(0, 2).toUpperCase()}
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[11px] font-black text-white">{user.name.slice(0, 2).toUpperCase()}</span>
+                  )}
                 </div>
-                <span className="text-white text-sm font-semibold hidden sm:inline max-w-24 truncate">{user.name.split(' ')[0]}</span>
                 {planActive && (
                   <span className="bg-orange-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none">PRO</span>
                 )}
