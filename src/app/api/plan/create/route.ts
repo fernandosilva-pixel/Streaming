@@ -9,7 +9,7 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
-  const { user_email, user_name, amount } = await req.json()
+  const { user_email, user_name, amount, plan_type = 'mensal' } = await req.json()
 
   const proto = req.headers.get('x-forwarded-proto') ?? (process.env.NODE_ENV === 'production' ? 'https' : 'http')
   const host = req.headers.get('host')
@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
 
   const idempotencyKey = crypto.randomUUID()
   const payerEmail = user_email.includes('@') ? user_email : `${user_email}@futzonejogos.site`
+  const description = plan_type === 'semanal' ? 'Plano Semanal FutZone' : 'Plano Mensal FutZone'
 
   const res = await fetch('https://bank-api.asapcodes.com/payins', {
     method: 'POST',
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       amount,
-      description: 'Plano Mensal FutZone',
+      description,
       webhookUrl,
       payer: {
         name: user_name || 'Cliente',
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
     user_email,
     transaction_id: data.id,
     amount,
+    plan_type,
     status: 'PENDING',
     qrcode: data.qrCode ?? '',
   })

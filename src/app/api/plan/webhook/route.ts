@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
   const { data: payment } = await supabase
     .from('plan_payments')
-    .select('user_email')
+    .select('user_email, plan_type')
     .eq('transaction_id', transactionId)
     .maybeSingle()
 
@@ -30,12 +30,13 @@ export async function POST(req: NextRequest) {
     .update({ status: 'PAID' })
     .eq('transaction_id', transactionId)
 
+  const days = payment.plan_type === 'semanal' ? 7 : 30
   const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 30)
+  expiresAt.setDate(expiresAt.getDate() + days)
 
   await supabase
     .from('registrations')
-    .update({ plan: 'mensal', plan_expires_at: expiresAt.toISOString() })
+    .update({ plan: payment.plan_type ?? 'mensal', plan_expires_at: expiresAt.toISOString() })
     .eq('email', payment.user_email)
 
   return NextResponse.json({ ok: true })

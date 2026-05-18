@@ -25,6 +25,7 @@ export default function PerfilPage() {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [idCopied, setIdCopied] = useState(false)
   const [planModalOpen, setPlanModalOpen] = useState(false)
+  const [selectedPlanType, setSelectedPlanType] = useState<'semanal' | 'mensal'>('mensal')
   const [qrcode, setQrcode] = useState<string | null>(null)
   const [transactionId, setTransactionId] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -52,15 +53,16 @@ export default function PerfilPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [transactionId])
 
-  async function generateQr() {
+  async function generateQr(planType: 'semanal' | 'mensal') {
     if (!user) return
     setGenerating(true)
     setVerifyMsg('')
+    const amount = planType === 'semanal' ? 9.90 : PLAN_PRICE
     try {
       const res = await fetch('/api/plan/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_email: user.email, user_name: user.name, amount: PLAN_PRICE }),
+        body: JSON.stringify({ user_email: user.email, user_name: user.name, amount, plan_type: planType }),
       })
       const data = await res.json()
       if (!res.ok) { setVerifyMsg('Erro ao gerar PIX. Tente novamente.'); return }
@@ -131,13 +133,14 @@ export default function PerfilPage() {
     setTimeout(() => setIdCopied(false), 2000)
   }
 
-  function openPlanModal() {
+  function openPlanModal(planType: 'semanal' | 'mensal') {
+    setSelectedPlanType(planType)
     setQrcode(null)
     setTransactionId(null)
     setPaid(false)
     setVerifyMsg('')
     setPlanModalOpen(true)
-    setTimeout(generateQr, 100)
+    setTimeout(() => generateQr(planType), 100)
   }
 
   if (!initialized || !user) return null
@@ -215,72 +218,108 @@ export default function PerfilPage() {
         </div>
       </div>
 
-      {/* Card do Plano */}
-      <div className={`rounded-2xl p-6 border space-y-4 ${
-        active
-          ? 'bg-orange-500/10 border-orange-500/30'
-          : expired
-          ? 'bg-red-500/10 border-red-500/30'
-          : 'bg-[#12121A] border-[#2A2A3A]'
-      }`}>
-        <div className="flex items-center justify-between">
+      {/* Seção de Planos */}
+      <div className="bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-6 space-y-5">
+        <h2 className="text-white font-black text-lg">Seu plano</h2>
+
+        {/* Plano atual */}
+        <div className={`rounded-xl p-4 border flex items-start justify-between gap-3 ${
+          active ? 'bg-orange-500/10 border-orange-500/30' : expired ? 'bg-red-500/10 border-red-500/20' : 'bg-[#0B0B0F] border-[#2A2A3A]'
+        }`}>
           <div className="flex items-center gap-3">
-            {active ? (
-              <ShieldCheck className="w-6 h-6 text-orange-400" />
-            ) : expired ? (
-              <Clock className="w-6 h-6 text-red-400" />
-            ) : (
-              <Zap className="w-6 h-6 text-gray-500" />
-            )}
+            {active ? <ShieldCheck className="w-5 h-5 text-orange-400 shrink-0" /> : expired ? <Clock className="w-5 h-5 text-red-400 shrink-0" /> : <Zap className="w-5 h-5 text-gray-600 shrink-0" />}
             <div>
-              <p className="text-white font-black text-lg">
-                {active ? 'FutZone Pro' : expired ? 'Plano Vencido' : 'Plano Gratuito'}
+              <p className={`font-black ${active ? 'text-orange-400' : expired ? 'text-red-400' : 'text-gray-400'}`}>
+                {active ? (user.plan === 'semanal' ? 'Plano Semanal' : 'Plano Mensal') : expired ? 'Plano Vencido' : 'Plano Gratuito'}
               </p>
-              <p className="text-sm mt-0.5">
-                {active && expiresAt && (
-                  <span className={expiringSoon ? 'text-yellow-400' : 'text-gray-400'}>
-                    {expiringSoon ? `⚠️ Vence em ${daysLeft} dia${daysLeft === 1 ? '' : 's'}` : `Ativo até ${expiresAt.toLocaleDateString('pt-BR')}`}
-                  </span>
-                )}
-                {expired && expiresAt && (
-                  <span className="text-red-400">Venceu em {expiresAt.toLocaleDateString('pt-BR')}</span>
-                )}
-                {!active && !expired && (
-                  <span className="text-gray-500">Acesso por transmissão avulsa</span>
-                )}
-              </p>
+              {active && expiresAt && (
+                <p className={`text-xs mt-0.5 ${expiringSoon ? 'text-yellow-400' : 'text-gray-500'}`}>
+                  {expiringSoon ? `⚠️ Vence em ${daysLeft} dia${daysLeft === 1 ? '' : 's'}` : `Ativo até ${expiresAt.toLocaleDateString('pt-BR')}`}
+                </p>
+              )}
+              {expired && expiresAt && <p className="text-xs mt-0.5 text-red-400">Venceu em {expiresAt.toLocaleDateString('pt-BR')}</p>}
+              {!active && !expired && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-gray-600 flex items-center gap-1.5">❌ Paga por cada transmissão avulsa</p>
+                  <p className="text-xs text-gray-600 flex items-center gap-1.5">❌ Preview limitado de 5 min antes de pagar</p>
+                  <p className="text-xs text-gray-600 flex items-center gap-1.5">❌ Sem continuidade — paga toda vez que quiser assistir</p>
+                  <p className="text-xs text-gray-600 flex items-center gap-1.5">❌ Sem badge PRO na conta</p>
+                </div>
+              )}
+              {active && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-orange-300">✓ Acesso ilimitado a todas as transmissões</p>
+                  <p className="text-xs text-orange-300">✓ Sem pagar por live individual</p>
+                  <p className="text-xs text-orange-300">✓ Badge PRO na conta</p>
+                </div>
+              )}
             </div>
           </div>
-          {active && (
-            <span className="bg-orange-500 text-white text-xs font-black px-3 py-1 rounded-full">PRO</span>
-          )}
+          {active && <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shrink-0">PRO</span>}
         </div>
 
-        {active && (
-          <div className="bg-black/20 rounded-xl px-4 py-3">
-            <p className="text-orange-300 text-sm font-semibold">✓ Acesso ilimitado a todas as transmissões</p>
-            <p className="text-orange-300 text-sm font-semibold">✓ Sem pagar por live individual</p>
-            <p className="text-orange-300 text-sm font-semibold">✓ Renovação manual · 30 dias</p>
+        {/* Planos disponíveis */}
+        {(!active || expiringSoon) && (
+          <div className="space-y-3">
+            <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest">
+              {active ? 'Renovar plano' : 'Escolha um plano'}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+
+              {/* Semanal */}
+              <div className="relative rounded-2xl border border-[#2A2A3A] bg-[#0B0B0F] p-4 flex flex-col gap-3">
+                <div>
+                  <p className="text-white font-black">Semanal</p>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-2xl font-black text-white">R$9,90</span>
+                    <span className="text-gray-500 text-xs">/sem</span>
+                  </div>
+                </div>
+                <div className="space-y-1 flex-1">
+                  <p className="text-gray-400 text-xs">✓ Todos os jogos da semana</p>
+                  <p className="text-gray-400 text-xs">✓ Sem pagamento avulso</p>
+                  <p className="text-gray-400 text-xs">✓ Conteúdo personalizado</p>
+                  <p className="text-gray-400 text-xs">✓ Badge PRO na conta</p>
+                </div>
+                <button
+                  onClick={() => openPlanModal('semanal')}
+                  className="w-full py-2.5 rounded-xl font-black text-white text-sm border border-orange-500/40 hover:bg-orange-500/10 transition-all"
+                >
+                  Assinar
+                </button>
+              </div>
+
+              {/* Mensal — destaque */}
+              <div className="relative rounded-2xl border border-orange-500/50 bg-orange-500/5 p-4 flex flex-col gap-3">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-orange-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full whitespace-nowrap">MAIS POPULAR</span>
+                </div>
+                <div>
+                  <p className="text-white font-black">Mensal</p>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-2xl font-black text-orange-400">R$19,90</span>
+                    <span className="text-gray-500 text-xs">/mês</span>
+                  </div>
+                </div>
+                <div className="space-y-1 flex-1">
+                  <p className="text-orange-300 text-xs">✓ 30 dias corridos sem interrupção</p>
+                  <p className="text-orange-300 text-xs">✓ Todos os campeonatos do mês</p>
+                  <p className="text-orange-300 text-xs">✓ Sem pagamento avulso</p>
+                  <p className="text-orange-300 text-xs">✓ Economia vs pagar por live</p>
+                  <p className="text-orange-300 text-xs">✓ Badge PRO na conta</p>
+                  <p className="text-orange-300 text-xs">✓ Conteúdo personalizado</p>
+                </div>
+                <button
+                  onClick={() => openPlanModal('mensal')}
+                  className="w-full py-2.5 rounded-xl font-black text-white text-sm transition-all hover:brightness-110"
+                  style={{ background: 'linear-gradient(135deg, #FF6A00, #FF8533)', boxShadow: '0 0 16px rgba(255,106,0,0.3)' }}
+                >
+                  Assinar
+                </button>
+              </div>
+
+            </div>
           </div>
-        )}
-
-        {(expired || !active) && (
-          <button
-            onClick={openPlanModal}
-            className="w-full py-3 rounded-xl font-black text-white transition-all hover:brightness-110"
-            style={{ background: 'linear-gradient(135deg, #FF6A00, #FF8533)', boxShadow: '0 0 20px rgba(255,106,0,0.3)' }}
-          >
-            {expired ? 'Renovar Plano — R$ 19,90/mês' : 'Assinar Plano — R$ 19,90/mês'}
-          </button>
-        )}
-
-        {active && expiringSoon && (
-          <button
-            onClick={openPlanModal}
-            className="w-full py-3 rounded-xl font-black text-white border border-orange-500/50 hover:bg-orange-500/10 transition-all text-sm"
-          >
-            Renovar agora
-          </button>
         )}
       </div>
 
@@ -334,14 +373,18 @@ export default function PerfilPage() {
             ) : (
               <>
                 <div>
-                  <h2 className="text-xl font-black text-white">FutZone Pro</h2>
-                  <p className="text-gray-500 text-sm mt-1">Acesso ilimitado por 30 dias · PIX à vista</p>
+                  <h2 className="text-xl font-black text-white">
+                    {selectedPlanType === 'semanal' ? 'Plano Semanal' : 'Plano Mensal'}
+                  </h2>
+                  <p className="text-gray-500 text-sm mt-1">
+                    {selectedPlanType === 'semanal' ? 'Acesso ilimitado por 7 dias · PIX à vista' : 'Acesso ilimitado por 30 dias · PIX à vista'}
+                  </p>
                 </div>
 
                 <div className="inline-flex items-baseline gap-1.5 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-2">
                   <span className="text-orange-400 text-sm font-semibold">R$</span>
-                  <span className="text-orange-400 text-3xl font-black">19,90</span>
-                  <span className="text-gray-500 text-sm">/mês</span>
+                  <span className="text-orange-400 text-3xl font-black">{selectedPlanType === 'semanal' ? '9,90' : '19,90'}</span>
+                  <span className="text-gray-500 text-sm">/{selectedPlanType === 'semanal' ? 'sem' : 'mês'}</span>
                 </div>
 
                 {generating && (

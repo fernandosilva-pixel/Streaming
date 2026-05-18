@@ -8,7 +8,7 @@ export type ContentPreference = 'futebol' | 'basquete' | 'luta'
 export type SiteUser = {
   name: string
   email: string
-  plan: 'free' | 'mensal'
+  plan: 'free' | 'semanal' | 'mensal'
   plan_expires_at: string | null
   content_preference: ContentPreference
   avatar_url: string | null
@@ -33,7 +33,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 function isPlanActive(user: SiteUser | null): boolean {
-  if (!user || user.plan !== 'mensal') return false
+  if (!user || (user.plan !== 'mensal' && user.plan !== 'semanal')) return false
   if (!user.plan_expires_at) return false
   return new Date(user.plan_expires_at) > new Date()
 }
@@ -45,7 +45,7 @@ async function fetchPlanData(email: string): Promise<Pick<SiteUser, 'plan' | 'pl
     .eq('email', email)
     .maybeSingle()
   return {
-    plan: (data?.plan as 'free' | 'mensal') ?? 'free',
+    plan: (data?.plan as 'free' | 'semanal' | 'mensal') ?? 'free',
     plan_expires_at: data?.plan_expires_at ?? null,
     content_preference: (data?.content_preference as ContentPreference) ?? 'luta',
     avatar_url: data?.avatar_url ?? null,
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userObj: SiteUser = {
         name: data.name,
         email: data.email,
-        plan: (data.plan as 'free' | 'mensal') ?? 'free',
+        plan: (data.plan as 'free' | 'semanal' | 'mensal') ?? 'free',
         plan_expires_at: data.plan_expires_at ?? null,
         content_preference: (data.content_preference as ContentPreference) ?? 'luta',
         avatar_url: data.avatar_url ?? null,
