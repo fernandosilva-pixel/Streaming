@@ -2649,30 +2649,35 @@ export default function AdminPage() {
           {/* Custo por live */}
           <div className="bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-5 space-y-4">
             <div>
-              <h3 className="text-white font-bold text-sm">Custo por Live vs Receita (R$ 2,90/viewer)</h3>
-              <p className="text-gray-500 text-xs mt-0.5">Baseado em 90 min · bitrate ~1,5 Mbps · Bunny CDN R$0,055/GB</p>
+              <h3 className="text-white font-bold text-sm">Custo por Live vs Receita (R$ 2,90/pagante)</h3>
+              <p className="text-gray-500 text-xs mt-0.5">
+                90 min · ~1,5 Mbps · Bunny R$0,055/GB · quem não paga sai após 5 min de preview (~56 MB cada)
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-gray-500 border-b border-[#2A2A3A]">
-                    <th className="text-left pb-2 font-semibold">Viewers pagantes</th>
+                    <th className="text-left pb-2 font-semibold">Pagantes / Total</th>
                     <th className="text-right pb-2 font-semibold">Custo Bunny</th>
+                    <th className="text-right pb-2 font-semibold">ASAP (~R$0,30)</th>
                     <th className="text-right pb-2 font-semibold">Receita</th>
                     <th className="text-right pb-2 font-semibold text-green-400">Lucro</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    { v: 50,  bunny: 'R$ 4',  rec: 'R$ 145',   lucro: 'R$ 141' },
-                    { v: 100, bunny: 'R$ 8',  rec: 'R$ 290',   lucro: 'R$ 282' },
-                    { v: 200, bunny: 'R$ 17', rec: 'R$ 580',   lucro: 'R$ 563' },
-                    { v: 300, bunny: 'R$ 25', rec: 'R$ 870',   lucro: 'R$ 845' },
-                    { v: 500, bunny: 'R$ 41', rec: 'R$ 1.450', lucro: 'R$ 1.409' },
+                    { label: '50 / 100',  bunny: 'R$ 3',  asap: 'R$ 15',  rec: 'R$ 145',   lucro: 'R$ 127' },
+                    { label: '80 / 200',  bunny: 'R$ 5',  asap: 'R$ 24',  rec: 'R$ 232',   lucro: 'R$ 203' },
+                    { label: '150 / 300', bunny: 'R$ 10', asap: 'R$ 45',  rec: 'R$ 435',   lucro: 'R$ 380' },
+                    { label: '200 / 300', bunny: 'R$ 12', asap: 'R$ 60',  rec: 'R$ 580',   lucro: 'R$ 508' },
+                    { label: '300 / 500', bunny: 'R$ 18', asap: 'R$ 90',  rec: 'R$ 870',   lucro: 'R$ 762' },
+                    { label: '500 / 700', bunny: 'R$ 29', asap: 'R$ 150', rec: 'R$ 1.450', lucro: 'R$ 1.271' },
                   ].map(row => (
-                    <tr key={row.v} className="border-b border-[#2A2A3A] last:border-0">
-                      <td className="py-2.5 text-white font-bold">{row.v}</td>
+                    <tr key={row.label} className="border-b border-[#2A2A3A] last:border-0">
+                      <td className="py-2.5 text-white font-bold">{row.label}</td>
                       <td className="py-2.5 text-right text-red-400">{row.bunny}</td>
+                      <td className="py-2.5 text-right text-red-400">{row.asap}</td>
                       <td className="py-2.5 text-right text-gray-300">{row.rec}</td>
                       <td className="py-2.5 text-right text-green-400 font-bold">{row.lucro}</td>
                     </tr>
@@ -2680,7 +2685,7 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
-            <p className="text-gray-600 text-xs">* Não inclui taxa ASAP Bank (~R$0,20–0,50 por transação PIX) nem custo fixo do Railway (~R$30–80/mês)</p>
+            <p className="text-gray-600 text-xs">* Não-pagantes consomem apenas ~56 MB cada (5 min de preview) — custo desprezível. Lucro não inclui custo fixo do Railway (~R$50/mês).</p>
           </div>
 
           {/* Custos fixos mensais */}
@@ -2688,11 +2693,11 @@ export default function AdminPage() {
             <h3 className="text-white font-bold text-sm">Custos Fixos Mensais</h3>
             <div className="space-y-2">
               {[
-                { name: 'Railway', range: 'R$ 30 – R$ 80', note: 'App + hobby plan · foi R$51 antes do fix do proxy' },
-                { name: 'Bunny CDN', range: 'R$ 0,055/GB', note: 'Variável · ~R$17 por live com 200 viewers' },
+                { name: 'Railway', range: 'R$ 30 – R$ 80', note: 'App + hobby plan · foi R$280 antes do fix, agora muito menor' },
+                { name: 'Bunny CDN', range: 'R$ 0,055/GB', note: 'Variável · só pagantes consomem banda de verdade' },
                 { name: 'Supabase', range: 'R$ 0', note: 'Free tier · 500MB DB · suficiente para uso atual' },
                 { name: 'Servidor de Stream (VPS)', range: 'Fixo contratado', note: '187.77.55.131 · custo independente' },
-                { name: 'ASAP Bank (PIX)', range: '~R$0,30/tx', note: 'Variável por pagamento confirmado' },
+                { name: 'ASAP Bank (PIX)', range: '~R$0,30/tx', note: 'Cobrado só em pagamentos confirmados' },
               ].map(row => (
                 <div key={row.name} className="flex items-center justify-between py-2 border-b border-[#2A2A3A] last:border-0">
                   <div>
