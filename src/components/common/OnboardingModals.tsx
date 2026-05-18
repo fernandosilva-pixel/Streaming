@@ -11,10 +11,10 @@ const LANGS: { lang: Lang; flag: string; label: string }[] = [
   { lang: 'es', flag: '🇪🇸', label: 'Español' },
 ]
 
-const SPORTS: { value: ContentPreference; icon: string; label: string }[] = [
-  { value: 'futebol',  icon: '⚽', label: 'Futebol' },
-  { value: 'basquete', icon: '🏀', label: 'Basquete' },
-  { value: 'luta',     icon: '🥊', label: 'Luta' },
+const SPORTS: { value: ContentPreference; icon: string; labelKey: 'sportFutebol' | 'sportBasquete' | 'sportLuta' }[] = [
+  { value: 'futebol',  icon: '⚽', labelKey: 'sportFutebol' },
+  { value: 'basquete', icon: '🏀', labelKey: 'sportBasquete' },
+  { value: 'luta',     icon: '🥊', labelKey: 'sportLuta' },
 ]
 
 type Step = 'lang' | 'sport' | 'done'
@@ -119,7 +119,7 @@ export default function OnboardingModals() {
             </button>
           ))}
 
-          {step === 'sport' && SPORTS.map(({ value, icon, label }) => (
+          {step === 'sport' && SPORTS.map(({ value, icon, labelKey }) => (
             <button
               key={value}
               onClick={() => selectSport(value)}
@@ -129,7 +129,7 @@ export default function OnboardingModals() {
               onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
             >
               <span style={{ fontSize: 48, lineHeight: 1 }}>{icon}</span>
-              <span className="text-white font-bold text-sm">{label}</span>
+              <span className="text-white font-bold text-sm">{t(labelKey)}</span>
             </button>
           ))}
         </div>

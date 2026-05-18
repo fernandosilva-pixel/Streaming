@@ -77,6 +77,9 @@ const translations = {
     // Onboarding
     chooseLang: 'Escolha seu idioma',
     whatToWatch: 'O que você quer assistir?',
+    sportFutebol: 'Futebol',
+    sportBasquete: 'Basquete',
+    sportLuta: 'Luta',
   },
   en: {
     signIn: 'Sign In',
@@ -143,6 +146,9 @@ const translations = {
     // Onboarding
     chooseLang: 'Choose your language',
     whatToWatch: 'What do you want to watch?',
+    sportFutebol: 'Soccer',
+    sportBasquete: 'Basketball',
+    sportLuta: 'Fighting',
   },
   es: {
     signIn: 'Entrar',
@@ -209,6 +215,9 @@ const translations = {
     // Onboarding
     chooseLang: 'Elige tu idioma',
     whatToWatch: '¿Qué quieres ver?',
+    sportFutebol: 'Fútbol',
+    sportBasquete: 'Baloncesto',
+    sportLuta: 'Lucha',
   },
 } satisfies Record<Lang, Record<string, string>>
 
