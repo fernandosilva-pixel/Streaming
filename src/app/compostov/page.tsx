@@ -2646,28 +2646,65 @@ export default function AdminPage() {
             </>
           )}
 
-          {/* Estimativa de custos */}
+          {/* Custo por live */}
           <div className="bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-5 space-y-4">
-            <h3 className="text-white font-bold text-sm">Estimativa de Custos Mensais</h3>
+            <div>
+              <h3 className="text-white font-bold text-sm">Custo por Live vs Receita (R$ 2,90/viewer)</h3>
+              <p className="text-gray-500 text-xs mt-0.5">Baseado em 90 min · bitrate ~1,5 Mbps · Bunny CDN R$0,055/GB</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-gray-500 border-b border-[#2A2A3A]">
+                    <th className="text-left pb-2 font-semibold">Viewers pagantes</th>
+                    <th className="text-right pb-2 font-semibold">Custo Bunny</th>
+                    <th className="text-right pb-2 font-semibold">Receita</th>
+                    <th className="text-right pb-2 font-semibold text-green-400">Lucro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { v: 50,  bunny: 'R$ 4',  rec: 'R$ 145',   lucro: 'R$ 141' },
+                    { v: 100, bunny: 'R$ 8',  rec: 'R$ 290',   lucro: 'R$ 282' },
+                    { v: 200, bunny: 'R$ 17', rec: 'R$ 580',   lucro: 'R$ 563' },
+                    { v: 300, bunny: 'R$ 25', rec: 'R$ 870',   lucro: 'R$ 845' },
+                    { v: 500, bunny: 'R$ 41', rec: 'R$ 1.450', lucro: 'R$ 1.409' },
+                  ].map(row => (
+                    <tr key={row.v} className="border-b border-[#2A2A3A] last:border-0">
+                      <td className="py-2.5 text-white font-bold">{row.v}</td>
+                      <td className="py-2.5 text-right text-red-400">{row.bunny}</td>
+                      <td className="py-2.5 text-right text-gray-300">{row.rec}</td>
+                      <td className="py-2.5 text-right text-green-400 font-bold">{row.lucro}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-gray-600 text-xs">* Não inclui taxa ASAP Bank (~R$0,20–0,50 por transação PIX) nem custo fixo do Railway (~R$30–80/mês)</p>
+          </div>
+
+          {/* Custos fixos mensais */}
+          <div className="bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-5 space-y-4">
+            <h3 className="text-white font-bold text-sm">Custos Fixos Mensais</h3>
             <div className="space-y-2">
               {[
-                { name: 'Railway (app + proxy)', range: 'R$ 50 – R$ 80', note: 'Depende do tráfego HTTP' },
-                { name: 'Bunny CDN (vídeo)', range: 'R$ 5 – R$ 30', note: '~R$0,01/GB · custo principal das lives' },
-                { name: 'Supabase', range: 'R$ 0 – R$ 150', note: 'Free tier até 500MB de DB' },
-                { name: 'Servidor de Stream (VPS)', range: 'Fixo contratado', note: '187.77.55.131' },
-                { name: 'ASAP Bank', range: 'Taxa por transação', note: 'Variável por pagamento PIX' },
+                { name: 'Railway', range: 'R$ 30 – R$ 80', note: 'App + hobby plan · foi R$51 antes do fix do proxy' },
+                { name: 'Bunny CDN', range: 'R$ 0,055/GB', note: 'Variável · ~R$17 por live com 200 viewers' },
+                { name: 'Supabase', range: 'R$ 0', note: 'Free tier · 500MB DB · suficiente para uso atual' },
+                { name: 'Servidor de Stream (VPS)', range: 'Fixo contratado', note: '187.77.55.131 · custo independente' },
+                { name: 'ASAP Bank (PIX)', range: '~R$0,30/tx', note: 'Variável por pagamento confirmado' },
               ].map(row => (
                 <div key={row.name} className="flex items-center justify-between py-2 border-b border-[#2A2A3A] last:border-0">
                   <div>
                     <p className="text-white text-sm">{row.name}</p>
                     <p className="text-gray-600 text-xs">{row.note}</p>
                   </div>
-                  <span className="text-orange-400 font-bold text-sm">{row.range}</span>
+                  <span className="text-orange-400 font-bold text-sm shrink-0 ml-4">{row.range}</span>
                 </div>
               ))}
             </div>
             <p className="text-gray-600 text-xs">
-              💡 Dica: Lives com URL HTTPS carregam direto da Bunny CDN, sem passar pelo Railway. Mantenha as URLs de stream sempre com HTTPS para reduzir custos.
+              Dica: URLs de stream HTTPS carregam direto da Bunny CDN sem passar pelo Railway. Sempre use HTTPS no admin para manter o Railway barato.
             </p>
           </div>
         </div>
