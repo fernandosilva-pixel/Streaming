@@ -98,7 +98,8 @@ export default function HeroBanner() {
       {liveStreams.length > 0 && (
         <div className="flex flex-wrap gap-3 justify-center">
           {liveStreams.filter(s => {
-            const pref = user?.content_preference ?? 'hibrido'
+            const storedSport = typeof window !== 'undefined' ? localStorage.getItem('futzone_sport') : null
+            const pref = user?.content_preference ?? (storedSport as 'futebol' | 'basquete' | 'hibrido' | null) ?? 'hibrido'
             if (pref === 'hibrido') return true
             return !s.category || s.category === pref
           }).map(s => (
