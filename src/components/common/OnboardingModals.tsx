@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useLanguage, Lang } from '@/contexts/LanguageContext'
 import { useAuth, ContentPreference } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -18,32 +17,20 @@ const SPORTS: { value: ContentPreference; icon: string; labelKey: 'sportFutebol'
   { value: 'luta',     icon: '🥊', labelKey: 'sportLuta' },
 ]
 
-type Step = 'lang' | 'sport' | 'plan' | 'done'
+type Step = 'lang' | 'sport' | 'done'
 
 export default function OnboardingModals() {
-  const router = useRouter()
-  const { setLang, t, lang } = useLanguage()
-  const { user, showModal, updatePreference } = useAuth()
+  const { setLang, t } = useLanguage()
+  const { user, updatePreference } = useAuth()
   const [step, setStep] = useState<Step>('done')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [animating, setAnimating] = useState(false)
-  const [usdRate, setUsdRate] = useState<number | null>(null)
-
-  useEffect(() => {
-    if (step !== 'plan' || lang === 'pt') return
-    fetch('https://open.er-api.com/v6/latest/BRL')
-      .then(r => r.json())
-      .then(data => { if (data?.rates?.USD) setUsdRate(data.rates.USD) })
-      .catch(() => {})
-  }, [step, lang])
 
   useEffect(() => {
     const hasLang = localStorage.getItem('futzone_lang')
     const hasSport = localStorage.getItem('futzone_sport')
-    const hasPlan = localStorage.getItem('futzone_plan_seen')
     if (!hasLang) setStep('lang')
     else if (!hasSport) setStep('sport')
-    else if (!hasPlan) setStep('plan')
 
     supabase.from('site_settings').select('logo_url').single().then(({ data }) => {
       if (data?.logo_url) setLogoUrl(data.logo_url)
@@ -66,30 +53,7 @@ export default function OnboardingModals() {
   async function selectSport(pref: ContentPreference) {
     localStorage.setItem('futzone_sport', pref)
     if (user) await updatePreference(pref)
-    transition('plan')
-  }
-
-  // Quando o usuário faz login/cadastro após clicar num plano, redireciona pro /perfil
-  useEffect(() => {
-    if (!user) return
-    const intent = localStorage.getItem('futzone_plan_intent')
-    if (intent === 'semanal' || intent === 'mensal') {
-      localStorage.removeItem('futzone_plan_intent')
-      router.push('/perfil')
-    }
-  }, [user])
-
-  function selectPlan(type: 'semanal' | 'mensal' | 'free') {
-    localStorage.setItem('futzone_plan_seen', '1')
     transition('done')
-    if (type !== 'free') {
-      if (user) {
-        setTimeout(() => router.push('/perfil'), 300)
-      } else {
-        localStorage.setItem('futzone_plan_intent', type)
-        setTimeout(() => showModal('register'), 300)
-      }
-    }
   }
 
   if (step === 'done') return null
@@ -119,7 +83,7 @@ export default function OnboardingModals() {
     border: '1px solid rgba(249,115,22,0.5)',
   }
 
-  const steps: Step[] = ['lang', 'sport', 'plan']
+  const steps: Step[] = ['lang', 'sport']
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
@@ -138,7 +102,7 @@ export default function OnboardingModals() {
 
         {/* Título */}
         <p className="text-center text-gray-400 text-sm mb-5">
-          {step === 'lang' ? t('chooseLang') : step === 'sport' ? t('whatToWatch') : 'Escolha seu plano'}
+          {step === 'lang' ? t('chooseLang') : t('whatToWatch')}
         </p>
 
         {/* Opções — lang */}
@@ -178,69 +142,6 @@ export default function OnboardingModals() {
             ))}
           </div>
         )}
-
-        {/* Opções — plan */}
-        {step === 'plan' && (() => {
-          const usd = lang !== 'pt'
-          function fmt(brl: number): string {
-            if (!usd) return 'R$' + brl.toFixed(2).replace('.', ',')
-            if (!usdRate) return '...'
-            return '$' + (brl * usdRate).toFixed(2)
-          }
-          const fmtMensal = fmt(15.90)
-          const fmtSemanal = fmt(7.90)
-          return (
-            <div className="flex flex-col gap-3">
-
-              {/* Mensal — destaque */}
-              <div className="relative">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                  <span className="text-[11px] font-black text-white px-3 py-0.5 rounded-full" style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)' }}>
-                    {lang === 'en' ? 'MOST POPULAR' : lang === 'es' ? 'MÁS POPULAR' : 'MAIS POPULAR'}
-                  </span>
-                </div>
-                <button
-                  onClick={() => selectPlan('mensal')}
-                  className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
-                  style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.45)' }}
-                >
-                  <div>
-                    <p className="text-white font-black text-base">{lang === 'en' ? 'Monthly' : lang === 'es' ? 'Mensual' : 'Mensal'}</p>
-                    <p className="text-gray-400 text-xs mt-0.5">{lang === 'en' ? '30 days · access to all streams' : lang === 'es' ? '30 días · acceso a todas las transmisiones' : '30 dias · acesso a todas as transmissões'}</p>
-                  </div>
-                  <p className="text-orange-400 font-black text-xl shrink-0 ml-4">{fmtMensal}</p>
-                </button>
-              </div>
-
-              {/* Semanal */}
-              <button
-                onClick={() => selectPlan('semanal')}
-                className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
-                style={btnBase}
-                onMouseEnter={e => Object.assign(e.currentTarget.style, btnHover)}
-                onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
-              >
-                <div>
-                  <p className="text-white font-black text-base">{lang === 'en' ? 'Weekly' : lang === 'es' ? 'Semanal' : 'Semanal'}</p>
-                  <p className="text-gray-400 text-xs mt-0.5">{lang === 'en' ? '7 days · access to all streams' : lang === 'es' ? '7 días · acceso a todas las transmisiones' : '7 dias · acesso a todas as transmissões'}</p>
-                </div>
-                <p className="text-white font-black text-xl shrink-0 ml-4">{fmtSemanal}</p>
-              </button>
-
-              {/* Gratuito — centralizado */}
-              <button
-                onClick={() => selectPlan('free')}
-                className="w-full flex flex-col items-center justify-center px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] text-center"
-                style={btnBase}
-                onMouseEnter={e => Object.assign(e.currentTarget.style, btnHover)}
-                onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
-              >
-                <p className="text-white font-black text-base">{lang === 'en' ? 'Free Plan' : lang === 'es' ? 'Plan Gratuito' : 'Plano Gratuito'}</p>
-                <p className="text-gray-500 text-xs mt-0.5">{lang === 'en' ? 'Watch for free for a few minutes' : lang === 'es' ? 'Mira gratis por algunos minutos' : 'Assista gratuitamente por alguns minutos'}</p>
-              </button>
-            </div>
-          )
-        })()}
 
         {/* Indicador de passo */}
         <div className="flex justify-center gap-2 mt-7">
