@@ -22,7 +22,7 @@ type Step = 'lang' | 'sport' | 'plan' | 'done'
 
 export default function OnboardingModals() {
   const router = useRouter()
-  const { setLang, t } = useLanguage()
+  const { setLang, t, lang } = useLanguage()
   const { user, showModal, updatePreference } = useAuth()
   const [step, setStep] = useState<Step>('done')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
@@ -171,69 +171,63 @@ export default function OnboardingModals() {
         )}
 
         {/* Opções — plan */}
-        {step === 'plan' && (
-          <div className="flex flex-col gap-3">
+        {step === 'plan' && (() => {
+          const usd = lang !== 'pt'
+          const sym = usd ? '$' : 'R$'
+          const fmtMensal = usd ? '$15.90' : 'R$15,90'
+          const fmtSemanal = usd ? '$7.90' : 'R$7,90'
+          return (
+            <div className="flex flex-col gap-3">
 
-            {/* Mensal — destaque */}
-            <div className="relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                <span className="text-[11px] font-black text-white px-3 py-0.5 rounded-full" style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)' }}>
-                  MAIS POPULAR
-                </span>
+              {/* Mensal — destaque */}
+              <div className="relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                  <span className="text-[11px] font-black text-white px-3 py-0.5 rounded-full" style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)' }}>
+                    {lang === 'en' ? 'MOST POPULAR' : lang === 'es' ? 'MÁS POPULAR' : 'MAIS POPULAR'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => selectPlan('mensal')}
+                  className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
+                  style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.45)' }}
+                >
+                  <div>
+                    <p className="text-white font-black text-base">{lang === 'en' ? 'Monthly' : lang === 'es' ? 'Mensual' : 'Mensal'}</p>
+                    <p className="text-gray-400 text-xs mt-0.5">{lang === 'en' ? '30 days · access to all streams' : lang === 'es' ? '30 días · acceso a todas las transmisiones' : '30 dias · acesso a todas as transmissões'}</p>
+                  </div>
+                  <p className="text-orange-400 font-black text-xl shrink-0 ml-4">{fmtMensal}</p>
+                </button>
               </div>
+
+              {/* Semanal */}
               <button
-                onClick={() => selectPlan('mensal')}
+                onClick={() => selectPlan('semanal')}
                 className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
-                style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.45)' }}
+                style={btnBase}
+                onMouseEnter={e => Object.assign(e.currentTarget.style, btnHover)}
+                onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
               >
                 <div>
-                  <p className="text-white font-black text-base">Mensal</p>
-                  <p className="text-gray-400 text-xs mt-0.5">30 dias · acesso a todas as transmissões</p>
+                  <p className="text-white font-black text-base">{lang === 'en' ? 'Weekly' : lang === 'es' ? 'Semanal' : 'Semanal'}</p>
+                  <p className="text-gray-400 text-xs mt-0.5">{lang === 'en' ? '7 days · access to all streams' : lang === 'es' ? '7 días · acceso a todas las transmisiones' : '7 dias · acesso a todas as transmissões'}</p>
                 </div>
-                <div className="text-right shrink-0 ml-4">
-                  <p className="text-orange-400 font-black text-xl">R$19,90</p>
-                  <p className="text-gray-500 text-xs">/mês</p>
-                </div>
+                <p className="text-white font-black text-xl shrink-0 ml-4">{fmtSemanal}</p>
+              </button>
+
+              {/* Gratuito — centralizado */}
+              <button
+                onClick={() => selectPlan('free')}
+                className="w-full flex flex-col items-center justify-center px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] text-center"
+                style={btnBase}
+                onMouseEnter={e => Object.assign(e.currentTarget.style, btnHover)}
+                onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
+              >
+                <p className="text-white font-black text-base">{lang === 'en' ? 'Free Plan' : lang === 'es' ? 'Plan Gratuito' : 'Plano Gratuito'}</p>
+                <p className="text-gray-500 text-xs mt-0.5">{lang === 'en' ? 'Watch for free for a few minutes' : lang === 'es' ? 'Mira gratis por algunos minutos' : 'Assista gratuitamente por alguns minutos'}</p>
               </button>
             </div>
-
-            {/* Semanal */}
-            <button
-              onClick={() => selectPlan('semanal')}
-              className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
-              style={btnBase}
-              onMouseEnter={e => Object.assign(e.currentTarget.style, btnHover)}
-              onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
-            >
-              <div>
-                <p className="text-white font-black text-base">Semanal</p>
-                <p className="text-gray-400 text-xs mt-0.5">7 dias · acesso a todas as transmissões</p>
-              </div>
-              <div className="text-right shrink-0 ml-4">
-                <p className="text-white font-black text-xl">R$9,90</p>
-                <p className="text-gray-500 text-xs">/semana</p>
-              </div>
-            </button>
-
-            {/* Gratuito */}
-            <button
-              onClick={() => selectPlan('free')}
-              className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
-              style={btnBase}
-              onMouseEnter={e => Object.assign(e.currentTarget.style, btnHover)}
-              onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
-            >
-              <div>
-                <p className="text-white font-black text-base">Plano Gratuito</p>
-                <p className="text-gray-500 text-xs mt-0.5">Preview de 5 min · paga por transmissão avulsa</p>
-              </div>
-              <div className="text-right shrink-0 ml-4">
-                <p className="text-gray-400 font-black text-xl">R$0</p>
-                <p className="text-gray-600 text-xs">/sempre</p>
-              </div>
-            </button>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Indicador de passo */}
         <div className="flex justify-center gap-2 mt-7">

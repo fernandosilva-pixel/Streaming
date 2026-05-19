@@ -9,7 +9,8 @@ import { supabase } from '@/lib/supabase'
 import QRCode from 'react-qr-code'
 
 
-const PLAN_PRICE = 19.90
+const PLAN_PRICE = 15.90
+const PLAN_SEMANAL_PRICE = 7.90
 
 const PREFERENCES: { value: ContentPreference; icon: string; label: string }[] = [
   { value: 'futebol',  icon: '⚽', label: 'Futebol' },
@@ -66,7 +67,7 @@ export default function PerfilPage() {
     if (!user) return
     setGenerating(true)
     setVerifyMsg('')
-    const amount = planType === 'semanal' ? 9.90 : PLAN_PRICE
+    const amount = planType === 'semanal' ? PLAN_SEMANAL_PRICE : PLAN_PRICE
     try {
       const res = await fetch('/api/plan/create', {
         method: 'POST',
@@ -281,7 +282,7 @@ export default function PerfilPage() {
                 <div>
                   <p className="text-white font-black text-lg">Semanal</p>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-3xl font-black text-white">R$9,90</span>
+                    <span className="text-3xl font-black text-white">R$7,90</span>
                     <span className="text-gray-500 text-sm">/semana</span>
                   </div>
                 </div>
@@ -307,7 +308,7 @@ export default function PerfilPage() {
                 <div>
                   <p className="text-white font-black text-lg">Mensal</p>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-3xl font-black text-orange-400">R$19,90</span>
+                    <span className="text-3xl font-black text-orange-400">R$15,90</span>
                     <span className="text-gray-500 text-sm">/mês</span>
                   </div>
                 </div>
@@ -392,7 +393,7 @@ export default function PerfilPage() {
 
                 <div className="inline-flex items-baseline gap-1.5 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-2">
                   <span className="text-orange-400 text-sm font-semibold">R$</span>
-                  <span className="text-orange-400 text-3xl font-black">{selectedPlanType === 'semanal' ? '9,90' : '19,90'}</span>
+                  <span className="text-orange-400 text-3xl font-black">{selectedPlanType === 'semanal' ? '7,90' : '15,90'}</span>
                   <span className="text-gray-500 text-sm">/{selectedPlanType === 'semanal' ? 'sem' : 'mês'}</span>
                 </div>
 
