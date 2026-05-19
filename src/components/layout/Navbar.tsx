@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Zap } from 'lucide-react';
+import { Zap, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth, isPlanActive } from '@/contexts/AuthContext';
 import { useLanguage, Lang } from '@/contexts/LanguageContext';
@@ -115,7 +115,7 @@ export default function Navbar() {
                   {user.avatar_url ? (
                     <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-[11px] font-black text-white">{user.name.slice(0, 2).toUpperCase()}</span>
+                    <User className="w-4 h-4 text-white" />
                   )}
                 </div>
                 {planActive && (

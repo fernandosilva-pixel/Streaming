@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Copy, X, LogOut, ShieldCheck, Clock, Zap, Camera } from 'lucide-react'
+import { Check, Copy, X, LogOut, ShieldCheck, Clock, Zap, Camera, User } from 'lucide-react'
 import { useAuth, isPlanActive, ContentPreference } from '@/contexts/AuthContext'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { supabase } from '@/lib/supabase'
@@ -198,9 +198,9 @@ export default function PerfilPage() {
                     <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : (
-                  <span className="text-2xl font-black text-white" style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)', position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {initials}
-                  </span>
+                  <div style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)', position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <User className="w-8 h-8 text-white" />
+                  </div>
                 )}
               </div>
               {/* Botão câmera para upload */}

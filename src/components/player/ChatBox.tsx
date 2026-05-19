@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { Send, Trash2, Ban, Pin, PinOff } from 'lucide-react'
+import { Send, Trash2, Ban, Pin, PinOff, User } from 'lucide-react'
 
 type Message = {
   id: string
@@ -207,7 +207,7 @@ export default function ChatBox({ streamId }: { streamId: string }) {
             >
               {m.avatar_url
                 ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
-                : m.user_name.slice(0, 1).toUpperCase()
+                : <User className="w-3 h-3 text-white" />
               }
             </div>
             <p className="flex-1 min-w-0 break-words">
