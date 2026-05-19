@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useLanguage, Lang } from '@/contexts/LanguageContext'
 import { useAuth, ContentPreference } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -17,11 +18,12 @@ const SPORTS: { value: ContentPreference; icon: string; labelKey: 'sportFutebol'
   { value: 'luta',     icon: '🥊', labelKey: 'sportLuta' },
 ]
 
-type Step = 'lang' | 'sport' | 'done'
+type Step = 'lang' | 'sport' | 'plan' | 'done'
 
 export default function OnboardingModals() {
+  const router = useRouter()
   const { setLang, t } = useLanguage()
-  const { user, updatePreference } = useAuth()
+  const { user, showModal, updatePreference } = useAuth()
   const [step, setStep] = useState<Step>('done')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [animating, setAnimating] = useState(false)
@@ -29,31 +31,44 @@ export default function OnboardingModals() {
   useEffect(() => {
     const hasLang = localStorage.getItem('futzone_lang')
     const hasSport = localStorage.getItem('futzone_sport')
+    const hasPlan = localStorage.getItem('futzone_plan_seen')
     if (!hasLang) setStep('lang')
     else if (!hasSport) setStep('sport')
+    else if (!hasPlan) setStep('plan')
 
     supabase.from('site_settings').select('logo_url').single().then(({ data }) => {
       if (data?.logo_url) setLogoUrl(data.logo_url)
     })
   }, [])
 
-  function selectLang(lang: Lang) {
-    setLang(lang)
-    // Transition to sport step
+  function transition(next: Step) {
     setAnimating(true)
     setTimeout(() => {
-      setStep('sport')
+      setStep(next)
       setAnimating(false)
     }, 250)
   }
 
+  function selectLang(lang: Lang) {
+    setLang(lang)
+    transition('sport')
+  }
+
   async function selectSport(pref: ContentPreference) {
     localStorage.setItem('futzone_sport', pref)
-    if (user) {
-      await updatePreference(pref)
+    if (user) await updatePreference(pref)
+    transition('plan')
+  }
+
+  function selectPlan(type: 'semanal' | 'mensal' | 'free') {
+    localStorage.setItem('futzone_plan_seen', '1')
+    transition('done')
+    if (type !== 'free') {
+      setTimeout(() => {
+        if (user) router.push('/perfil')
+        else showModal('register')
+      }, 300)
     }
-    setAnimating(true)
-    setTimeout(() => setStep('done'), 250)
   }
 
   if (step === 'done') return null
@@ -83,6 +98,8 @@ export default function OnboardingModals() {
     border: '1px solid rgba(249,115,22,0.5)',
   }
 
+  const steps: Step[] = ['lang', 'sport', 'plan']
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/60" style={overlayStyle} />
@@ -100,44 +117,110 @@ export default function OnboardingModals() {
 
         {/* Título */}
         <p className="text-center text-gray-400 text-sm mb-5">
-          {step === 'lang' ? t('chooseLang') : t('whatToWatch')}
+          {step === 'lang' ? t('chooseLang') : step === 'sport' ? t('whatToWatch') : 'Escolha seu plano'}
         </p>
 
-        {/* Opções */}
-        <div className="flex items-center justify-center gap-4">
-          {step === 'lang' && LANGS.map(({ lang, flag, label }) => (
-            <button
-              key={lang}
-              onClick={() => selectLang(lang)}
-              className="flex flex-col items-center gap-3 flex-1 py-5 rounded-2xl transition-all hover:scale-105 active:scale-95"
-              style={btnBase}
-              onMouseEnter={e => Object.assign(e.currentTarget.style, btnHover)}
-              onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
-            >
-              <span style={{ fontSize: 48, lineHeight: 1 }}>{flag}</span>
-              <span className="text-white font-bold text-sm">{label}</span>
-            </button>
-          ))}
+        {/* Opções — lang */}
+        {step === 'lang' && (
+          <div className="flex items-center justify-center gap-4">
+            {LANGS.map(({ lang, flag, label }) => (
+              <button
+                key={lang}
+                onClick={() => selectLang(lang)}
+                className="flex flex-col items-center gap-3 flex-1 py-5 rounded-2xl transition-all hover:scale-105 active:scale-95"
+                style={btnBase}
+                onMouseEnter={e => Object.assign(e.currentTarget.style, btnHover)}
+                onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
+              >
+                <span style={{ fontSize: 48, lineHeight: 1 }}>{flag}</span>
+                <span className="text-white font-bold text-sm">{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
-          {step === 'sport' && SPORTS.map(({ value, icon, labelKey }) => (
+        {/* Opções — sport */}
+        {step === 'sport' && (
+          <div className="flex items-center justify-center gap-4">
+            {SPORTS.map(({ value, icon, labelKey }) => (
+              <button
+                key={value}
+                onClick={() => selectSport(value)}
+                className="flex flex-col items-center gap-3 flex-1 py-5 rounded-2xl transition-all hover:scale-105 active:scale-95"
+                style={btnBase}
+                onMouseEnter={e => Object.assign(e.currentTarget.style, btnHover)}
+                onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
+              >
+                <span style={{ fontSize: 48, lineHeight: 1 }}>{icon}</span>
+                <span className="text-white font-bold text-sm">{t(labelKey)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Opções — plan */}
+        {step === 'plan' && (
+          <div className="flex flex-col gap-3">
+
+            {/* Mensal — destaque */}
+            <div className="relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                <span className="text-[11px] font-black text-white px-3 py-0.5 rounded-full" style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)' }}>
+                  MAIS POPULAR
+                </span>
+              </div>
+              <button
+                onClick={() => selectPlan('mensal')}
+                className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
+                style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.45)' }}
+              >
+                <div>
+                  <p className="text-white font-black text-base">Mensal</p>
+                  <p className="text-gray-400 text-xs mt-0.5">30 dias · acesso a todas as transmissões</p>
+                </div>
+                <div className="text-right shrink-0 ml-4">
+                  <p className="text-orange-400 font-black text-xl">R$19,90</p>
+                  <p className="text-gray-500 text-xs">/mês</p>
+                </div>
+              </button>
+            </div>
+
+            {/* Semanal */}
             <button
-              key={value}
-              onClick={() => selectSport(value)}
-              className="flex flex-col items-center gap-3 flex-1 py-5 rounded-2xl transition-all hover:scale-105 active:scale-95"
+              onClick={() => selectPlan('semanal')}
+              className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
               style={btnBase}
               onMouseEnter={e => Object.assign(e.currentTarget.style, btnHover)}
               onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
             >
-              <span style={{ fontSize: 48, lineHeight: 1 }}>{icon}</span>
-              <span className="text-white font-bold text-sm">{t(labelKey)}</span>
+              <div>
+                <p className="text-white font-black text-base">Semanal</p>
+                <p className="text-gray-400 text-xs mt-0.5">7 dias · acesso a todas as transmissões</p>
+              </div>
+              <div className="text-right shrink-0 ml-4">
+                <p className="text-white font-black text-xl">R$9,90</p>
+                <p className="text-gray-500 text-xs">/semana</p>
+              </div>
             </button>
-          ))}
-        </div>
+
+            {/* Gratuito */}
+            <button
+              onClick={() => selectPlan('free')}
+              className="text-center text-gray-500 hover:text-gray-300 text-sm transition-colors py-2"
+            >
+              Continuar grátis →
+            </button>
+          </div>
+        )}
 
         {/* Indicador de passo */}
         <div className="flex justify-center gap-2 mt-7">
-          <span className={`w-2 h-2 rounded-full transition-all ${step === 'lang' ? 'bg-orange-500 w-5' : 'bg-white/20'}`} />
-          <span className={`w-2 h-2 rounded-full transition-all ${step === 'sport' ? 'bg-orange-500 w-5' : 'bg-white/20'}`} />
+          {steps.map(s => (
+            <span
+              key={s}
+              className={`h-2 rounded-full transition-all duration-300 ${step === s ? 'bg-orange-500 w-5' : 'bg-white/20 w-2'}`}
+            />
+          ))}
         </div>
       </div>
     </div>
