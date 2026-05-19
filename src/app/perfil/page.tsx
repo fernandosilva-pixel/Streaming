@@ -11,10 +11,10 @@ import QRCode from 'react-qr-code'
 
 const PLAN_PRICE = 19.90
 
-const PREFERENCES: { value: ContentPreference; icon: string; label: string; desc: string }[] = [
-  { value: 'futebol',  icon: '⚽', label: 'Futebol',  desc: 'Só transmissões de futebol' },
-  { value: 'basquete', icon: '🏀', label: 'Basquete', desc: 'Só transmissões de basquete' },
-  { value: 'luta',     icon: '🥊', label: 'Luta',     desc: 'Todos os esportes' },
+const PREFERENCES: { value: ContentPreference; icon: string; label: string }[] = [
+  { value: 'futebol',  icon: '⚽', label: 'Futebol' },
+  { value: 'basquete', icon: '🏀', label: 'Basquete' },
+  { value: 'luta',     icon: '🥊', label: 'Luta' },
 ]
 
 export default function PerfilPage() {
@@ -346,7 +346,6 @@ export default function PerfilPage() {
               >
                 <span style={{ fontSize: 32 }}>{p.icon}</span>
                 <span className={`font-bold text-sm ${selected ? 'text-orange-400' : 'text-gray-400'}`}>{p.label}</span>
-                <span className="text-gray-600 text-xs text-center px-1">{p.desc}</span>
               </button>
             )
           })}
