@@ -206,9 +206,19 @@ export default function OnboardingModals() {
             {/* Gratuito */}
             <button
               onClick={() => selectPlan('free')}
-              className="text-center text-gray-500 hover:text-gray-300 text-sm transition-colors py-2"
+              className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
+              style={btnBase}
+              onMouseEnter={e => Object.assign(e.currentTarget.style, btnHover)}
+              onMouseLeave={e => Object.assign(e.currentTarget.style, btnBase)}
             >
-              Continuar grátis →
+              <div>
+                <p className="text-white font-black text-base">Plano Gratuito</p>
+                <p className="text-gray-500 text-xs mt-0.5">Preview de 5 min · paga por transmissão avulsa</p>
+              </div>
+              <div className="text-right shrink-0 ml-4">
+                <p className="text-gray-400 font-black text-xl">R$0</p>
+                <p className="text-gray-600 text-xs">/sempre</p>
+              </div>
             </button>
           </div>
         )}
