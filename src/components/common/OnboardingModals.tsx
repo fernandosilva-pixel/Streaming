@@ -27,6 +27,15 @@ export default function OnboardingModals() {
   const [step, setStep] = useState<Step>('done')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [animating, setAnimating] = useState(false)
+  const [usdRate, setUsdRate] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (step !== 'plan' || lang === 'pt') return
+    fetch('https://open.er-api.com/v6/latest/BRL')
+      .then(r => r.json())
+      .then(data => { if (data?.rates?.USD) setUsdRate(data.rates.USD) })
+      .catch(() => {})
+  }, [step, lang])
 
   useEffect(() => {
     const hasLang = localStorage.getItem('futzone_lang')
@@ -173,9 +182,13 @@ export default function OnboardingModals() {
         {/* Opções — plan */}
         {step === 'plan' && (() => {
           const usd = lang !== 'pt'
-          const sym = usd ? '$' : 'R$'
-          const fmtMensal = usd ? '$15.90' : 'R$15,90'
-          const fmtSemanal = usd ? '$7.90' : 'R$7,90'
+          function fmt(brl: number): string {
+            if (!usd) return 'R$' + brl.toFixed(2).replace('.', ',')
+            if (!usdRate) return '...'
+            return '$' + (brl * usdRate).toFixed(2)
+          }
+          const fmtMensal = fmt(15.90)
+          const fmtSemanal = fmt(7.90)
           return (
             <div className="flex flex-col gap-3">
 
