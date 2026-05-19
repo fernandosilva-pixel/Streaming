@@ -55,18 +55,25 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
   const [couponError, setCouponError] = useState('')
   const [couponLoading, setCouponLoading] = useState(false)
 
+  // Plan selection state (easy to revert: remove these 3 lines + related JSX)
+  const [selectedOption, setSelectedOption] = useState<'avulso' | 'semanal' | 'mensal'>('avulso')
+  const [tooltipFor, setTooltipFor] = useState<'avulso' | 'semanal' | 'mensal' | null>(null)
+  const [isPlanPayment, setIsPlanPayment] = useState(false)
+
   useEffect(() => {
     if (!transactionId) return
     pollRef.current = setInterval(async () => {
-      const res = await fetch(`/api/pix/status?transaction_id=${transactionId}`)
-      const data = await res.json()
-      if (data.status === 'PAID') {
-        clearInterval(pollRef.current!)
-        handlePaid()
+      if (isPlanPayment) {
+        const { data } = await supabase.from('plan_payments').select('status').eq('transaction_id', transactionId).maybeSingle()
+        if (data?.status === 'PAID') { clearInterval(pollRef.current!); handlePaid() }
+      } else {
+        const res = await fetch(`/api/pix/status?transaction_id=${transactionId}`)
+        const data = await res.json()
+        if (data.status === 'PAID') { clearInterval(pollRef.current!); handlePaid() }
       }
     }, 3000)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  }, [transactionId])
+  }, [transactionId, isPlanPayment])
 
   function handlePaid() {
     setPaid(true)
@@ -155,11 +162,23 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
     setGenerateError('')
     try {
       const referralCode = localStorage.getItem('futzone_ref') ?? undefined
-      const res = await fetch('/api/pix/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stream_id: streamId, user_phone: currentUser.email, user_name: currentUser.name, amount: Number(amount), referral_code: referralCode }),
-      })
+      let res: Response
+      if (selectedOption === 'avulso') {
+        res = await fetch('/api/pix/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stream_id: streamId, user_phone: currentUser.email, user_name: currentUser.name, amount: Number(amount), referral_code: referralCode }),
+        })
+        setIsPlanPayment(false)
+      } else {
+        const planAmount = selectedOption === 'semanal' ? 7.90 : 15.90
+        res = await fetch('/api/plan/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_email: currentUser.email, user_name: currentUser.name, amount: planAmount, plan_type: selectedOption }),
+        })
+        setIsPlanPayment(true)
+      }
       const data = await res.json()
       if (!res.ok) { setGenerateError(`Erro ao gerar PIX: ${data.detail ?? data.error ?? ''}`); return }
       setQrcode(data.qrcode)
@@ -254,15 +273,63 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
             <p className="text-gray-500 text-sm">{t('releasingAccess')}</p>
           </div>
         ) : step === 'confirm' ? (
-          <div className="space-y-5">
-            <div className="text-center space-y-3">
-              {logoUrl && <img src={logoUrl} alt="FutZone" className="h-10 object-contain mx-auto" />}
-              <div className="inline-flex items-baseline gap-1.5 bg-green-500/15 border border-green-500/40 rounded-xl px-5 py-2">
-                <span className="text-green-400 text-sm font-semibold">R$</span>
-                <span className="text-green-400 text-3xl font-black">{amount.toFixed(2).replace('.', ',')}</span>
-              </div>
-              <p className="text-gray-500 text-xs">Clique abaixo para gerar seu QR Code e liberar o acesso.</p>
+          <div className="space-y-4">
+            <div className="text-center space-y-1">
+              {logoUrl && <img src={logoUrl} alt="FutZone" className="h-9 object-contain mx-auto" />}
+              <p className="text-white font-black text-lg">Escolha seu acesso</p>
+              <p className="text-gray-500 text-xs">Selecione um plano e gere seu QR Code PIX</p>
             </div>
+
+            {/* Plan cards */}
+            <div className="space-y-2">
+              {([
+                { id: 'avulso' as const, label: 'Ingresso Avulso', price: `R$ ${amount.toFixed(2).replace('.', ',')}`, desc: 'Apenas este jogo', popular: false, benefits: ['Acesso somente a este jogo', 'Válido por esta transmissão', 'Pague só o que assistir'] },
+                { id: 'semanal' as const, label: 'Acesso Semanal', price: 'R$ 7,90', desc: '7 dias ilimitado', popular: false, benefits: ['7 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Cancele quando quiser'] },
+                { id: 'mensal' as const, label: 'Acesso Mensal', price: 'R$ 15,90', desc: '30 dias ilimitado', popular: true, benefits: ['30 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Melhor custo-benefício'] },
+              ]).map(opt => (
+                <div key={opt.id}>
+                  <button
+                    onClick={() => setSelectedOption(opt.id)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${selectedOption === opt.id ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#1A1A26] hover:border-[#3A3A4A]'}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold text-sm ${selectedOption === opt.id ? 'text-white' : 'text-gray-200'}`}>{opt.label}</span>
+                        {opt.popular && (
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full text-white" style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)' }}>
+                            POPULAR
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-gray-500 text-[11px] mt-0.5">{opt.desc}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <span className={`font-black text-sm ${selectedOption === opt.id ? 'text-orange-400' : 'text-gray-300'}`}>{opt.price}</span>
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); setTooltipFor(tooltipFor === opt.id ? null : opt.id) }}
+                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${tooltipFor === opt.id ? 'text-orange-400 border-orange-400' : 'text-gray-500 border-gray-500 hover:text-orange-400 hover:border-orange-400'}`}
+                        style={{ border: '1px solid currentColor' }}
+                        title="Ver benefícios"
+                      >
+                        i
+                      </button>
+                    </div>
+                  </button>
+                  {tooltipFor === opt.id && (
+                    <div className="mt-1 mx-1 rounded-xl px-3 py-2.5 space-y-1" style={{ background: 'rgba(255,106,0,0.07)', border: '1px solid rgba(255,106,0,0.2)' }}>
+                      {opt.benefits.map((b, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs text-gray-300">
+                          <span className="text-orange-400 font-bold">✓</span>
+                          <span>{b}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
             {generateError && <p className="text-red-500 text-xs text-center">{generateError}</p>}
             <button
               onClick={generateQr}
@@ -271,6 +338,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
             >
               {generating ? 'Gerando...' : 'Gerar QR Code PIX'}
             </button>
+
             {couponEnabled && (
               <div className="space-y-2 pt-1">
                 {!couponOpen ? (
