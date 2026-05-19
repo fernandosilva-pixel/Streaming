@@ -41,6 +41,15 @@ export default function PerfilPage() {
   }, [initialized, user, router])
 
   useEffect(() => {
+    if (!initialized || !user) return
+    const intent = localStorage.getItem('futzone_plan_intent') as 'semanal' | 'mensal' | null
+    if (intent === 'semanal' || intent === 'mensal') {
+      localStorage.removeItem('futzone_plan_intent')
+      setTimeout(() => openPlanModal(intent), 400)
+    }
+  }, [initialized, user])
+
+  useEffect(() => {
     if (!transactionId) return
     pollRef.current = setInterval(async () => {
       const res = await fetch(`/api/plan/status?transaction_id=${transactionId}`)

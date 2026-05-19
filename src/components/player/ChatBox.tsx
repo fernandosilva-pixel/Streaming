@@ -8,6 +8,7 @@ import { Send, Trash2, Ban, Pin, PinOff } from 'lucide-react'
 type Message = {
   id: string
   user_name: string
+  avatar_url: string | null
   message: string
   created_at: string
   is_pinned: boolean
@@ -123,6 +124,7 @@ export default function ChatBox({ streamId }: { streamId: string }) {
     await supabase.from('chat_messages').insert({
       stream_id: streamId,
       user_name: user.name,
+      avatar_url: user.avatar_url ?? null,
       message: text.trim(),
     })
     setText('')
@@ -198,7 +200,16 @@ export default function ChatBox({ streamId }: { streamId: string }) {
           <p className="text-gray-600 text-xs text-center mt-4">Nenhuma mensagem ainda. Seja o primeiro!</p>
         )}
         {regularMessages.map(m => (
-          <div key={m.id} className="group text-sm leading-snug flex items-start gap-1 py-0.5">
+          <div key={m.id} className="group text-sm leading-snug flex items-start gap-1.5 py-0.5">
+            {/* Avatar */}
+            <div className="shrink-0 w-5 h-5 rounded-full overflow-hidden mt-0.5 flex items-center justify-center text-[9px] font-black text-white"
+              style={{ background: m.avatar_url ? 'transparent' : getUserColor(m.user_name) }}
+            >
+              {m.avatar_url
+                ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
+                : m.user_name.slice(0, 1).toUpperCase()
+              }
+            </div>
             <p className="flex-1 min-w-0 break-words">
               <span className="font-bold" style={{ color: getUserColor(m.user_name) }}>{m.user_name}</span>
               <span className="text-gray-400">: </span>

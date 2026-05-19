@@ -60,14 +60,26 @@ export default function OnboardingModals() {
     transition('plan')
   }
 
+  // Quando o usuário faz login/cadastro após clicar num plano, redireciona pro /perfil
+  useEffect(() => {
+    if (!user) return
+    const intent = localStorage.getItem('futzone_plan_intent')
+    if (intent === 'semanal' || intent === 'mensal') {
+      localStorage.removeItem('futzone_plan_intent')
+      router.push('/perfil')
+    }
+  }, [user])
+
   function selectPlan(type: 'semanal' | 'mensal' | 'free') {
     localStorage.setItem('futzone_plan_seen', '1')
     transition('done')
     if (type !== 'free') {
-      setTimeout(() => {
-        if (user) router.push('/perfil')
-        else showModal('register')
-      }, 300)
+      if (user) {
+        setTimeout(() => router.push('/perfil'), 300)
+      } else {
+        localStorage.setItem('futzone_plan_intent', type)
+        setTimeout(() => showModal('register'), 300)
+      }
     }
   }
 
