@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import QRCode from 'react-qr-code'
 import { Copy, Check, X } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { supabase } from '@/lib/supabase'
 
 interface Props {
   streamId: string
@@ -35,16 +36,33 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
   const [couponError, setCouponError] = useState('')
   const [couponLoading, setCouponLoading] = useState(false)
 
+  // Plan selection state
+  const [selectedOption, setSelectedOption] = useState<'avulso' | 'semanal' | 'mensal'>('avulso')
+  const [tooltipFor, setTooltipFor] = useState<'avulso' | 'semanal' | 'mensal' | null>(null)
+  const [isPlanPayment, setIsPlanPayment] = useState(false)
+
   async function generateQr() {
     setGenerating(true)
     setError('')
     try {
       const referralCode = localStorage.getItem('futzone_ref') ?? undefined
-      const res = await fetch('/api/pix/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stream_id: streamId, user_phone: userEmail, user_name: userName, amount: Number(amount), referral_code: referralCode }),
-      })
+      let res: Response
+      if (selectedOption === 'avulso') {
+        res = await fetch('/api/pix/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stream_id: streamId, user_phone: userEmail, user_name: userName, amount: Number(amount), referral_code: referralCode }),
+        })
+        setIsPlanPayment(false)
+      } else {
+        const planAmount = selectedOption === 'semanal' ? 7.90 : 15.90
+        res = await fetch('/api/plan/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_email: userEmail, user_name: userName, amount: planAmount, plan_type: selectedOption }),
+        })
+        setIsPlanPayment(true)
+      }
       const data = await res.json()
       if (!res.ok) { setError(`Erro: ${data.detail ?? data.error ?? JSON.stringify(data)}`); return }
       setQrcode(data.qrcode)
@@ -59,16 +77,17 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
   useEffect(() => {
     if (!transactionId) return
     pollRef.current = setInterval(async () => {
-      const res = await fetch(`/api/pix/status?transaction_id=${transactionId}`)
-      const data = await res.json()
-      if (data.status === 'PAID') {
-        clearInterval(pollRef.current!)
-        setPaid(true)
-        setTimeout(onPaid, 1500)
+      if (isPlanPayment) {
+        const { data } = await supabase.from('plan_payments').select('status').eq('transaction_id', transactionId).maybeSingle()
+        if (data?.status === 'PAID') { clearInterval(pollRef.current!); setPaid(true); setTimeout(onPaid, 1500) }
+      } else {
+        const res = await fetch(`/api/pix/status?transaction_id=${transactionId}`)
+        const data = await res.json()
+        if (data.status === 'PAID') { clearInterval(pollRef.current!); setPaid(true); setTimeout(onPaid, 1500) }
       }
     }, 3000)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  }, [transactionId])
+  }, [transactionId, isPlanPayment])
 
   async function checkManually() {
     if (!transactionId) return
@@ -151,10 +170,8 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
         ) : (
           <>
             <div>
-              <h2 className="text-xl font-black text-white">{t('streamAccess')}</h2>
-              <p className="text-gray-500 text-sm mt-1">
-                Pague R$ {amount.toFixed(2).replace('.', ',')} via PIX {t('payViaPix')}
-              </p>
+              <h2 className="text-xl font-black text-white">Escolha seu acesso</h2>
+              <p className="text-gray-500 text-sm mt-1">Selecione um plano e gere seu QR Code PIX</p>
             </div>
 
             {paymentMethod === 'fixed_qr' ? (
@@ -175,20 +192,56 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
               </div>
             ) : (
               <>
-                {!qrcode && !generating && !error && (
-                  <div className="py-4 space-y-3">
-                    <button onClick={generateQr} className="w-full bg-orange-500 hover:bg-orange-400 text-white font-black rounded-xl py-3 transition-all">
+                {!qrcode && !generating && (
+                  <div className="space-y-4">
+                    {/* Plan cards */}
+                    <div className="space-y-2">
+                      {([
+                        { id: 'avulso' as const, label: 'Ingresso Avulso', price: `R$ ${amount.toFixed(2).replace('.', ',')}`, desc: 'Apenas este jogo', popular: false, benefits: ['Acesso somente a este jogo', 'Válido por esta transmissão', 'Pague só o que assistir'] },
+                        { id: 'semanal' as const, label: 'Acesso Semanal', price: 'R$ 7,90', desc: '7 dias ilimitado', popular: false, benefits: ['7 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Cancele quando quiser'] },
+                        { id: 'mensal' as const, label: 'Acesso Mensal', price: 'R$ 15,90', desc: '30 dias ilimitado', popular: true, benefits: ['30 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Melhor custo-benefício'] },
+                      ]).map(opt => (
+                        <div key={opt.id}>
+                          <button
+                            onClick={() => setSelectedOption(opt.id)}
+                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${selectedOption === opt.id ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#1A1A26] hover:border-[#3A3A4A]'}`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-bold text-sm ${selectedOption === opt.id ? 'text-white' : 'text-gray-200'}`}>{opt.label}</span>
+                                {opt.popular && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full text-white" style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)' }}>POPULAR</span>}
+                              </div>
+                              <p className="text-gray-500 text-[11px] mt-0.5">{opt.desc}</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 ml-3">
+                              <span className={`font-black text-sm ${selectedOption === opt.id ? 'text-orange-400' : 'text-gray-300'}`}>{opt.price}</span>
+                              <button
+                                type="button"
+                                onClick={e => { e.stopPropagation(); setTooltipFor(tooltipFor === opt.id ? null : opt.id) }}
+                                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${tooltipFor === opt.id ? 'text-orange-400 border-orange-400' : 'text-gray-500 border-gray-500 hover:text-orange-400 hover:border-orange-400'}`}
+                                style={{ border: '1px solid currentColor' }}
+                              >i</button>
+                            </div>
+                          </button>
+                          {tooltipFor === opt.id && (
+                            <div className="mt-1 mx-1 rounded-xl px-3 py-2.5 space-y-1" style={{ background: 'rgba(255,106,0,0.07)', border: '1px solid rgba(255,106,0,0.2)' }}>
+                              {opt.benefits.map((b, i) => (
+                                <div key={i} className="flex items-center gap-2 text-xs text-gray-300">
+                                  <span className="text-orange-400 font-bold">✓</span><span>{b}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {error && <p className="text-red-500 text-xs text-center">{error}</p>}
+                    <button onClick={generateQr} className="w-full bg-green-600 hover:bg-green-500 text-white font-black rounded-xl py-3 transition-all">
                       Gerar QR Code PIX
                     </button>
                   </div>
                 )}
                 {generating && <div className="py-10 text-center"><p className="text-gray-500 text-sm">{t('generating')}</p></div>}
-                {error && (
-                  <div className="py-4 space-y-3 text-center">
-                    <p className="text-red-500 text-sm">{error}</p>
-                    <button onClick={generateQr} className="text-orange-400 text-sm hover:text-orange-300 transition-colors">Tentar novamente</button>
-                  </div>
-                )}
                 {qrcode && !error && (
                   <div className="space-y-4">
                     <div className="bg-white rounded-xl p-4 flex items-center justify-center">
