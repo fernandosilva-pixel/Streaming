@@ -93,9 +93,16 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
     if (!transactionId) return
     setVerifying(true)
     setVerifyMsg('')
-    const res = await fetch(`/api/pix/status?transaction_id=${transactionId}`)
-    const data = await res.json()
-    if (data.status === 'PAID') {
+    let paid = false
+    if (isPlanPayment) {
+      const { data } = await supabase.from('plan_payments').select('status').eq('transaction_id', transactionId).maybeSingle()
+      paid = data?.status === 'PAID'
+    } else {
+      const res = await fetch(`/api/pix/status?transaction_id=${transactionId}`)
+      const data = await res.json()
+      paid = data.status === 'PAID'
+    }
+    if (paid) {
       clearInterval(pollRef.current!)
       setPaid(true)
       setTimeout(onPaid, 1500)

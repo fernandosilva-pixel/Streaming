@@ -160,14 +160,24 @@ export default function JogoPage({ params }: Props) {
     if (!user || !(stream?.charge_enabled || isTargetCharged) || hasPaid || isFreeAccess || hasCoupon) return
 
     async function recheckDB() {
-      const { data } = await supabase
+      const { data: payment } = await supabase
         .from('payments')
         .select('id')
         .eq('stream_id', stream!.id)
         .eq('user_phone', user!.email)
         .eq('status', 'PAID')
         .maybeSingle()
-      if (data) setHasPaid(true)
+      if (payment) { setHasPaid(true); return }
+
+      // Also detect plan activated while on page (user closed modal early)
+      const { data: reg } = await supabase
+        .from('registrations')
+        .select('plan_expires_at')
+        .eq('email', user!.email)
+        .maybeSingle()
+      if (reg?.plan_expires_at && new Date(reg.plan_expires_at) > new Date()) {
+        setHasPaid(true)
+      }
     }
 
     const interval = setInterval(recheckDB, 4000)
