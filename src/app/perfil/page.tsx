@@ -401,6 +401,18 @@ export default function PerfilPage() {
                   <div className="py-8 text-center text-gray-500 text-sm">Gerando QR Code...</div>
                 )}
 
+                {!generating && !qrcode && (
+                  <div className="py-6 text-center space-y-3">
+                    {verifyMsg && <p className="text-red-400 text-sm">{verifyMsg}</p>}
+                    <button
+                      onClick={() => generateQr(selectedPlanType)}
+                      className="w-full bg-orange-500 hover:bg-orange-400 text-white font-black rounded-xl py-3 text-sm transition-all"
+                    >
+                      Tentar novamente
+                    </button>
+                  </div>
+                )}
+
                 {qrcode && !generating && (
                   <div className="space-y-4">
                     <div className="bg-white rounded-xl p-4 flex items-center justify-center">
