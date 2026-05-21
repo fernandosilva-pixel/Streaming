@@ -111,9 +111,21 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
 
         userObj = { name: name.trim(), email: normalizedEmail }
       } else {
-        const { data } = await supabase.from('registrations').select('name, email').eq('email', normalizedEmail).eq('password', password).single()
-        if (!data) { setFormError(t('wrongCredentials')); setFormLoading(false); return }
-        userObj = { name: data.name, email: data.email }
+        const isPhone = !normalizedEmail.includes('@')
+        let found: { name: string; email: string } | null = null
+        if (isPhone) {
+          const { data: byPhone } = await supabase.from('registrations').select('name, email').eq('phone', normalizedEmail).eq('password', password).maybeSingle()
+          found = byPhone
+          if (!found) {
+            const { data: byPhoneEmail } = await supabase.from('registrations').select('name, email').eq('email', `${normalizedEmail}@futzone.app`).eq('password', password).maybeSingle()
+            found = byPhoneEmail
+          }
+        } else {
+          const { data: byEmail } = await supabase.from('registrations').select('name, email').eq('email', normalizedEmail).eq('password', password).maybeSingle()
+          found = byEmail
+        }
+        if (!found) { setFormError(t('wrongCredentials')); setFormLoading(false); return }
+        userObj = { name: found.name, email: found.email }
       }
 
       setCurrentUser(userObj)
@@ -416,12 +428,12 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
                 />
               )}
               <input
-                type="email"
+                type={mode === 'login' ? 'text' : 'email'}
                 className={inputClass} style={inputStyle}
-                placeholder={t('emailPlaceholder')}
+                placeholder={mode === 'login' ? 'Email ou telefone' : t('emailPlaceholder')}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                inputMode="email"
+                inputMode={mode === 'login' ? 'text' : 'email'}
                 autoComplete="email"
               />
               <div className="relative">
