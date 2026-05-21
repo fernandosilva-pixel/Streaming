@@ -11,11 +11,12 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const { stream_id, user_phone, referral_code } = await req.json()
+    const { stream_id, stream_title, user_phone, referral_code } = await req.json()
     if (!stream_id || !user_phone) return NextResponse.json({ ok: false, error: 'missing fields' }, { status: 400 })
 
     const { error } = await supabase.from('payments').insert({
       stream_id,
+      stream_title: stream_title ?? null,
       user_phone,
       status: 'PAID',
       referral_code: referral_code ?? null,

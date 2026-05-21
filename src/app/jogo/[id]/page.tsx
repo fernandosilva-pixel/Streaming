@@ -310,7 +310,7 @@ export default function JogoPage({ params }: Props) {
     fetch('/api/cashback/grant', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_email: user.email, stream_id: stream.id }),
+      body: JSON.stringify({ user_email: user.email, stream_id: stream.id, stream_title: stream.title }),
     })
   }, [previewActive, cashbackEligible, cashbackGranted, user, stream])
 
@@ -622,6 +622,7 @@ export default function JogoPage({ params }: Props) {
             {paymentModalOpen && user && (stream.charge_enabled || isTargetCharged) && !hasPaid && (
               <PaymentModal
                 streamId={stream.id}
+                streamTitle={stream.title}
                 userEmail={user.email}
                 userName={user.name}
                 amount={targetChargeAmount ?? stream.charge_amount}
@@ -638,6 +639,7 @@ export default function JogoPage({ params }: Props) {
             {needsLogin && stream.charge_enabled && (
               <CombinedModal
                 streamId={stream.id}
+                streamTitle={stream.title}
                 amount={stream.charge_amount}
                 paymentMethod={stream.payment_method ?? 'bspay'}
                 fixedQrUrl={stream.fixed_qr_url}

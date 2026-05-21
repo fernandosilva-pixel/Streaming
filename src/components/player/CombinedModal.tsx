@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Props {
   streamId: string
+  streamTitle?: string
   amount: number
   paymentMethod: 'bspay' | 'fixed_qr'
   fixedQrUrl?: string | null
@@ -20,7 +21,7 @@ interface Props {
 type Step = 'credentials' | 'confirm' | 'qr'
 type Mode = 'register' | 'login'
 
-export default function CombinedModal({ streamId, amount, paymentMethod, fixedQrUrl, couponEnabled, onSuccess, onCouponSuccess, onClose }: Props) {
+export default function CombinedModal({ streamId, streamTitle, amount, paymentMethod, fixedQrUrl, couponEnabled, onSuccess, onCouponSuccess, onClose }: Props) {
   const { t } = useLanguage()
   const [step, setStep] = useState<Step>('credentials')
   const [mode, setMode] = useState<Mode>('register')
@@ -208,7 +209,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
         res = await fetch('/api/pix/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stream_id: streamId, user_phone: currentUser.email, user_name: currentUser.name, amount: Number(amount), referral_code: referralCode }),
+          body: JSON.stringify({ stream_id: streamId, stream_title: streamTitle, user_phone: currentUser.email, user_name: currentUser.name, amount: Number(amount), referral_code: referralCode }),
         })
         setIsPlanPayment(false)
       } else {
@@ -241,7 +242,7 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
       const res = await fetch('/api/pix/fixed-confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stream_id: streamId, user_phone: currentUser.email, referral_code: referralCode }),
+        body: JSON.stringify({ stream_id: streamId, stream_title: streamTitle, user_phone: currentUser.email, referral_code: referralCode }),
       })
       const data = await res.json()
       if (!res.ok || !data.ok) { setVerifyMsg('Pagamento não detectado. Verifique se o PIX foi enviado e tente novamente.'); setVerifying(false); return }

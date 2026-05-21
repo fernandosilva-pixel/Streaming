@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 
 interface Props {
   streamId: string
+  streamTitle?: string
   userEmail: string
   userName: string
   amount: number
@@ -19,7 +20,7 @@ interface Props {
   onClose: () => void
 }
 
-export default function PaymentModal({ streamId, userEmail, userName, amount, paymentMethod, fixedQrUrl, couponEnabled, onPaid, onCouponSuccess, onClose }: Props) {
+export default function PaymentModal({ streamId, streamTitle, userEmail, userName, amount, paymentMethod, fixedQrUrl, couponEnabled, onPaid, onCouponSuccess, onClose }: Props) {
   const { t } = useLanguage()
   const [qrcode, setQrcode] = useState<string | null>(null)
   const [transactionId, setTransactionId] = useState<string | null>(null)
@@ -51,7 +52,7 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
         res = await fetch('/api/pix/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stream_id: streamId, user_phone: userEmail, user_name: userName, amount: Number(amount), referral_code: referralCode }),
+          body: JSON.stringify({ stream_id: streamId, stream_title: streamTitle, user_phone: userEmail, user_name: userName, amount: Number(amount), referral_code: referralCode }),
         })
         setIsPlanPayment(false)
       } else {
@@ -120,7 +121,7 @@ export default function PaymentModal({ streamId, userEmail, userName, amount, pa
       const res = await fetch('/api/pix/fixed-confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stream_id: streamId, user_phone: userEmail, referral_code: referralCode }),
+        body: JSON.stringify({ stream_id: streamId, stream_title: streamTitle, user_phone: userEmail, referral_code: referralCode }),
       })
       const data = await res.json()
       if (!res.ok || !data.ok) { setVerifyMsg('Erro ao registrar. Tente novamente.'); setVerifying(false); return }

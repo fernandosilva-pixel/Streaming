@@ -9,7 +9,7 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
-  const { stream_id, user_phone, user_name, amount, referral_code } = await req.json()
+  const { stream_id, stream_title, user_phone, user_name, amount, referral_code } = await req.json()
 
   const proto = req.headers.get('x-forwarded-proto') ?? (process.env.NODE_ENV === 'production' ? 'https' : 'http')
   const host = req.headers.get('host')
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
 
   const { error: insertError } = await supabase.from('payments').insert({
     stream_id,
+    stream_title: stream_title ?? null,
     user_phone,
     transaction_id: data.id,
     external_id: idempotencyKey,

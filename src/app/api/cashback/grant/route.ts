@@ -9,7 +9,7 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
-  const { user_email, stream_id } = await req.json()
+  const { user_email, stream_id, stream_title } = await req.json()
   if (!user_email || !stream_id) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
   const base = user_email.endsWith('@futzone.app') ? user_email.split('@')[0] : user_email
@@ -28,6 +28,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ eligible: false })
   }
 
-  await supabase.from('cashback_uses').insert({ user_email, stream_id })
+  await supabase.from('cashback_uses').insert({ user_email, stream_id, stream_title: stream_title ?? null })
   return NextResponse.json({ eligible: true, total_paid: totalPaid })
 }
