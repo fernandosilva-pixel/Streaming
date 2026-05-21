@@ -142,7 +142,7 @@ export default function AdminPage() {
   const [addingAdmin, setAddingAdmin] = useState(false)
 
   // Aba ativa
-  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte' | 'status' | 'usuarios' | 'assinaturas'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte' | 'usuarios' | 'assinaturas'>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Permissões do admin logado (null = superadmin, array = abas permitidas)
@@ -1377,7 +1377,6 @@ export default function AdminPage() {
             {
               group: 'SISTEMA',
               items: [
-                { id: 'status', label: 'Status', icon: <RefreshCw className="w-4 h-4" /> },
                 ...(allowedTabs === null ? [{ id: 'admins', label: 'Admins', icon: <UserCheck className="w-4 h-4" /> }] : []),
               ],
             },
@@ -2976,156 +2975,6 @@ export default function AdminPage() {
             <p className="text-gray-500 text-sm mt-0.5">Responda as mensagens dos usuários em tempo real</p>
           </div>
           <AdminSupport />
-        </div>
-      )}
-
-      {/* ── ABA: STATUS ── */}
-      {activeTab === 'status' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-white">Saúde das Integrações</h2>
-              <p className="text-gray-500 text-sm mt-0.5">Verifique se todos os serviços estão operacionais.</p>
-            </div>
-            <button
-              onClick={checkHealth}
-              disabled={healthLoading}
-              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm"
-            >
-              <RefreshCw className={`w-4 h-4 ${healthLoading ? 'animate-spin' : ''}`} />
-              {healthLoading ? 'Verificando...' : 'Verificar Tudo'}
-            </button>
-          </div>
-
-          {costAlert && (
-            <div className="bg-red-500/10 border border-red-500/40 rounded-2xl px-5 py-4 flex items-start gap-3">
-              <span className="text-red-400 text-xl">⚠️</span>
-              <div>
-                <p className="text-red-400 font-bold text-sm">Alerta de Integração</p>
-                <p className="text-red-300 text-sm mt-0.5">{costAlert}</p>
-              </div>
-              <button onClick={() => setCostAlert(null)} className="ml-auto text-red-500 hover:text-red-300 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {!healthData && !healthLoading && (
-            <div className="border border-dashed border-[#2A2A3A] rounded-2xl py-12 text-center">
-              <p className="text-gray-500 text-sm">Clique em "Verificar Tudo" para checar o status de cada integração.</p>
-            </div>
-          )}
-
-          {healthData && (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(healthData.services).map(([key, svc]) => {
-                  const statusColor = svc.ok ? 'green' : 'red'
-                  const label = svc.ok ? 'Operacional' : 'Com problema'
-                  const descriptions: Record<string, string> = {
-                    railway: 'Servidor principal da aplicação',
-                    bunny: 'CDN de entrega de vídeo (live.futzonejogos.site)',
-                    stream: 'Servidor de stream próprio (187.77.55.131)',
-                    supabase: 'Banco de dados e autenticação',
-                    asap: 'Gateway de pagamento PIX',
-                  }
-                  return (
-                    <div
-                      key={key}
-                      className={`bg-[#12121A] border rounded-2xl p-5 space-y-3 ${svc.ok ? 'border-green-500/20' : 'border-red-500/30'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-white font-bold text-sm">{svc.name}</span>
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${
-                          svc.ok ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${svc.ok ? 'bg-green-400' : 'bg-red-400'} ${svc.ok ? 'animate-pulse' : ''}`} />
-                          {label}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 text-xs">{descriptions[key] ?? ''}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-500 text-xs">Latência</span>
-                        <span className={`font-mono text-xs font-bold ${svc.latencyMs < 300 ? 'text-green-400' : svc.latencyMs < 1000 ? 'text-yellow-400' : 'text-red-400'}`}>
-                          {svc.latencyMs}ms
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              <p className="text-gray-600 text-xs text-center">
-                Última verificação: {new Date(healthData.checkedAt).toLocaleString('pt-BR')}
-              </p>
-            </>
-          )}
-
-          {/* Custo por live */}
-          <div className="bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-5 space-y-4">
-            <div>
-              <h3 className="text-white font-bold text-sm">Custo por Live vs Receita (R$ 2,90/pagante)</h3>
-              <p className="text-gray-500 text-xs mt-0.5">
-                90 min · ~1,5 Mbps · Bunny R$0,055/GB · quem não paga sai após 5 min de preview (~56 MB cada)
-              </p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-gray-500 border-b border-[#2A2A3A]">
-                    <th className="text-left pb-2 font-semibold">Pagantes / Total</th>
-                    <th className="text-right pb-2 font-semibold">Custo Bunny</th>
-                    <th className="text-right pb-2 font-semibold">ASAP (~R$0,30)</th>
-                    <th className="text-right pb-2 font-semibold">Receita</th>
-                    <th className="text-right pb-2 font-semibold text-green-400">Lucro</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { label: '50 / 100',  bunny: 'R$ 3',  asap: 'R$ 15',  rec: 'R$ 145',   lucro: 'R$ 127' },
-                    { label: '80 / 200',  bunny: 'R$ 5',  asap: 'R$ 24',  rec: 'R$ 232',   lucro: 'R$ 203' },
-                    { label: '150 / 300', bunny: 'R$ 10', asap: 'R$ 45',  rec: 'R$ 435',   lucro: 'R$ 380' },
-                    { label: '200 / 300', bunny: 'R$ 12', asap: 'R$ 60',  rec: 'R$ 580',   lucro: 'R$ 508' },
-                    { label: '300 / 500', bunny: 'R$ 18', asap: 'R$ 90',  rec: 'R$ 870',   lucro: 'R$ 762' },
-                    { label: '500 / 700', bunny: 'R$ 29', asap: 'R$ 150', rec: 'R$ 1.450', lucro: 'R$ 1.271' },
-                  ].map(row => (
-                    <tr key={row.label} className="border-b border-[#2A2A3A] last:border-0">
-                      <td className="py-2.5 text-white font-bold">{row.label}</td>
-                      <td className="py-2.5 text-right text-red-400">{row.bunny}</td>
-                      <td className="py-2.5 text-right text-red-400">{row.asap}</td>
-                      <td className="py-2.5 text-right text-gray-300">{row.rec}</td>
-                      <td className="py-2.5 text-right text-green-400 font-bold">{row.lucro}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-gray-600 text-xs">* Não-pagantes consomem apenas ~56 MB cada (5 min de preview) — custo desprezível. Lucro não inclui custo fixo do Railway (~R$50/mês).</p>
-          </div>
-
-          {/* Custos fixos mensais */}
-          <div className="bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-5 space-y-4">
-            <h3 className="text-white font-bold text-sm">Custos Fixos Mensais</h3>
-            <div className="space-y-2">
-              {[
-                { name: 'Railway', range: 'R$ 30 – R$ 80', note: 'App + hobby plan · foi R$280 antes do fix, agora muito menor' },
-                { name: 'Bunny CDN', range: 'R$ 0,055/GB', note: 'Variável · só pagantes consomem banda de verdade' },
-                { name: 'Supabase', range: 'R$ 0', note: 'Free tier · 500MB DB · suficiente para uso atual' },
-                { name: 'Servidor de Stream (VPS)', range: 'Fixo contratado', note: '187.77.55.131 · custo independente' },
-                { name: 'ASAP Bank (PIX)', range: '~R$0,30/tx', note: 'Cobrado só em pagamentos confirmados' },
-              ].map(row => (
-                <div key={row.name} className="flex items-center justify-between py-2 border-b border-[#2A2A3A] last:border-0">
-                  <div>
-                    <p className="text-white text-sm">{row.name}</p>
-                    <p className="text-gray-600 text-xs">{row.note}</p>
-                  </div>
-                  <span className="text-orange-400 font-bold text-sm shrink-0 ml-4">{row.range}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-gray-600 text-xs">
-              Dica: URLs de stream HTTPS carregam direto da Bunny CDN sem passar pelo Railway. Sempre use HTTPS no admin para manter o Railway barato.
-            </p>
-          </div>
         </div>
       )}
 
