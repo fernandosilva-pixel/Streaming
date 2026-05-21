@@ -2576,7 +2576,15 @@ export default function AdminPage() {
 
                   {/* Pagamentos */}
                   <div className="space-y-2">
-                    <h3 className="text-white font-semibold text-sm">QR Gerados & Pagamentos ({filteredPays.length})</h3>
+                    <h3 className="text-white font-semibold text-sm flex items-center gap-2 flex-wrap">
+                      QR Gerados & Pagamentos ({filteredPays.length})
+                      <span className="text-green-400 text-xs font-bold bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full">
+                        ✓ {filteredPays.filter(p => p.status === 'PAID').length} pagos
+                      </span>
+                      <span className="text-yellow-400 text-xs font-bold bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full">
+                        ⏳ {filteredPays.filter(p => p.status !== 'PAID').length} pendentes
+                      </span>
+                    </h3>
                     <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
