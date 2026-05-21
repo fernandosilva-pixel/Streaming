@@ -164,6 +164,7 @@ export default function AdminPage() {
   const [usuariosLoading, setUsuariosLoading] = useState(false)
   const [usuarios, setUsuarios] = useState<RegUser[]>([])
   const [usuariosSearch, setUsuariosSearch] = useState('')
+  const [usuariosLimit, setUsuariosLimit] = useState(25)
   const [editUserModal, setEditUserModal] = useState<RegUser | null>(null)
   const [editUserName, setEditUserName] = useState('')
   const [editUserEmail, setEditUserEmail] = useState('')
@@ -3400,7 +3401,7 @@ export default function AdminPage() {
             type="text"
             placeholder="Buscar por nome, e-mail ou telefone..."
             value={usuariosSearch}
-            onChange={e => setUsuariosSearch(e.target.value)}
+            onChange={e => { setUsuariosSearch(e.target.value); setUsuariosLimit(25) }}
             className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
           />
 
@@ -3417,10 +3418,11 @@ export default function AdminPage() {
                 <p className="text-gray-600 text-sm">{usuariosSearch ? 'Nenhum usuário encontrado' : 'Nenhum cadastro ainda'}</p>
               </div>
             )
+            const visible = filtered.slice(0, usuariosLimit)
             return (
               <div className="space-y-2">
                 <p className="text-gray-500 text-xs">{filtered.length} usuário{filtered.length !== 1 ? 's' : ''}</p>
-                {filtered.map(u => {
+                {visible.map(u => {
                   const display = u.email?.endsWith('@futzone.app')
                     ? u.email.replace('@futzone.app', '').replace(/^55/, '')
                     : (u.email ?? u.phone ?? '')
@@ -3448,6 +3450,14 @@ export default function AdminPage() {
                     </button>
                   )
                 })}
+                {filtered.length > usuariosLimit && (
+                  <button
+                    onClick={() => setUsuariosLimit(l => l + 25)}
+                    className="w-full py-2.5 text-sm text-orange-400 hover:text-orange-300 font-semibold border border-dashed border-[#2A2A3A] hover:border-orange-500/40 rounded-xl transition-all"
+                  >
+                    Mostrar mais ({filtered.length - usuariosLimit} restantes)
+                  </button>
+                )}
               </div>
             )
           })()}
