@@ -138,12 +138,14 @@ export default function JogoPage({ params }: Props) {
     Promise.all([
       supabase.from('payments').select('id').eq('stream_id', stream.id).eq('user_phone', user.email).eq('status', 'PAID').maybeSingle(),
       (() => {
-        // Try all known phone forms: exact email, without @domain, with/without 55 prefix
+        // Try all known phone forms: exact email, digits only, with/without 55, @futzone.app
         const base = user.email.endsWith('@futzone.app') ? user.email.split('@')[0] : user.email
-        const variants = new Set([user.email, base])
-        if (!base.includes('@')) {
-          variants.add(base.startsWith('55') ? base.slice(2) : '55' + base)
-        }
+        const withCountry = base.startsWith('55') ? base : '55' + base
+        const withoutCountry = base.startsWith('55') ? base.slice(2) : base
+        const variants = new Set([
+          user.email, base, withCountry, withoutCountry,
+          `${withCountry}@futzone.app`, `${withoutCountry}@futzone.app`,
+        ])
         return supabase.from('free_access').select('id').in('user_phone', [...variants]).maybeSingle()
       })(),
       supabase.from('coupon_uses').select('id').eq('stream_id', stream.id).eq('user_phone', user.email).maybeSingle(),

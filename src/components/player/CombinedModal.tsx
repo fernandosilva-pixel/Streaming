@@ -130,10 +130,16 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
           const { data: e3 } = await supabase.from('registrations').select('name, email').eq('phone', normalizedEmail).eq('password', password).maybeSingle()
           found = e3
         }
-        // 4. phone@futzone.app
+        // 4. phone@futzone.app (with 55 prefix — same as AuthModal)
         if (!found && isPhone) {
-          const { data: e4 } = await supabase.from('registrations').select('name, email').eq('email', `${normalizedEmail}@futzone.app`).eq('password', password).maybeSingle()
+          const withCountry = normalizedEmail.startsWith('55') ? normalizedEmail : '55' + normalizedEmail
+          const { data: e4 } = await supabase.from('registrations').select('name, email').eq('email', `${withCountry}@futzone.app`).eq('password', password).maybeSingle()
           found = e4
+        }
+        // 5. phone@futzone.app without 55 (fallback)
+        if (!found && isPhone) {
+          const { data: e5 } = await supabase.from('registrations').select('name, email').eq('email', `${normalizedEmail}@futzone.app`).eq('password', password).maybeSingle()
+          found = e5
         }
         if (!found) { setFormError(t('wrongCredentials')); setFormLoading(false); return }
         userObj = { name: found.name, email: found.email }
@@ -144,7 +150,15 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
       // Check free access (try both phone forms)
       const freePhones = [userObj.email]
       if (!userObj.email.includes('@')) {
-        freePhones.push(userObj.email.startsWith('55') ? userObj.email.slice(2) : '55' + userObj.email)
+        const digits = userObj.email
+        const withCountry = digits.startsWith('55') ? digits : '55' + digits
+        const withoutCountry = digits.startsWith('55') ? digits.slice(2) : digits
+        freePhones.push(withCountry, withoutCountry, `${withCountry}@futzone.app`, `${withoutCountry}@futzone.app`)
+      } else if (userObj.email.endsWith('@futzone.app')) {
+        const digits = userObj.email.split('@')[0]
+        const withCountry = digits.startsWith('55') ? digits : '55' + digits
+        const withoutCountry = digits.startsWith('55') ? digits.slice(2) : digits
+        freePhones.push(digits, withCountry, withoutCountry)
       }
       const { data: freeAccess } = await supabase.from('free_access').select('id').in('user_phone', freePhones).maybeSingle()
       if (freeAccess) {
