@@ -20,7 +20,7 @@ function formatarDataRelativa(iso: string): string {
 function Skeleton() {
   return (
     <div
-      className="lg:col-span-1 overflow-hidden"
+      className="overflow-hidden"
       style={{ transform: 'skewX(-3deg)', border: '1px solid #2A2A3A', borderRadius: '16px', minHeight: 280 }}
     >
       <div
@@ -80,7 +80,7 @@ export default function NewsCarousel({ fallback }: NewsCarouselProps) {
 
   return (
     <div
-      className="lg:col-span-1 overflow-hidden group"
+      className="overflow-hidden group"
       style={{ transform: 'skewX(-3deg)', border: '1px solid #2A2A3A', borderRadius: '16px', minHeight: 280 }}
       role="region"
       aria-roledescription="carousel"
@@ -121,7 +121,7 @@ export default function NewsCarousel({ fallback }: NewsCarouselProps) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={proxima.imagem} alt="" aria-hidden className="hidden" />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-black/10" />
               <div className="absolute bottom-0 left-0 right-0 p-4 pb-8">
                 <div aria-live={i === indiceAtual ? 'polite' : undefined}>
                   <h3 className="text-white font-bold text-base leading-snug line-clamp-2">{n.titulo}</h3>

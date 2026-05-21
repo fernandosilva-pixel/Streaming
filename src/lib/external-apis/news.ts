@@ -21,6 +21,23 @@ type GNewsResponse = {
   articles: GNewsArticle[]
 }
 
+const BLOCKED_PATTERNS = [
+  'maps.google.com',
+  'maps.googleapis.com',
+  'googleusercontent.com/maps',
+  'staticmap',
+  '/screenshot_',
+]
+
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
+
+function hasValidImageUrl(url: string): boolean {
+  const path = url.split('?')[0].toLowerCase()
+  const lastSegment = path.split('/').pop() ?? ''
+  if (!lastSegment.includes('.')) return true
+  return ALLOWED_EXTENSIONS.some(ext => path.endsWith(ext))
+}
+
 export async function fetchNoticiasFutebol(): Promise<Noticia[]> {
   const apiKey = process.env.GNEWS_API_KEY
   if (!apiKey) {
@@ -35,7 +52,7 @@ export async function fetchNoticiasFutebol(): Promise<Noticia[]> {
     const params = new URLSearchParams({
       q: 'futebol',
       lang: 'pt',
-      max: '8',
+      max: '10',
       apikey: apiKey,
     })
 
@@ -55,8 +72,14 @@ export async function fetchNoticiasFutebol(): Promise<Noticia[]> {
 
     const data: GNewsResponse = await res.json()
 
-    return data.articles
+    const noticiasComImagem = data.articles
       .filter(a => !!a.image)
+      .filter(a => !BLOCKED_PATTERNS.some(p => a.image!.toLowerCase().includes(p)))
+      .filter(a => hasValidImageUrl(a.image!))
+
+    console.log(`[news] ${data.articles.length} recebidas, ${noticiasComImagem.length} após filtros`)
+
+    return noticiasComImagem
       .slice(0, 5)
       .map(a => ({
         id: a.url,

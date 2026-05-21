@@ -36,29 +36,31 @@ export default function NewsSection() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Card principal (coluna esquerda, maior) — carousel de notícias com fallback para o banner */}
-        <NewsCarousel fallback={
-          <div
-            className="lg:col-span-1 overflow-hidden"
-            style={{ transform: 'skewX(-3deg)', border: '1px solid #2A2A3A', borderRadius: '16px', minHeight: 280 }}
-          >
-            <CtaWrapper
-              card={featured}
-              className="block h-full"
-              style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' } as React.CSSProperties}
+        <div className="lg:col-span-1">
+          <NewsCarousel fallback={
+            <div
+              className="overflow-hidden"
+              style={{ transform: 'skewX(-3deg)', border: '1px solid #2A2A3A', borderRadius: '16px', minHeight: 280 }}
             >
-              {featured?.image_url ? (
-                <picture className="block w-full h-full">
-                  {featured.mobile_image_url && <source media="(max-width: 767px)" srcSet={featured.mobile_image_url} />}
-                  <img src={featured.image_url} alt="" className="w-full h-full object-cover" style={{ minHeight: 280 }} />
-                </picture>
-              ) : (
-                <div className="h-full min-h-[280px] bg-gradient-to-br from-orange-500/10 via-[#1A1A26] to-[#12121A] flex items-center justify-center">
-                  <p className="text-gray-700 font-bold tracking-widest text-sm">EM BREVE</p>
-                </div>
-              )}
-            </CtaWrapper>
-          </div>
-        } />
+              <CtaWrapper
+                card={featured}
+                className="block h-full"
+                style={{ transform: 'skewX(3deg)', width: '107%', marginLeft: '-3.5%' } as React.CSSProperties}
+              >
+                {featured?.image_url ? (
+                  <picture className="block w-full h-full">
+                    {featured.mobile_image_url && <source media="(max-width: 767px)" srcSet={featured.mobile_image_url} />}
+                    <img src={featured.image_url} alt="" className="w-full h-full object-cover" style={{ minHeight: 280 }} />
+                  </picture>
+                ) : (
+                  <div className="h-full min-h-[280px] bg-gradient-to-br from-orange-500/10 via-[#1A1A26] to-[#12121A] flex items-center justify-center">
+                    <p className="text-gray-700 font-bold tracking-widest text-sm">EM BREVE</p>
+                  </div>
+                )}
+              </CtaWrapper>
+            </div>
+          } />
+        </div>
 
         {/* 4 cards horizontais */}
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
