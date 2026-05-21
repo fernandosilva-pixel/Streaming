@@ -2761,10 +2761,20 @@ export default function AdminPage() {
                   {/* Cohorts */}
                   {(() => {
                     const paidPays = dashPayments.filter(p => p.status === 'PAID')
+
+                    // Normaliza phone para dígitos puros (sem 55 inicial) para agrupar variações do mesmo número
+                    function normalizePhone(raw: string): string {
+                      if (!raw) return raw
+                      if (raw.includes('@') && !raw.endsWith('@futzone.app')) return raw // email real: não normaliza
+                      const digits = raw.replace('@futzone.app', '').replace(/\D/g, '')
+                      return digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits
+                    }
+
                     const byPhone: Record<string, DashPayment[]> = {}
                     for (const p of paidPays) {
-                      if (!byPhone[p.user_phone]) byPhone[p.user_phone] = []
-                      byPhone[p.user_phone].push(p)
+                      const key = normalizePhone(p.user_phone)
+                      if (!byPhone[key]) byPhone[key] = []
+                      byPhone[key].push(p)
                     }
                     const uniquePayers = Object.keys(byPhone).length
                     const recurring = Object.entries(byPhone).filter(([, pays]) => pays.length >= 2)
@@ -2803,7 +2813,10 @@ export default function AdminPage() {
                                 </thead>
                                 <tbody>
                                   {recurring.slice(0, 20).map(([phone, pays]) => {
-                                    const reg = dashRegistrations.find(r => r.phone === phone || r.email === phone || r.email?.startsWith(phone.replace(/\D/g,'').replace(/^55/,'')) )
+                                    const reg = dashRegistrations.find(r => {
+                                      const rNorm = normalizePhone(r.phone ?? r.email ?? '')
+                                      return rNorm === phone || r.email === phone || normalizePhone(r.email ?? '') === phone
+                                    })
                                     const liveTitles = [...new Set(pays.map(p => streams.find(s => s.id === p.stream_id)?.title ?? 'Live').filter(Boolean))]
                                     const total = pays.reduce((s, p) => s + (p.amount ?? 0), 0)
                                     const lastDate = pays.map(p => p.created_at ?? '').sort().at(-1)
