@@ -168,6 +168,11 @@ export default function AdminPage() {
   const [usuariosSearch, setUsuariosSearch] = useState('')
   const [usuariosLimit, setUsuariosLimit] = useState(25)
   const [editUserModal, setEditUserModal] = useState<RegUser | null>(null)
+
+  // Usuários pagantes
+  type PayingUserSummary = { key: string; name: string | null; displayId: string; totalSpent: number; count: number; lastDate: string; entries: { amount: number; label: string; date: string }[] }
+  const [payingUserModal, setPayingUserModal] = useState<PayingUserSummary | null>(null)
+  const [payingUsersLimit, setPayingUsersLimit] = useState(25)
   const [editUserName, setEditUserName] = useState('')
   const [editUserEmail, setEditUserEmail] = useState('')
   const [editUserPassword, setEditUserPassword] = useState('')
@@ -220,6 +225,14 @@ export default function AdminPage() {
   }
 
   useEffect(() => { if (activeTab === 'usuarios') loadUsuarios() }, [activeTab])
+
+  // Normaliza telefone/email para chave de agrupamento
+  function normalizeId(raw: string): string {
+    if (!raw) return raw
+    if (raw.includes('@') && !raw.endsWith('@futzone.app')) return raw.toLowerCase()
+    const digits = raw.replace('@futzone.app', '').replace(/\D/g, '')
+    return digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits
+  }
 
   // Agenda (schedule_notification)
   type ScheduleGame = { id: string; team1: string; team2: string; logo1: string; logo2: string; league: string; league_logo: string; datetime: string }
@@ -2764,13 +2777,6 @@ export default function AdminPage() {
                   {/* Cohorts */}
                   {(() => {
                     // Normaliza identificador para agrupar variações do mesmo usuário
-                    function normalizeId(raw: string): string {
-                      if (!raw) return raw
-                      if (raw.includes('@') && !raw.endsWith('@futzone.app')) return raw.toLowerCase() // email real
-                      const digits = raw.replace('@futzone.app', '').replace(/\D/g, '')
-                      return digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits
-                    }
-
                     // Linha unificada: { key, amount, label, date }
                     type CohortEntry = { amount: number; label: string; date: string }
                     const byUser: Record<string, CohortEntry[]> = {}
@@ -2974,7 +2980,7 @@ export default function AdminPage() {
             <h2 className="text-lg font-bold text-white">Suporte</h2>
             <p className="text-gray-500 text-sm mt-0.5">Responda as mensagens dos usuários em tempo real</p>
           </div>
-          <AdminSupport />
+          <AdminSupport onTicketClosed={pollSupportCount} />
         </div>
       )}
 
@@ -3507,6 +3513,93 @@ export default function AdminPage() {
             )
           })()}
 
+          {/* Usuários Pagantes */}
+          {(() => {
+            const byUser: Record<string, { amount: number; label: string; date: string }[]> = {}
+            for (const p of dashPayments.filter(p => p.status === 'PAID')) {
+              const key = normalizeId(p.user_phone)
+              if (!byUser[key]) byUser[key] = []
+              byUser[key].push({ amount: p.amount ?? 0, label: streams.find(s => s.id === p.stream_id)?.title ?? 'Jogo avulso', date: p.created_at ?? '' })
+            }
+            for (const p of dashPlanPayments.filter(p => p.status === 'PAID')) {
+              const key = normalizeId(p.user_email)
+              if (!byUser[key]) byUser[key] = []
+              byUser[key].push({ amount: p.amount ?? 0, label: p.plan_type === 'semanal' ? 'Plano Semanal' : 'Plano Mensal', date: p.created_at ?? '' })
+            }
+            const allPayers: PayingUserSummary[] = Object.entries(byUser).map(([key, entries]) => {
+              const reg = dashRegistrations.find(r => normalizeId(r.phone ?? '') === key || normalizeId(r.email ?? '') === key)
+              const displayId = key.includes('@') ? key : `📱 ${key}`
+              return {
+                key,
+                name: reg?.name ?? null,
+                displayId,
+                totalSpent: entries.reduce((s, e) => s + e.amount, 0),
+                count: entries.length,
+                lastDate: entries.map(e => e.date).filter(Boolean).sort().at(-1) ?? '',
+                entries: entries.sort((a, b) => b.date.localeCompare(a.date)),
+              }
+            })
+            allPayers.sort((a, b) => b.totalSpent - a.totalSpent)
+            const visible = allPayers.slice(0, payingUsersLimit)
+            return (
+              <div className="space-y-3 pt-4 border-t border-[#2A2A3A]">
+                <div>
+                  <p className="text-white font-bold text-sm">Usuários Pagantes</p>
+                  <p className="text-gray-500 text-xs mt-0.5">Avulso + planos. Clique para ver histórico de pagamentos.</p>
+                </div>
+                {dashLoading ? (
+                  <p className="text-gray-500 text-sm">Carregando...</p>
+                ) : allPayers.length === 0 ? (
+                  <div className="border border-dashed border-[#2A2A3A] rounded-xl py-8 text-center">
+                    <p className="text-gray-600 text-sm">Nenhum pagamento registrado ainda</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-gray-500 text-xs">{allPayers.length} pagador{allPayers.length !== 1 ? 'es' : ''}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {visible.map(u => (
+                        <button
+                          key={u.key}
+                          onClick={() => setPayingUserModal(u)}
+                          className="flex flex-col gap-2 bg-[#12121A] border border-[#2A2A3A] hover:border-orange-500/50 rounded-xl p-4 transition-all text-left group"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-white text-sm font-semibold truncate">{u.name ?? '—'}</p>
+                              <p className="text-gray-500 text-xs font-mono truncate">{u.displayId}</p>
+                            </div>
+                            <span className="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                              {u.count}×
+                            </span>
+                          </div>
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <p className="text-gray-500 text-[10px] uppercase tracking-wide">Total gasto</p>
+                              <p className="text-green-400 font-black text-lg leading-tight">
+                                R$ {u.totalSpent.toFixed(2).replace('.', ',')}
+                              </p>
+                            </div>
+                            <p className="text-gray-600 text-[10px]">
+                              {u.lastDate ? new Date(u.lastDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    {allPayers.length > payingUsersLimit && (
+                      <button
+                        onClick={() => setPayingUsersLimit(l => l + 25)}
+                        className="w-full py-2.5 text-sm text-orange-400 hover:text-orange-300 font-semibold border border-dashed border-[#2A2A3A] hover:border-orange-500/40 rounded-xl transition-all"
+                      >
+                        Mostrar mais ({allPayers.length - payingUsersLimit} restantes)
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )
+          })()}
+
           {/* Cadastros recentes */}
           {dashRegistrations.length > 0 && (
             <div className="space-y-3 pt-2 border-t border-[#2A2A3A]">
@@ -3540,6 +3633,45 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal histórico de pagamentos — usuário pagante */}
+      {payingUserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setPayingUserModal(null)} />
+          <div className="relative w-full max-w-md bg-[#12121A] border border-[#2A2A3A] rounded-2xl shadow-2xl flex flex-col max-h-[80vh]">
+            {/* Header */}
+            <div className="p-5 border-b border-[#2A2A3A] flex items-start justify-between gap-3 shrink-0">
+              <div className="min-w-0 flex-1">
+                <p className="text-white font-bold text-base truncate">{payingUserModal.name ?? '—'}</p>
+                <p className="text-gray-500 text-xs font-mono truncate">{payingUserModal.displayId}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="text-right">
+                  <p className="text-green-400 font-black text-lg leading-tight">R$ {payingUserModal.totalSpent.toFixed(2).replace('.', ',')}</p>
+                  <p className="text-gray-600 text-[10px]">{payingUserModal.count} pagamento{payingUserModal.count !== 1 ? 's' : ''}</p>
+                </div>
+                <button onClick={() => setPayingUserModal(null)} className="text-gray-600 hover:text-white transition-colors ml-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            {/* Lista de pagamentos */}
+            <div className="overflow-y-auto flex-1 p-4 space-y-2">
+              {payingUserModal.entries.map((e, i) => (
+                <div key={i} className="flex items-center justify-between bg-[#0E0E18] border border-[#2A2A3A] rounded-xl px-4 py-3 gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white text-sm font-medium truncate">{e.label}</p>
+                    <p className="text-gray-500 text-xs">
+                      {e.date ? new Date(e.date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </p>
+                  </div>
+                  <p className="text-green-400 font-black text-sm shrink-0">R$ {e.amount.toFixed(2).replace('.', ',')}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

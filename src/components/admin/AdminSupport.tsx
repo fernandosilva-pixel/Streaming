@@ -47,7 +47,7 @@ function seedDemoData() {
   saveAllMsgs(demo)
 }
 
-export default function AdminSupport() {
+export default function AdminSupport({ onTicketClosed }: { onTicketClosed?: () => void }) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [statuses, setStatuses] = useState<Record<string, TicketStatus>>({})
   const [filter, setFilter] = useState<'open' | 'closed' | 'all'>('open')
@@ -256,6 +256,7 @@ export default function AdminSupport() {
       setConversations(prev => prev.map(c => c.session_id === selected ? { ...c, status: 'closed' } : c))
       await supabase.from('support_messages').insert(autoMsg)
       await supabase.from('support_statuses').upsert({ session_id: selected, status: 'closed' })
+      onTicketClosed?.()
     }
     setClosing(false)
   }
