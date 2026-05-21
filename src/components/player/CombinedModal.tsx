@@ -112,19 +112,28 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
         userObj = { name: name.trim(), email: normalizedEmail }
       } else {
         const isPhone = !normalizedEmail.includes('@')
+        // For phones, generate variant with/without country code 55
+        const altPhone = isPhone
+          ? (normalizedEmail.startsWith('55') ? normalizedEmail.slice(2) : '55' + normalizedEmail)
+          : null
         let found: { name: string; email: string } | null = null
-        // Always try email column first (covers real emails AND phones stored as email)
-        const { data: byEmail } = await supabase.from('registrations').select('name, email').eq('email', normalizedEmail).eq('password', password).maybeSingle()
-        found = byEmail
-        if (!found && isPhone) {
-          // Try phone column
-          const { data: byPhone } = await supabase.from('registrations').select('name, email').eq('phone', normalizedEmail).eq('password', password).maybeSingle()
-          found = byPhone
+        // 1. Exact match on email column
+        const { data: e1 } = await supabase.from('registrations').select('name, email').eq('email', normalizedEmail).eq('password', password).maybeSingle()
+        found = e1
+        // 2. Alt phone form on email column (with/without 55)
+        if (!found && altPhone) {
+          const { data: e2 } = await supabase.from('registrations').select('name, email').eq('email', altPhone).eq('password', password).maybeSingle()
+          found = e2
         }
+        // 3. Phone column
         if (!found && isPhone) {
-          // Try phone@futzone.app format
-          const { data: byPhoneEmail } = await supabase.from('registrations').select('name, email').eq('email', `${normalizedEmail}@futzone.app`).eq('password', password).maybeSingle()
-          found = byPhoneEmail
+          const { data: e3 } = await supabase.from('registrations').select('name, email').eq('phone', normalizedEmail).eq('password', password).maybeSingle()
+          found = e3
+        }
+        // 4. phone@futzone.app
+        if (!found && isPhone) {
+          const { data: e4 } = await supabase.from('registrations').select('name, email').eq('email', `${normalizedEmail}@futzone.app`).eq('password', password).maybeSingle()
+          found = e4
         }
         if (!found) { setFormError(t('wrongCredentials')); setFormLoading(false); return }
         userObj = { name: found.name, email: found.email }
@@ -132,8 +141,12 @@ export default function CombinedModal({ streamId, amount, paymentMethod, fixedQr
 
       setCurrentUser(userObj)
 
-      // Check free access
-      const { data: freeAccess } = await supabase.from('free_access').select('id').eq('user_phone', userObj.email).maybeSingle()
+      // Check free access (try both phone forms)
+      const freePhones = [userObj.email]
+      if (!userObj.email.includes('@')) {
+        freePhones.push(userObj.email.startsWith('55') ? userObj.email.slice(2) : '55' + userObj.email)
+      }
+      const { data: freeAccess } = await supabase.from('free_access').select('id').in('user_phone', freePhones).maybeSingle()
       if (freeAccess) {
         setFormLoading(false)
         onSuccess(userObj)
