@@ -141,7 +141,7 @@ export default function AdminPage() {
   const [addingAdmin, setAddingAdmin] = useState(false)
 
   // Aba ativa
-  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte' | 'status'>('visual')
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte' | 'status' | 'usuarios'>('visual')
 
   // Permissões do admin logado (null = superadmin, array = abas permitidas)
   const [allowedTabs, setAllowedTabs] = useState<string[] | null>(null)
@@ -158,6 +158,65 @@ export default function AdminPage() {
   const [subAdminError, setSubAdminError] = useState('')
   const [editingSubEmail, setEditingSubEmail] = useState<string | null>(null)
   const [editingSubTabs, setEditingSubTabs] = useState<string[]>([])
+
+  // Usuários
+  type RegUser = { id: string; name: string; email: string; phone: string; plan?: string | null; plan_expires_at?: string | null; created_at?: string }
+  const [usuariosLoading, setUsuariosLoading] = useState(false)
+  const [usuarios, setUsuarios] = useState<RegUser[]>([])
+  const [usuariosSearch, setUsuariosSearch] = useState('')
+  const [editUserModal, setEditUserModal] = useState<RegUser | null>(null)
+  const [editUserName, setEditUserName] = useState('')
+  const [editUserEmail, setEditUserEmail] = useState('')
+  const [editUserPassword, setEditUserPassword] = useState('')
+  const [editUserSaving, setEditUserSaving] = useState(false)
+  const [editUserError, setEditUserError] = useState('')
+  const [editUserSuccess, setEditUserSuccess] = useState(false)
+
+  async function loadUsuarios() {
+    setUsuariosLoading(true)
+    const { data } = await supabase.from('registrations').select('id, name, email, phone, plan, plan_expires_at, created_at').order('created_at', { ascending: false }).limit(1000)
+    setUsuarios((data ?? []) as RegUser[])
+    setUsuariosLoading(false)
+  }
+
+  function openEditUser(u: RegUser) {
+    setEditUserModal(u)
+    setEditUserName(u.name ?? '')
+    const display = u.email?.endsWith('@futzone.app')
+      ? u.email.replace('@futzone.app', '').replace(/^55/, '')
+      : (u.email ?? '')
+    setEditUserEmail(display)
+    setEditUserPassword('')
+    setEditUserError('')
+    setEditUserSuccess(false)
+  }
+
+  async function saveEditUser() {
+    if (!editUserModal) return
+    setEditUserSaving(true)
+    setEditUserError('')
+    setEditUserSuccess(false)
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/admin/update-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ id: editUserModal.id, name: editUserName, email: editUserEmail, password: editUserPassword || undefined }),
+    })
+    const data = await res.json()
+    if (!res.ok) { setEditUserError(data.error ?? 'Erro ao salvar'); setEditUserSaving(false); return }
+    setEditUserSuccess(true)
+    setUsuarios(prev => prev.map(u => {
+      if (u.id !== editUserModal.id) return u
+      const digits = editUserEmail.replace(/\D/g, '')
+      const isPhone = /^\d{8,}$/.test(editUserEmail.trim())
+      const newEmail = isPhone ? `55${digits.startsWith('55') ? digits.slice(2) : digits}@futzone.app` : editUserEmail.trim()
+      return { ...u, name: editUserName || u.name, email: newEmail }
+    }))
+    setEditUserSaving(false)
+    setTimeout(() => setEditUserModal(null), 1200)
+  }
+
+  useEffect(() => { if (activeTab === 'usuarios') loadUsuarios() }, [activeTab])
 
   // Agenda (schedule_notification)
   type ScheduleGame = { id: string; team1: string; team2: string; logo1: string; logo2: string; league: string; league_logo: string; datetime: string }
@@ -1263,6 +1322,7 @@ export default function AdminPage() {
           { id: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
           { id: 'suporte', label: 'Suporte', icon: <Headphones className="w-4 h-4" /> },
           { id: 'status', label: 'Status', icon: <RefreshCw className="w-4 h-4" /> },
+          { id: 'usuarios', label: 'Usuários', icon: <Users className="w-4 h-4" /> },
           ...(allowedTabs === null ? [{ id: 'admins', label: 'Admins', icon: <UserCheck className="w-4 h-4" /> }] : []),
         ] as { id: string; label: string; icon: React.ReactNode }[])
           .filter(tab => allowedTabs === null || allowedTabs.includes(tab.id))
@@ -3319,6 +3379,135 @@ export default function AdminPage() {
 
             </>
           )}
+        </div>
+      )}
+
+      {/* ── ABA: USUÁRIOS ── */}
+      {activeTab === 'usuarios' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white">Usuários</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Lista de todos os cadastrados. Clique para editar senha, e-mail ou telefone.</p>
+            </div>
+            <button onClick={loadUsuarios} disabled={usuariosLoading} className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${usuariosLoading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </button>
+          </div>
+
+          <input
+            type="text"
+            placeholder="Buscar por nome, e-mail ou telefone..."
+            value={usuariosSearch}
+            onChange={e => setUsuariosSearch(e.target.value)}
+            className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500"
+          />
+
+          {usuariosLoading ? (
+            <p className="text-gray-500 text-sm">Carregando...</p>
+          ) : (() => {
+            const q = usuariosSearch.toLowerCase()
+            const filtered = usuarios.filter(u => {
+              const display = u.email?.endsWith('@futzone.app') ? u.email.replace('@futzone.app', '') : (u.email ?? '')
+              return (u.name ?? '').toLowerCase().includes(q) || display.toLowerCase().includes(q) || (u.phone ?? '').includes(q)
+            })
+            if (filtered.length === 0) return (
+              <div className="border border-dashed border-[#2A2A3A] rounded-xl py-8 text-center">
+                <p className="text-gray-600 text-sm">{usuariosSearch ? 'Nenhum usuário encontrado' : 'Nenhum cadastro ainda'}</p>
+              </div>
+            )
+            return (
+              <div className="space-y-2">
+                <p className="text-gray-500 text-xs">{filtered.length} usuário{filtered.length !== 1 ? 's' : ''}</p>
+                {filtered.map(u => {
+                  const display = u.email?.endsWith('@futzone.app')
+                    ? u.email.replace('@futzone.app', '').replace(/^55/, '')
+                    : (u.email ?? u.phone ?? '')
+                  const isPhone = u.email?.endsWith('@futzone.app')
+                  const now = new Date()
+                  const hasPlan = u.plan && u.plan !== 'avulso' && u.plan_expires_at && new Date(u.plan_expires_at) > now
+                  return (
+                    <button
+                      key={u.id}
+                      onClick={() => openEditUser(u)}
+                      className="w-full flex items-center justify-between bg-[#12121A] border border-[#2A2A3A] hover:border-orange-500/40 rounded-xl px-4 py-3 transition-all text-left"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-semibold truncate">{u.name}</p>
+                        <p className="text-gray-500 text-xs font-mono truncate">{isPhone ? `📱 ${display}` : `✉️ ${display}`}</p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-3 shrink-0">
+                        {hasPlan && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full text-white" style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)' }}>
+                            {u.plan === 'semanal' ? 'SEMANAL' : 'MENSAL'}
+                          </span>
+                        )}
+                        <Pencil className="w-3.5 h-3.5 text-gray-600" />
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )
+          })()}
+        </div>
+      )}
+
+      {/* Modal editar usuário */}
+      {editUserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setEditUserModal(null)} />
+          <div className="relative w-full max-w-sm bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-6 space-y-4 shadow-2xl">
+            <button onClick={() => setEditUserModal(null)} className="absolute top-4 right-4 text-gray-600 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+            <div>
+              <h3 className="text-white font-bold text-base">Editar usuário</h3>
+              <p className="text-gray-500 text-xs mt-0.5 truncate">{editUserModal.name}</p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-gray-400 text-xs mb-1 block">Nome</label>
+                <input
+                  type="text"
+                  value={editUserName}
+                  onChange={e => setEditUserName(e.target.value)}
+                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
+                />
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs mb-1 block">E-mail ou telefone</label>
+                <input
+                  type="text"
+                  value={editUserEmail}
+                  onChange={e => setEditUserEmail(e.target.value)}
+                  placeholder="email@exemplo.com ou 11999998888"
+                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
+                />
+                <p className="text-gray-600 text-[10px] mt-1">Telefone: só os números, com ou sem 55. E-mail: formato completo.</p>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs mb-1 block">Nova senha <span className="text-gray-600">(deixe em branco para não alterar)</span></label>
+                <input
+                  type="text"
+                  value={editUserPassword}
+                  onChange={e => setEditUserPassword(e.target.value)}
+                  placeholder="Nova senha"
+                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
+            {editUserError && <p className="text-red-500 text-xs text-center">{editUserError}</p>}
+            {editUserSuccess && <p className="text-green-500 text-xs text-center">Salvo com sucesso!</p>}
+            <button
+              onClick={saveEditUser}
+              disabled={editUserSaving}
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold rounded-xl py-3 text-sm transition-all"
+            >
+              {editUserSaving ? 'Salvando...' : 'Salvar alterações'}
+            </button>
+          </div>
         </div>
       )}
 
