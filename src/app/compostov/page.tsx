@@ -256,7 +256,7 @@ export default function AdminPage() {
   useEffect(() => { if (activeTab === 'agenda') loadSchedule() }, [activeTab])
 
   // Dashboard
-  type DashRegistration = { id?: string; name: string; phone: string; created_at?: string; whatsapp_added_at?: string | null }
+  type DashRegistration = { id?: string; name: string; phone: string; email?: string; plan?: string | null; plan_expires_at?: string | null; created_at?: string; whatsapp_added_at?: string | null }
   type DashPayment = { id: string; stream_id: string; user_phone: string; amount?: number; status: string; referral_code?: string | null; created_at?: string }
   const [dashLoading, setDashLoading] = useState(false)
   const [dashRegistrations, setDashRegistrations] = useState<DashRegistration[]>([])
@@ -2573,6 +2573,85 @@ export default function AdminPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Assinaturas */}
+                  {(() => {
+                    const now = new Date()
+                    const subs = dashRegistrations
+                      .filter(r => (r.plan === 'semanal' || r.plan === 'mensal') && r.plan_expires_at)
+                      .map(r => {
+                        const expiresAt = new Date(r.plan_expires_at!)
+                        const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / 86400000)
+                        return { ...r, expiresAt, daysLeft, active: daysLeft > 0 }
+                      })
+                      .sort((a, b) => b.daysLeft - a.daysLeft)
+                    const activeCount = subs.filter(s => s.active).length
+                    const expiredCount = subs.length - activeCount
+                    return (
+                      <div className="space-y-2">
+                        <h3 className="text-white font-semibold text-sm flex items-center gap-2 flex-wrap">
+                          Assinaturas ({subs.length})
+                          <span className="text-orange-400 text-xs font-bold bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
+                            ✓ {activeCount} ativas
+                          </span>
+                          {expiredCount > 0 && (
+                            <span className="text-gray-500 text-xs font-bold bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
+                              {expiredCount} vencidas
+                            </span>
+                          )}
+                        </h3>
+                        <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-[#2A2A3A]">
+                                  <th className="text-left text-gray-500 font-medium px-4 py-2.5">Usuário</th>
+                                  <th className="text-left text-gray-500 font-medium px-4 py-2.5">Plano</th>
+                                  <th className="text-left text-gray-500 font-medium px-4 py-2.5">Status</th>
+                                  <th className="text-left text-gray-500 font-medium px-4 py-2.5">Dias restantes</th>
+                                  <th className="text-left text-gray-500 font-medium px-4 py-2.5">Vence em</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {subs.length === 0 ? (
+                                  <tr><td colSpan={5} className="text-center text-gray-600 py-6 px-4">Nenhuma assinatura ainda</td></tr>
+                                ) : subs.map((s, i) => (
+                                  <tr key={s.id ?? i} className="border-b border-[#1A1A26] last:border-0">
+                                    <td className="px-4 py-2.5">
+                                      <p className="text-gray-200 font-medium">{s.name}</p>
+                                      <p className="text-gray-500 text-xs">{s.email}</p>
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.plan === 'mensal' ? 'bg-orange-500/10 text-orange-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                                        {s.plan === 'mensal' ? 'Mensal' : 'Semanal'}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.active ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                        {s.active ? 'Ativo' : 'Vencido'}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      {s.active ? (
+                                        <span className={`font-bold ${s.daysLeft <= 2 ? 'text-red-400' : s.daysLeft <= 5 ? 'text-yellow-400' : 'text-white'}`}>
+                                          {s.daysLeft} dia{s.daysLeft !== 1 ? 's' : ''}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-600">—</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-2.5 text-gray-500 text-xs">
+                                      {s.expiresAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   {/* Pagamentos */}
                   <div className="space-y-2">
