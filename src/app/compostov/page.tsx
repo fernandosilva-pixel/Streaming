@@ -330,6 +330,19 @@ export default function AdminPage() {
   const [waBatch, setWaBatch] = useState<{ running: boolean; total: number; done: number; skipped: number; errors: number } | null>(null)
   const waBatchStopRef = useRef(false)
 
+  // Suporte — badge de tickets abertos
+  const [supportOpenCount, setSupportOpenCount] = useState(0)
+
+  async function pollSupportCount() {
+    const [{ data: msgs }, { data: closed }] = await Promise.all([
+      supabase.from('support_messages').select('session_id'),
+      supabase.from('support_statuses').select('session_id').eq('status', 'closed'),
+    ])
+    const allSessions = new Set((msgs ?? []).map((m: { session_id: string }) => m.session_id))
+    const closedSessions = new Set((closed ?? []).map((c: { session_id: string }) => c.session_id))
+    setSupportOpenCount([...allSessions].filter(id => !closedSessions.has(id)).length)
+  }
+
   // Status das integrações
   type ServiceStatus = { ok: boolean; latencyMs: number; name: string; status?: number }
   type HealthData = { checkedAt: string; services: Record<string, ServiceStatus> }
@@ -453,6 +466,9 @@ export default function AdminPage() {
       loadCtaCards()
       loadAffiliates()
       if (allowedTabs === null) loadSubAdmins()
+      pollSupportCount()
+      const supportInterval = setInterval(pollSupportCount, 60000)
+      return () => clearInterval(supportInterval)
     }
   }, [authChecked])
 
@@ -1342,7 +1358,7 @@ export default function AdminPage() {
               group: 'COMUNICAÇÃO',
               items: [
                 { id: 'notificar', label: 'Notificar', icon: <Megaphone className="w-4 h-4" /> },
-                { id: 'suporte', label: 'Suporte', icon: <Headphones className="w-4 h-4" /> },
+                { id: 'suporte', label: 'Suporte', icon: <Headphones className="w-4 h-4" />, badge: activeTab !== 'suporte' && supportOpenCount > 0 ? supportOpenCount : undefined },
               ],
             },
             {
@@ -1361,7 +1377,7 @@ export default function AdminPage() {
                 ...(allowedTabs === null ? [{ id: 'admins', label: 'Admins', icon: <UserCheck className="w-4 h-4" /> }] : []),
               ],
             },
-          ] as { group: string; items: { id: string; label: string; icon: React.ReactNode }[] }[])
+          ] as { group: string; items: { id: string; label: string; icon: React.ReactNode; badge?: number }[] }[])
             .map(section => {
               const visible = section.items.filter(item => allowedTabs === null || allowedTabs.includes(item.id))
               if (!visible.length) return null
@@ -1380,7 +1396,12 @@ export default function AdminPage() {
                         }`}
                       >
                         {item.icon}
-                        {item.label}
+                        <span className="flex-1">{item.label}</span>
+                        {item.badge != null && (
+                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-orange-500 text-white min-w-[18px] text-center leading-4">
+                            {item.badge > 99 ? '99+' : item.badge}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
