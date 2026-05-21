@@ -1,5 +1,16 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## APIs externas
+
+### GNews — Notícias de futebol
+O carousel de notícias na home consome a [GNews API](https://gnews.io). Configure a variável de ambiente no seu `.env.local`:
+
+```bash
+GNEWS_API_KEY=sua_chave_aqui
+```
+
+Sem a chave, o slot exibe o banner CTA cadastrado no painel admin (comportamento de fallback silencioso).
+
 ## Getting Started
 
 First, run the development server:
