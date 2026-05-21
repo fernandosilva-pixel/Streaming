@@ -1,16 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
 import { AuthProvider } from '@/contexts/AuthContext'
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ScheduleProvider } from '@/contexts/ScheduleContext';
-import AuthModal from '@/components/auth/AuthModal'
-import PresenceTracker from '@/components/analytics/PresenceTracker';
-import ReferralTracker from '@/components/analytics/ReferralTracker';
-import PopupBanner from '@/components/common/PopupBanner';
-import ScheduleNotification from '@/components/common/ScheduleNotification';
-import OnboardingModals from '@/components/common/OnboardingModals';
+import SiteShell from '@/components/layout/SiteShell';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseAdmin = createClient(
@@ -37,15 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LanguageProvider>
           <AuthProvider>
             <ScheduleProvider>
-              <Navbar />
-              <main className="flex-1 pt-16">{children}</main>
-              <Footer />
-              <AuthModal />
-              <PresenceTracker />
-              <ReferralTracker />
-              <PopupBanner />
-              <ScheduleNotification />
-              <OnboardingModals />
+              <SiteShell>{children}</SiteShell>
             </ScheduleProvider>
           </AuthProvider>
         </LanguageProvider>
