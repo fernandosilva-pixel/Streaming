@@ -320,9 +320,11 @@ export default function AdminPage() {
   // Dashboard
   type DashRegistration = { id?: string; name: string; phone: string; email?: string; plan?: string | null; plan_expires_at?: string | null; created_at?: string; whatsapp_added_at?: string | null }
   type DashPayment = { id: string; stream_id: string; user_phone: string; amount?: number; status: string; referral_code?: string | null; created_at?: string }
+  type DashPlanPayment = { id: string; user_email: string; amount?: number; status: string; plan_type?: string | null; created_at?: string }
   const [dashLoading, setDashLoading] = useState(false)
   const [dashRegistrations, setDashRegistrations] = useState<DashRegistration[]>([])
   const [dashPayments, setDashPayments] = useState<DashPayment[]>([])
+  const [dashPlanPayments, setDashPlanPayments] = useState<DashPlanPayment[]>([])
   const [dashStreamFilter, setDashStreamFilter] = useState<string>('all')
   const [dashDateFilter, setDashDateFilter] = useState<string>('all')
   const [regLimit, setRegLimit] = useState(5)
@@ -411,12 +413,14 @@ export default function AdminPage() {
 
   async function loadAdminDashboard() {
     setDashLoading(true)
-    const [regRes, payRes] = await Promise.all([
+    const [regRes, payRes, planRes] = await Promise.all([
       supabase.from('registrations').select('*').order('created_at', { ascending: false }).limit(500),
       supabase.from('payments').select('*').order('created_at', { ascending: false }).limit(1000),
+      supabase.from('plan_payments').select('id, user_email, amount, status, plan_type, created_at').order('created_at', { ascending: false }).limit(1000),
     ])
     setDashRegistrations(regRes.data ?? [])
     setDashPayments(payRes.data ?? [])
+    setDashPlanPayments(planRes.data ?? [])
     setDashLoading(false)
   }
 
@@ -2760,33 +2764,51 @@ export default function AdminPage() {
 
                   {/* Cohorts */}
                   {(() => {
-                    const paidPays = dashPayments.filter(p => p.status === 'PAID')
-
-                    // Normaliza phone para dígitos puros (sem 55 inicial) para agrupar variações do mesmo número
-                    function normalizePhone(raw: string): string {
+                    // Normaliza identificador para agrupar variações do mesmo usuário
+                    function normalizeId(raw: string): string {
                       if (!raw) return raw
-                      if (raw.includes('@') && !raw.endsWith('@futzone.app')) return raw // email real: não normaliza
+                      if (raw.includes('@') && !raw.endsWith('@futzone.app')) return raw.toLowerCase() // email real
                       const digits = raw.replace('@futzone.app', '').replace(/\D/g, '')
                       return digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits
                     }
 
-                    const byPhone: Record<string, DashPayment[]> = {}
-                    for (const p of paidPays) {
-                      const key = normalizePhone(p.user_phone)
-                      if (!byPhone[key]) byPhone[key] = []
-                      byPhone[key].push(p)
+                    // Linha unificada: { key, amount, label, date }
+                    type CohortEntry = { amount: number; label: string; date: string }
+                    const byUser: Record<string, CohortEntry[]> = {}
+
+                    for (const p of dashPayments.filter(p => p.status === 'PAID')) {
+                      const key = normalizeId(p.user_phone)
+                      if (!byUser[key]) byUser[key] = []
+                      byUser[key].push({
+                        amount: p.amount ?? 0,
+                        label: streams.find(s => s.id === p.stream_id)?.title ?? 'Jogo avulso',
+                        date: p.created_at ?? '',
+                      })
                     }
-                    const uniquePayers = Object.keys(byPhone).length
-                    const recurring = Object.entries(byPhone).filter(([, pays]) => pays.length >= 2)
-                    const recurrenceRate = uniquePayers > 0 ? ((recurring.length / uniquePayers) * 100).toFixed(1) : '0'
-                    const recurringRevenue = recurring.reduce((s, [, pays]) => s + pays.reduce((ss, p) => ss + (p.amount ?? 0), 0), 0)
+
+                    for (const p of dashPlanPayments.filter(p => p.status === 'PAID')) {
+                      const key = normalizeId(p.user_email)
+                      if (!byUser[key]) byUser[key] = []
+                      byUser[key].push({
+                        amount: p.amount ?? 0,
+                        label: p.plan_type === 'semanal' ? 'Plano Semanal' : 'Plano Mensal',
+                        date: p.created_at ?? '',
+                      })
+                    }
+
+                    const uniquePayers = Object.keys(byUser).length
+                    const recurring = Object.entries(byUser).filter(([, entries]) => entries.length >= 2)
                     recurring.sort((a, b) => b[1].length - a[1].length)
+                    const recurrenceRate = uniquePayers > 0 ? ((recurring.length / uniquePayers) * 100).toFixed(1) : '0'
+                    const recurringRevenue = recurring.reduce((s, [, entries]) => s + entries.reduce((ss, e) => ss + e.amount, 0), 0)
+
                     return (
                       <div className="space-y-4">
                         <p className="text-white font-bold text-sm">Cohorts — Recorrência de Pagadores</p>
+                        <p className="text-gray-500 text-xs -mt-2">Considera avulso + planos. Limitado aos últimos 1.000 registros de cada tabela.</p>
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                           {[
-                            { label: 'Pagadores Únicos', value: uniquePayers.toLocaleString('pt-BR'), sub: 'Total histórico', color: 'text-white' },
+                            { label: 'Pagadores Únicos', value: uniquePayers.toLocaleString('pt-BR'), sub: 'Total histórico (avulso + planos)', color: 'text-white' },
                             { label: 'Recorrentes (2+)', value: recurring.length.toLocaleString('pt-BR'), sub: 'Pagaram mais de uma vez', color: 'text-orange-400' },
                             { label: 'Taxa Recorrência', value: `${recurrenceRate}%`, sub: 'Do total de pagadores', color: 'text-blue-400' },
                             { label: 'Receita Recorrentes', value: `R$ ${recurringRevenue.toFixed(2).replace('.', ',')}`, sub: 'De clientes fiéis', color: 'text-green-400' },
@@ -2806,32 +2828,32 @@ export default function AdminPage() {
                                   <tr className="border-b border-[#2A2A3A]">
                                     <th className="text-left text-gray-500 font-medium px-4 py-2.5">Usuário</th>
                                     <th className="text-left text-gray-500 font-medium px-4 py-2.5">Pagamentos</th>
-                                    <th className="text-left text-gray-500 font-medium px-4 py-2.5">Lives assistidas</th>
+                                    <th className="text-left text-gray-500 font-medium px-4 py-2.5">O que comprou</th>
                                     <th className="text-left text-gray-500 font-medium px-4 py-2.5">Total gasto</th>
                                     <th className="text-left text-gray-500 font-medium px-4 py-2.5">Última compra</th>
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {recurring.slice(0, 20).map(([phone, pays]) => {
-                                    const reg = dashRegistrations.find(r => {
-                                      const rNorm = normalizePhone(r.phone ?? r.email ?? '')
-                                      return rNorm === phone || r.email === phone || normalizePhone(r.email ?? '') === phone
-                                    })
-                                    const liveTitles = [...new Set(pays.map(p => streams.find(s => s.id === p.stream_id)?.title ?? 'Live').filter(Boolean))]
-                                    const total = pays.reduce((s, p) => s + (p.amount ?? 0), 0)
-                                    const lastDate = pays.map(p => p.created_at ?? '').sort().at(-1)
-                                    const displayPhone = phone.endsWith('@futzone.app') ? phone.replace('@futzone.app','').replace(/^55/,'') : phone
+                                  {recurring.slice(0, 20).map(([key, entries]) => {
+                                    const reg = dashRegistrations.find(r =>
+                                      normalizeId(r.phone ?? '') === key ||
+                                      normalizeId(r.email ?? '') === key
+                                    )
+                                    const labels = [...new Set(entries.map(e => e.label))]
+                                    const total = entries.reduce((s, e) => s + e.amount, 0)
+                                    const lastDate = entries.map(e => e.date).filter(Boolean).sort().at(-1)
+                                    const displayId = key.includes('@') ? key : key
                                     return (
-                                      <tr key={phone} className="border-b border-[#1A1A26] last:border-0">
+                                      <tr key={key} className="border-b border-[#1A1A26] last:border-0">
                                         <td className="px-4 py-2.5">
                                           <p className="text-white font-medium">{reg?.name ?? '—'}</p>
-                                          <p className="text-gray-500 text-xs font-mono">{displayPhone}</p>
+                                          <p className="text-gray-500 text-xs font-mono">{displayId}</p>
                                         </td>
                                         <td className="px-4 py-2.5">
-                                          <span className="text-orange-400 font-black text-base">{pays.length}×</span>
+                                          <span className="text-orange-400 font-black text-base">{entries.length}×</span>
                                         </td>
-                                        <td className="px-4 py-2.5 text-gray-400 text-xs max-w-40">
-                                          {liveTitles.slice(0,3).join(', ')}{liveTitles.length > 3 ? ` +${liveTitles.length - 3}` : ''}
+                                        <td className="px-4 py-2.5 text-gray-400 text-xs max-w-48">
+                                          {labels.slice(0, 3).join(', ')}{labels.length > 3 ? ` +${labels.length - 3}` : ''}
                                         </td>
                                         <td className="px-4 py-2.5 text-green-400 font-bold">R$ {total.toFixed(2).replace('.', ',')}</td>
                                         <td className="px-4 py-2.5 text-gray-500 text-xs">{lastDate ? new Date(lastDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</td>
