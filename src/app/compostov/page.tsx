@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown, UserCheck, BarChart2, RefreshCw, CalendarDays, Headphones } from 'lucide-react'
+import { Trash2, Radio, Plus, Pencil, X, Megaphone, ImageIcon, Users, ChevronUp, ChevronDown, UserCheck, BarChart2, RefreshCw, CalendarDays, Headphones, Menu, LogOut } from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/lib/supabase'
 import AdminSupport from '@/components/admin/AdminSupport'
 
@@ -141,7 +142,8 @@ export default function AdminPage() {
   const [addingAdmin, setAddingAdmin] = useState(false)
 
   // Aba ativa
-  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte' | 'status' | 'usuarios'>('visual')
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte' | 'status' | 'usuarios'>('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Permissões do admin logado (null = superadmin, array = abas permitidas)
   const [allowedTabs, setAllowedTabs] = useState<string[] | null>(null)
@@ -1263,83 +1265,161 @@ export default function AdminPage() {
 
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
+    <div className="flex h-screen overflow-hidden bg-[#0B0B0F]">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black text-white">Painel Admin</h1>
-          <p className="text-gray-500 text-sm mt-1">Gerencie o site</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <button
-              onClick={() => setShowOnlineList(v => !v)}
-              className="flex items-center gap-2 bg-[#12121A] border border-[#2A2A3A] hover:border-green-500/40 px-4 py-2 rounded-xl transition-all"
-            >
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
-              <span className="text-white font-bold text-sm tabular-nums">{onlineUsers}</span>
-              <span className="text-gray-500 text-sm">online agora</span>
-            </button>
-            {showOnlineList && (
-              <div className="absolute right-0 top-11 z-50 bg-[#12121A] border border-[#2A2A3A] rounded-xl shadow-xl min-w-56 max-h-72 overflow-y-auto">
-                {onlineList.length === 0 ? (
-                  <p className="text-gray-500 text-sm px-4 py-3">Ninguém online</p>
-                ) : (
-                  <ul className="divide-y divide-[#2A2A3A]">
-                    {onlineList.map((u, i) => (
-                      <li key={i} className="px-4 py-2.5 flex items-center gap-3">
-                        {u.flag ? (
-                          <img src={u.flag} alt={u.country} className="w-6 h-4 object-cover rounded-sm shrink-0" />
-                        ) : (
-                          <span className="w-6 h-4 rounded-sm bg-white/10 shrink-0" />
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-white text-sm font-medium truncate">{u.name}</p>
-                          <p className="text-gray-500 text-xs truncate">{u.phone}{u.country ? ` · ${u.country}` : ''}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* ── SIDEBAR ── */}
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 flex flex-col bg-[#0D0D14] border-r border-[#1E1E2A] transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-5 h-16 border-b border-[#1E1E2A] shrink-0">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain" />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center shrink-0">
+              <span className="text-white font-black text-sm">F</span>
+            </div>
+          )}
+          <div>
+            <p className="text-white font-black text-sm leading-none">FutZone</p>
+            <p className="text-gray-500 text-[11px] mt-0.5">Admin Panel</p>
           </div>
-          <button onClick={handleLogout} className="text-gray-500 hover:text-white text-sm border border-[#2A2A3A] hover:border-orange-500/50 px-4 py-2 rounded-xl transition-all">
+        </div>
+
+        {/* Online indicator */}
+        <div className="px-3 pt-3 pb-2 border-b border-[#1E1E2A] shrink-0">
+          <button
+            onClick={() => setShowOnlineList(v => !v)}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+          >
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+            <span className="text-green-400 font-bold text-sm tabular-nums">{onlineUsers}</span>
+            <span className="text-gray-500 text-xs">online agora</span>
+          </button>
+          {showOnlineList && (
+            <div className="mt-1 bg-[#12121A] border border-[#2A2A3A] rounded-xl max-h-44 overflow-y-auto">
+              {onlineList.length === 0 ? (
+                <p className="text-gray-500 text-xs px-3 py-2">Ninguém online</p>
+              ) : (
+                <ul className="divide-y divide-[#2A2A3A]">
+                  {onlineList.map((u, i) => (
+                    <li key={i} className="px-3 py-2 flex items-center gap-2">
+                      {u.flag ? (
+                        <img src={u.flag} alt={u.country} className="w-5 h-3.5 object-cover rounded-sm shrink-0" />
+                      ) : (
+                        <span className="w-5 h-3.5 rounded-sm bg-white/10 shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-white text-xs font-medium truncate">{u.name}</p>
+                        <p className="text-gray-500 text-[10px] truncate">{u.phone}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
+          {([
+            {
+              group: 'PRINCIPAL',
+              items: [
+                { id: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
+              ],
+            },
+            {
+              group: 'TRANSMISSÕES',
+              items: [
+                { id: 'visual', label: 'Visual', icon: <ImageIcon className="w-4 h-4" /> },
+                { id: 'transmissao', label: 'Transmissão', icon: <Radio className="w-4 h-4" /> },
+                { id: 'agenda', label: 'Agenda', icon: <CalendarDays className="w-4 h-4" /> },
+              ],
+            },
+            {
+              group: 'COMUNICAÇÃO',
+              items: [
+                { id: 'notificar', label: 'Notificar', icon: <Megaphone className="w-4 h-4" /> },
+                { id: 'suporte', label: 'Suporte', icon: <Headphones className="w-4 h-4" /> },
+              ],
+            },
+            {
+              group: 'USUÁRIOS',
+              items: [
+                { id: 'acesso', label: 'Acesso Gratuito', icon: <Users className="w-4 h-4" /> },
+                { id: 'usuarios', label: 'Usuários', icon: <Users className="w-4 h-4" /> },
+                { id: 'afiliados', label: 'Afiliados', icon: <UserCheck className="w-4 h-4" /> },
+              ],
+            },
+            {
+              group: 'SISTEMA',
+              items: [
+                { id: 'status', label: 'Status', icon: <RefreshCw className="w-4 h-4" /> },
+                ...(allowedTabs === null ? [{ id: 'admins', label: 'Admins', icon: <UserCheck className="w-4 h-4" /> }] : []),
+              ],
+            },
+          ] as { group: string; items: { id: string; label: string; icon: React.ReactNode }[] }[])
+            .map(section => {
+              const visible = section.items.filter(item => allowedTabs === null || allowedTabs.includes(item.id))
+              if (!visible.length) return null
+              return (
+                <div key={section.group}>
+                  <p className="text-gray-600 text-[9px] font-black tracking-widest px-3 mb-1.5 uppercase">{section.group}</p>
+                  <div className="space-y-0.5">
+                    {visible.map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => { setActiveTab(item.id as typeof activeTab); setSidebarOpen(false) }}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all text-left ${
+                          activeTab === item.id
+                            ? 'bg-orange-500/15 text-orange-400 border-l-2 border-orange-500 pl-[10px]'
+                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        {item.icon}
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+        </nav>
+
+        {/* Logout */}
+        <div className="px-3 py-4 border-t border-[#1E1E2A] shrink-0">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-500 hover:text-white hover:bg-white/5 transition-all"
+          >
+            <LogOut className="w-4 h-4" />
             Sair
           </button>
         </div>
-      </div>
+      </aside>
 
-      {/* Tab Navigation */}
-      <div className="flex gap-1 bg-[#12121A] border border-[#2A2A3A] rounded-2xl p-1 flex-wrap">
-        {([
-          { id: 'visual', label: 'Visual', icon: <ImageIcon className="w-4 h-4" /> },
-          { id: 'transmissao', label: 'Transmissão', icon: <Radio className="w-4 h-4" /> },
-          { id: 'acesso', label: 'Acesso Gratuito', icon: <Users className="w-4 h-4" /> },
-          { id: 'notificar', label: 'Notificar', icon: <Megaphone className="w-4 h-4" /> },
-          { id: 'agenda', label: 'Agenda', icon: <CalendarDays className="w-4 h-4" /> },
-          { id: 'afiliados', label: 'Afiliados', icon: <UserCheck className="w-4 h-4" /> },
-          { id: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
-          { id: 'suporte', label: 'Suporte', icon: <Headphones className="w-4 h-4" /> },
-          { id: 'status', label: 'Status', icon: <RefreshCw className="w-4 h-4" /> },
-          { id: 'usuarios', label: 'Usuários', icon: <Users className="w-4 h-4" /> },
-          ...(allowedTabs === null ? [{ id: 'admins', label: 'Admins', icon: <UserCheck className="w-4 h-4" /> }] : []),
-        ] as { id: string; label: string; icon: React.ReactNode }[])
-          .filter(tab => allowedTabs === null || allowedTabs.includes(tab.id))
-          .map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-2 rounded-xl text-sm font-bold transition-all ${
-                activeTab === tab.id ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              {tab.icon}
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          ))}
-      </div>
+      {/* ── MAIN CONTENT ── */}
+      <main className="flex-1 lg:ml-64 overflow-y-auto min-h-screen">
+
+        {/* Mobile top bar */}
+        <div className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-[#1E1E2A] bg-[#0D0D14] sticky top-0 z-20">
+          <button onClick={() => setSidebarOpen(true)} className="text-gray-400 hover:text-white p-1 -ml-1 transition-colors">
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="text-white font-black text-sm">FutZone Admin</span>
+          <button onClick={() => setShowOnlineList(v => !v)} className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-green-400 font-bold text-xs tabular-nums">{onlineUsers}</span>
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6 max-w-5xl mx-auto">
 
       {/* ── ABA: VISUAL ── */}
       {activeTab === 'visual' && (
@@ -2454,10 +2534,7 @@ export default function AdminPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <BarChart2 className="w-5 h-5 text-orange-500" />
-                Dashboard
-              </h2>
+              <h2 className="text-xl font-black text-white">Dashboard</h2>
               <p className="text-gray-500 text-sm mt-0.5">Cadastros, QR gerados e pagamentos de todas as lives.</p>
             </div>
             <button onClick={loadAdminDashboard} disabled={dashLoading} className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
@@ -2466,35 +2543,27 @@ export default function AdminPage() {
             </button>
           </div>
 
-          {/* Stats */}
-
           {/* Filtros */}
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <p className="text-gray-500 text-sm shrink-0">Data:</p>
-              <div className="flex rounded-xl overflow-hidden border border-[#2A2A3A]">
-                {(['all', 'today', 'yesterday', 'week'] as const).map(opt => (
-                  <button
-                    key={opt}
-                    onClick={() => setDashDateFilter(opt)}
-                    className={`px-3 py-1.5 text-xs font-bold transition-all ${dashDateFilter === opt ? 'bg-orange-500 text-white' : 'bg-[#1A1A26] text-gray-400 hover:text-white'}`}
-                  >
-                    {opt === 'all' ? 'Tudo' : opt === 'today' ? 'Hoje' : opt === 'yesterday' ? 'Ontem' : 'Semana'}
-                  </button>
-                ))}
-              </div>
+            <div className="flex items-center gap-1 bg-[#12121A] border border-[#2A2A3A] rounded-xl p-1">
+              {(['all', 'today', 'yesterday', 'week'] as const).map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setDashDateFilter(opt)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${dashDateFilter === opt ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {opt === 'all' ? 'Tudo' : opt === 'today' ? 'Hoje' : opt === 'yesterday' ? 'Ontem' : 'Semana'}
+                </button>
+              ))}
             </div>
-            <div className="flex items-center gap-2">
-              <p className="text-gray-500 text-sm shrink-0">Live:</p>
-              <select
-                value={dashStreamFilter}
-                onChange={e => setDashStreamFilter(e.target.value)}
-                className="bg-[#1A1A26] border border-[#2A2A3A] text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-orange-500"
-              >
-                <option value="all">Todas</option>
-                {streams.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-              </select>
-            </div>
+            <select
+              value={dashStreamFilter}
+              onChange={e => setDashStreamFilter(e.target.value)}
+              className="bg-[#12121A] border border-[#2A2A3A] text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-orange-500"
+            >
+              <option value="all">Todas as lives</option>
+              {streams.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+            </select>
           </div>
 
           {dashLoading ? (
@@ -2517,14 +2586,98 @@ export default function AdminPage() {
                 .filter(p => matchDate(p.created_at))
               const qrCount = filteredPays.length
               const paidCount = filteredPays.filter(p => p.status === 'PAID').length
+              const pendingCount = filteredPays.filter(p => p.status !== 'PAID').length
               const revenue = filteredPays.filter(p => p.status === 'PAID').reduce((s, p) => s + (p.amount ?? 0), 0)
-              const directQr = filteredPays.filter(p => !p.referral_code).length
               const directPaid = filteredPays.filter(p => !p.referral_code && p.status === 'PAID').length
-              const affiliateQr = filteredPays.filter(p => p.referral_code).length
               const affiliatePaid = filteredPays.filter(p => p.referral_code && p.status === 'PAID').length
+              const activeSubs = dashRegistrations.filter(r => (r.plan === 'semanal' || r.plan === 'mensal') && r.plan_expires_at && new Date(r.plan_expires_at) > now).length
+
+              // Chart: revenue per day — last 7 days
+              const chartData = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(); d.setDate(d.getDate() - (6 - i))
+                const dayStart = startOf(d); const dayEnd = new Date(dayStart.getTime() + 86400000)
+                const dayPays = dashPayments
+                  .filter(p => dashStreamFilter === 'all' || p.stream_id === dashStreamFilter)
+                  .filter(p => p.status === 'PAID' && p.created_at && new Date(p.created_at) >= dayStart && new Date(p.created_at) < dayEnd)
+                return {
+                  dia: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                  receita: parseFloat(dayPays.reduce((s, p) => s + (p.amount ?? 0), 0).toFixed(2)),
+                  pagamentos: dayPays.length,
+                }
+              })
+
               return (
                 <div className="space-y-6">
-                  {/* Adicionar ao grupo WA em lote */}
+
+                  {/* Cards principais */}
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                    {[
+                      { label: 'Receita Total', value: `R$ ${revenue.toFixed(2).replace('.', ',')}`, sub: `${paidCount} pagamento${paidCount !== 1 ? 's' : ''} confirmado${paidCount !== 1 ? 's' : ''}`, accent: true },
+                      { label: 'Cadastros', value: filteredRegs.length.toLocaleString('pt-BR'), sub: `${waCount} no grupo WhatsApp` },
+                      { label: 'Assinaturas Ativas', value: activeSubs.toLocaleString('pt-BR'), sub: 'Semanal + Mensal' },
+                    ].map(({ label, value, sub, accent }) => (
+                      <div key={label} className={`rounded-xl p-5 border ${accent ? 'bg-orange-500/10 border-orange-500/25' : 'bg-[#12121A] border-[#2A2A3A]'}`}>
+                        <p className="text-gray-400 text-xs font-medium uppercase tracking-wide">{label}</p>
+                        <p className={`text-3xl font-black mt-2 ${accent ? 'text-orange-400' : 'text-white'}`}>{value}</p>
+                        <p className="text-gray-500 text-xs mt-1">{sub}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    {[
+                      { label: 'QR Gerados', value: qrCount, sub: 'Total de cobranças' },
+                      { label: 'QR Pendentes', value: pendingCount, sub: 'Aguardando pagamento' },
+                      { label: 'Direto Pago', value: directPaid, sub: 'Sem afiliado' },
+                      { label: 'Afiliado Pago', value: affiliatePaid, sub: 'Via link de afiliado' },
+                    ].map(({ label, value, sub }) => (
+                      <div key={label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
+                        <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">{label}</p>
+                        <p className="text-2xl font-black text-white mt-2">{value.toLocaleString('pt-BR')}</p>
+                        <p className="text-gray-600 text-xs mt-1">{sub}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Gráfico de receita */}
+                  <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-5">
+                      <div>
+                        <p className="text-white font-bold text-sm flex items-center gap-2"><BarChart2 className="w-4 h-4 text-orange-400" /> Métricas — últimos 7 dias</p>
+                        <p className="text-gray-500 text-xs mt-0.5">Receita e pagamentos por dia{dashStreamFilter !== 'all' ? ` · ${streams.find(s => s.id === dashStreamFilter)?.title ?? ''}` : ''}</p>
+                      </div>
+                    </div>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#f97316" stopOpacity={0.25} />
+                            <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="colorPag" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1E1E2A" vertical={false} />
+                        <XAxis dataKey="dia" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} width={45} tickFormatter={v => `R$${v}`} />
+                        <Tooltip
+                          contentStyle={{ background: '#12121A', border: '1px solid #2A2A3A', borderRadius: '12px', fontSize: '12px' }}
+                          labelStyle={{ color: '#fff', fontWeight: 'bold' }}
+                          formatter={(v, name) => [name === 'receita' ? `R$ ${Number(v).toFixed(2).replace('.', ',')}` : v, name === 'receita' ? 'Receita' : 'Pagamentos']}
+                        />
+                        <Area type="monotone" dataKey="receita" stroke="#f97316" strokeWidth={2} fill="url(#colorReceita)" dot={{ fill: '#f97316', r: 3 }} activeDot={{ r: 5 }} />
+                        <Area type="monotone" dataKey="pagamentos" stroke="#22c55e" strokeWidth={2} fill="url(#colorPag)" dot={{ fill: '#22c55e', r: 3 }} activeDot={{ r: 5 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                    <div className="flex items-center gap-4 mt-3">
+                      <span className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-3 h-0.5 bg-orange-400 inline-block rounded" /> Receita (R$)</span>
+                      <span className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-3 h-0.5 bg-green-400 inline-block rounded" /> Pagamentos</span>
+                    </div>
+                  </div>
+
+                  {/* WA em lote */}
                   <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
@@ -2533,18 +2686,12 @@ export default function AdminPage() {
                       </div>
                       <div className="flex gap-2">
                         {waBatch?.running ? (
-                          <button onClick={stopWaBatch} className="bg-red-600 hover:bg-red-500 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all">
-                            Parar
-                          </button>
+                          <button onClick={stopWaBatch} className="bg-red-600 hover:bg-red-500 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all">Parar</button>
                         ) : (
                           <>
-                            <button onClick={runWaBatch} className="bg-green-600 hover:bg-green-500 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all">
-                              {waBatch ? 'Reiniciar' : 'Iniciar'}
-                            </button>
+                            <button onClick={runWaBatch} className="bg-green-600 hover:bg-green-500 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all">{waBatch ? 'Reiniciar' : 'Iniciar'}</button>
                             {waBatch && !waBatch.running && (
-                              <button onClick={runWaBatch} className="bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all">
-                                Continuar
-                              </button>
+                              <button onClick={runWaBatch} className="bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all">Continuar</button>
                             )}
                           </>
                         )}
@@ -2557,46 +2704,11 @@ export default function AdminPage() {
                           <span>{waBatch.done + waBatch.skipped + waBatch.errors}/{waBatch.total}</span>
                         </div>
                         <div className="w-full bg-[#2A2A3A] rounded-full h-2">
-                          <div
-                            className="bg-green-500 h-2 rounded-full transition-all"
-                            style={{ width: waBatch.total > 0 ? `${((waBatch.done + waBatch.skipped + waBatch.errors) / waBatch.total) * 100}%` : '0%' }}
-                          />
+                          <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: waBatch.total > 0 ? `${((waBatch.done + waBatch.skipped + waBatch.errors) / waBatch.total) * 100}%` : '0%' }} />
                         </div>
                         {!waBatch.running && <p className="text-green-400 text-xs">Concluído.</p>}
                       </div>
                     )}
-                  </div>
-
-                  {/* Cards de métricas — respeitam todos os filtros */}
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                      {[
-                        { label: 'Cadastros', value: filteredRegs.length },
-                        { label: 'No Grupo WA', value: waCount },
-                        { label: 'QR Gerados', value: qrCount },
-                        { label: 'Pagamentos', value: paidCount },
-                        { label: 'Receita', value: `R$ ${revenue.toFixed(2).replace('.', ',')}`, raw: true },
-                      ].map(({ label, value, raw }) => (
-                        <div key={label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
-                          <p className="text-2xl font-black text-white">{raw ? value : Number(value).toLocaleString('pt-BR')}</p>
-                          <p className="text-gray-500 text-xs mt-0.5">{label}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {[
-                        { label: 'QR Direto Gerado', value: directQr, sub: 'Sem afiliado' },
-                        { label: 'QR Direto Pago', value: directPaid, sub: 'Sem afiliado' },
-                        { label: 'QR Afiliado Gerado', value: affiliateQr, sub: 'Via link' },
-                        { label: 'QR Afiliado Pago', value: affiliatePaid, sub: 'Via link' },
-                      ].map(({ label, value, sub }) => (
-                        <div key={label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
-                          <p className="text-2xl font-black text-white">{Number(value).toLocaleString('pt-BR')}</p>
-                          <p className="text-gray-400 text-xs font-medium mt-0.5">{label}</p>
-                          <p className="text-gray-600 text-xs">{sub}</p>
-                        </div>
-                      ))}
-                    </div>
                   </div>
 
                   {/* Cadastros */}
@@ -3520,6 +3632,9 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+        </div>{/* end p-6 content */}
+      </main>
 
       {/* Toasts de novos cadastros */}
       <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
