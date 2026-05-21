@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import QRCode from 'react-qr-code'
-import { Copy, Check, X } from 'lucide-react'
+import { Copy, Check, X, ChevronLeft } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { supabase } from '@/lib/supabase'
 
@@ -252,6 +252,12 @@ export default function PaymentModal({ streamId, streamTitle, userEmail, userNam
                 {generating && <div className="py-10 text-center"><p className="text-gray-500 text-sm">{t('generating')}</p></div>}
                 {qrcode && !error && (
                   <div className="space-y-4">
+                    <button
+                      onClick={() => { if (pollRef.current) clearInterval(pollRef.current); setQrcode(null); setTransactionId(null); setVerifyMsg(''); setError('') }}
+                      className="flex items-center gap-1 text-gray-500 hover:text-white text-sm transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" /> Voltar e trocar opção
+                    </button>
                     <div className="bg-white rounded-xl p-4 flex items-center justify-center">
                       <QRCode value={qrcode} size={200} />
                     </div>
