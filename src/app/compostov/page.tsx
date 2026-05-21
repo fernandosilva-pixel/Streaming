@@ -142,7 +142,7 @@ export default function AdminPage() {
   const [addingAdmin, setAddingAdmin] = useState(false)
 
   // Aba ativa
-  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte' | 'status' | 'usuarios'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte' | 'status' | 'usuarios' | 'assinaturas'>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Permissões do admin logado (null = superadmin, array = abas permitidas)
@@ -408,7 +408,7 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    if (activeTab === 'dashboard') loadAdminDashboard()
+    if (activeTab === 'dashboard' || activeTab === 'assinaturas' || activeTab === 'usuarios') loadAdminDashboard()
   }, [activeTab])
 
   // Afiliados
@@ -1276,18 +1276,14 @@ export default function AdminPage() {
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 flex flex-col bg-[#0D0D14] border-r border-[#1E1E2A] transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
 
         {/* Logo */}
-        <div className="flex items-center gap-3 px-5 h-16 border-b border-[#1E1E2A] shrink-0">
+        <div className="flex items-center justify-center px-5 h-16 border-b border-[#1E1E2A] shrink-0">
           {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain" />
+            <img src={logoUrl} alt="Logo" className="h-9 w-auto max-w-[150px] object-contain" />
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center shrink-0">
-              <span className="text-white font-black text-sm">F</span>
+            <div className="w-9 h-9 rounded-lg bg-orange-500 flex items-center justify-center">
+              <span className="text-white font-black text-base">F</span>
             </div>
           )}
-          <div>
-            <p className="text-white font-black text-sm leading-none">FutZone</p>
-            <p className="text-gray-500 text-[11px] mt-0.5">Admin Panel</p>
-          </div>
         </div>
 
         {/* Online indicator */}
@@ -1354,6 +1350,7 @@ export default function AdminPage() {
               items: [
                 { id: 'acesso', label: 'Acesso Gratuito', icon: <Users className="w-4 h-4" /> },
                 { id: 'usuarios', label: 'Usuários', icon: <Users className="w-4 h-4" /> },
+                { id: 'assinaturas', label: 'Assinaturas', icon: <UserCheck className="w-4 h-4" /> },
                 { id: 'afiliados', label: 'Afiliados', icon: <UserCheck className="w-4 h-4" /> },
               ],
             },
@@ -2711,176 +2708,207 @@ export default function AdminPage() {
                     )}
                   </div>
 
-                  {/* Cadastros */}
-                  <div className="space-y-2">
-                    <h3 className="text-white font-semibold text-sm">Cadastros ({filteredRegs.length})</h3>
-                    <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-[#2A2A3A]">
-                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">#</th>
-                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Nome</th>
-                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Telefone</th>
-                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Data</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredRegs.length === 0 ? (
-                              <tr><td colSpan={4} className="text-center text-gray-600 py-6 px-4">Nenhum cadastro</td></tr>
-                            ) : filteredRegs.slice(0, regLimit).map((r, i) => (
-                              <tr key={r.id ?? i} className="border-b border-[#1A1A26] last:border-0">
-                                <td className="px-4 py-2.5 text-gray-600">{filteredRegs.length - i}</td>
-                                <td className="px-4 py-2.5 text-white font-medium">{r.name}</td>
-                                <td className="px-4 py-2.5 text-gray-400">{r.phone}</td>
-                                <td className="px-4 py-2.5 text-gray-500 text-xs">{r.created_at ? new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                  {/* QR Codes — cards */}
+                  <div>
+                    <p className="text-white font-bold text-sm mb-3">QR Codes Gerados & Pagamentos</p>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-5">
+                        <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">PIX Gerados</p>
+                        <p className="text-3xl font-black text-white mt-2">{qrCount.toLocaleString('pt-BR')}</p>
+                        <p className="text-gray-600 text-xs mt-1">Total de cobranças</p>
                       </div>
-                      {filteredRegs.length > regLimit && (
-                        <button onClick={() => setRegLimit(n => n + 10)} className="w-full py-2.5 text-orange-400 hover:text-orange-300 text-xs font-semibold border-t border-[#2A2A3A] transition-colors">
-                          Ver mais ({filteredRegs.length - regLimit} restantes)
-                        </button>
-                      )}
+                      <div className="bg-[#12121A] border border-green-500/20 rounded-xl p-5">
+                        <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">PIX Pagos</p>
+                        <p className="text-3xl font-black text-green-400 mt-2">{paidCount.toLocaleString('pt-BR')}</p>
+                        <p className="text-gray-600 text-xs mt-1">Confirmados</p>
+                      </div>
+                      <div className="bg-[#12121A] border border-green-500/20 rounded-xl p-5">
+                        <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">Valor Pago</p>
+                        <p className="text-3xl font-black text-green-400 mt-2">R$ {revenue.toFixed(2).replace('.', ',')}</p>
+                        <p className="text-gray-600 text-xs mt-1">Receita confirmada</p>
+                      </div>
+                      <div className="bg-[#12121A] border border-yellow-500/20 rounded-xl p-5">
+                        <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">Valor Pendente</p>
+                        <p className="text-3xl font-black text-yellow-400 mt-2">
+                          R$ {filteredPays.filter(p => p.status !== 'PAID').reduce((s, p) => s + (p.amount ?? 0), 0).toFixed(2).replace('.', ',')}
+                        </p>
+                        <p className="text-gray-600 text-xs mt-1">{pendingCount} aguardando</p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Assinaturas */}
+                  {/* Cohorts */}
                   {(() => {
-                    const now = new Date()
-                    const subs = dashRegistrations
-                      .filter(r => (r.plan === 'semanal' || r.plan === 'mensal') && r.plan_expires_at)
-                      .map(r => {
-                        const expiresAt = new Date(r.plan_expires_at!)
-                        const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / 86400000)
-                        return { ...r, expiresAt, daysLeft, active: daysLeft > 0 }
-                      })
-                      .sort((a, b) => b.daysLeft - a.daysLeft)
-                    const activeCount = subs.filter(s => s.active).length
-                    const expiredCount = subs.length - activeCount
+                    const paidPays = dashPayments.filter(p => p.status === 'PAID')
+                    const byPhone: Record<string, DashPayment[]> = {}
+                    for (const p of paidPays) {
+                      if (!byPhone[p.user_phone]) byPhone[p.user_phone] = []
+                      byPhone[p.user_phone].push(p)
+                    }
+                    const uniquePayers = Object.keys(byPhone).length
+                    const recurring = Object.entries(byPhone).filter(([, pays]) => pays.length >= 2)
+                    const recurrenceRate = uniquePayers > 0 ? ((recurring.length / uniquePayers) * 100).toFixed(1) : '0'
+                    const recurringRevenue = recurring.reduce((s, [, pays]) => s + pays.reduce((ss, p) => ss + (p.amount ?? 0), 0), 0)
+                    recurring.sort((a, b) => b[1].length - a[1].length)
                     return (
-                      <div className="space-y-2">
-                        <h3 className="text-white font-semibold text-sm flex items-center gap-2 flex-wrap">
-                          Assinaturas ({subs.length})
-                          <span className="text-orange-400 text-xs font-bold bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
-                            ✓ {activeCount} ativas
-                          </span>
-                          {expiredCount > 0 && (
-                            <span className="text-gray-500 text-xs font-bold bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
-                              {expiredCount} vencidas
-                            </span>
-                          )}
-                        </h3>
-                        <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b border-[#2A2A3A]">
-                                  <th className="text-left text-gray-500 font-medium px-4 py-2.5">Usuário</th>
-                                  <th className="text-left text-gray-500 font-medium px-4 py-2.5">Plano</th>
-                                  <th className="text-left text-gray-500 font-medium px-4 py-2.5">Status</th>
-                                  <th className="text-left text-gray-500 font-medium px-4 py-2.5">Dias restantes</th>
-                                  <th className="text-left text-gray-500 font-medium px-4 py-2.5">Vence em</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {subs.length === 0 ? (
-                                  <tr><td colSpan={5} className="text-center text-gray-600 py-6 px-4">Nenhuma assinatura ainda</td></tr>
-                                ) : subs.map((s, i) => (
-                                  <tr key={s.id ?? i} className="border-b border-[#1A1A26] last:border-0">
-                                    <td className="px-4 py-2.5">
-                                      <p className="text-gray-200 font-medium">{s.name}</p>
-                                      <p className="text-gray-500 text-xs">{s.email}</p>
-                                    </td>
-                                    <td className="px-4 py-2.5">
-                                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.plan === 'mensal' ? 'bg-orange-500/10 text-orange-400' : 'bg-blue-500/10 text-blue-400'}`}>
-                                        {s.plan === 'mensal' ? 'Mensal' : 'Semanal'}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-2.5">
-                                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.active ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                                        {s.active ? 'Ativo' : 'Vencido'}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-2.5">
-                                      {s.active ? (
-                                        <span className={`font-bold ${s.daysLeft <= 2 ? 'text-red-400' : s.daysLeft <= 5 ? 'text-yellow-400' : 'text-white'}`}>
-                                          {s.daysLeft} dia{s.daysLeft !== 1 ? 's' : ''}
-                                        </span>
-                                      ) : (
-                                        <span className="text-gray-600">—</span>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-2.5 text-gray-500 text-xs">
-                                      {s.expiresAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                      <div className="space-y-4">
+                        <p className="text-white font-bold text-sm">Cohorts — Recorrência de Pagadores</p>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                          {[
+                            { label: 'Pagadores Únicos', value: uniquePayers.toLocaleString('pt-BR'), sub: 'Total histórico', color: 'text-white' },
+                            { label: 'Recorrentes (2+)', value: recurring.length.toLocaleString('pt-BR'), sub: 'Pagaram mais de uma vez', color: 'text-orange-400' },
+                            { label: 'Taxa Recorrência', value: `${recurrenceRate}%`, sub: 'Do total de pagadores', color: 'text-blue-400' },
+                            { label: 'Receita Recorrentes', value: `R$ ${recurringRevenue.toFixed(2).replace('.', ',')}`, sub: 'De clientes fiéis', color: 'text-green-400' },
+                          ].map(c => (
+                            <div key={c.label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
+                              <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">{c.label}</p>
+                              <p className={`text-2xl font-black mt-2 ${c.color}`}>{c.value}</p>
+                              <p className="text-gray-600 text-xs mt-1">{c.sub}</p>
+                            </div>
+                          ))}
                         </div>
+                        {recurring.length > 0 && (
+                          <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-[#2A2A3A]">
+                                    <th className="text-left text-gray-500 font-medium px-4 py-2.5">Usuário</th>
+                                    <th className="text-left text-gray-500 font-medium px-4 py-2.5">Pagamentos</th>
+                                    <th className="text-left text-gray-500 font-medium px-4 py-2.5">Lives assistidas</th>
+                                    <th className="text-left text-gray-500 font-medium px-4 py-2.5">Total gasto</th>
+                                    <th className="text-left text-gray-500 font-medium px-4 py-2.5">Última compra</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {recurring.slice(0, 20).map(([phone, pays]) => {
+                                    const reg = dashRegistrations.find(r => r.phone === phone || r.email === phone || r.email?.startsWith(phone.replace(/\D/g,'').replace(/^55/,'')) )
+                                    const liveTitles = [...new Set(pays.map(p => streams.find(s => s.id === p.stream_id)?.title ?? 'Live').filter(Boolean))]
+                                    const total = pays.reduce((s, p) => s + (p.amount ?? 0), 0)
+                                    const lastDate = pays.map(p => p.created_at ?? '').sort().at(-1)
+                                    const displayPhone = phone.endsWith('@futzone.app') ? phone.replace('@futzone.app','').replace(/^55/,'') : phone
+                                    return (
+                                      <tr key={phone} className="border-b border-[#1A1A26] last:border-0">
+                                        <td className="px-4 py-2.5">
+                                          <p className="text-white font-medium">{reg?.name ?? '—'}</p>
+                                          <p className="text-gray-500 text-xs font-mono">{displayPhone}</p>
+                                        </td>
+                                        <td className="px-4 py-2.5">
+                                          <span className="text-orange-400 font-black text-base">{pays.length}×</span>
+                                        </td>
+                                        <td className="px-4 py-2.5 text-gray-400 text-xs max-w-40">
+                                          {liveTitles.slice(0,3).join(', ')}{liveTitles.length > 3 ? ` +${liveTitles.length - 3}` : ''}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-green-400 font-bold">R$ {total.toFixed(2).replace('.', ',')}</td>
+                                        <td className="px-4 py-2.5 text-gray-500 text-xs">{lastDate ? new Date(lastDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )
                   })()}
-
-                  {/* Pagamentos */}
-                  <div className="space-y-2">
-                    <h3 className="text-white font-semibold text-sm flex items-center gap-2 flex-wrap">
-                      QR Gerados & Pagamentos ({filteredPays.length})
-                      <span className="text-green-400 text-xs font-bold bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full">
-                        ✓ {filteredPays.filter(p => p.status === 'PAID').length} pagos
-                      </span>
-                      <span className="text-yellow-400 text-xs font-bold bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full">
-                        ⏳ {filteredPays.filter(p => p.status !== 'PAID').length} pendentes
-                      </span>
-                    </h3>
-                    <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-[#2A2A3A]">
-                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Telefone</th>
-                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Live</th>
-                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Valor</th>
-                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Status</th>
-                              <th className="text-left text-gray-500 font-medium px-4 py-2.5">Data</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredPays.length === 0 ? (
-                              <tr><td colSpan={5} className="text-center text-gray-600 py-6 px-4">Nenhum pagamento</td></tr>
-                            ) : filteredPays.slice(0, payLimit).map((p, i) => {
-                              const streamTitle = streams.find(s => s.id === p.stream_id)?.title ?? p.stream_id?.slice(0, 8) ?? '—'
-                              return (
-                                <tr key={p.id ?? i} className="border-b border-[#1A1A26] last:border-0">
-                                  <td className="px-4 py-2.5 text-gray-300">{p.user_phone}</td>
-                                  <td className="px-4 py-2.5 text-gray-400 max-w-32 truncate">{streamTitle}</td>
-                                  <td className="px-4 py-2.5 text-white font-medium">{p.amount != null ? `R$ ${Number(p.amount).toFixed(2).replace('.', ',')}` : '—'}</td>
-                                  <td className="px-4 py-2.5">
-                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.status === 'PAID' ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
-                                      {p.status === 'PAID' ? 'Pago' : 'Pendente'}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-2.5 text-gray-500 text-xs">{p.created_at ? new Date(p.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                      {filteredPays.length > payLimit && (
-                        <button onClick={() => setPayLimit(n => n + 10)} className="w-full py-2.5 text-orange-400 hover:text-orange-300 text-xs font-semibold border-t border-[#2A2A3A] transition-colors">
-                          Ver mais ({filteredPays.length - payLimit} restantes)
-                        </button>
-                      )}
-                    </div>
-                  </div>
                 </div>
               )
             })()}
+        </div>
+      )}
+
+      {/* ── ABA: ASSINATURAS ── */}
+      {activeTab === 'assinaturas' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-black text-white">Assinaturas</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Clientes com plano semanal ou mensal ativo ou vencido.</p>
+            </div>
+            <button onClick={loadAdminDashboard} disabled={dashLoading} className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${dashLoading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </button>
+          </div>
+          {dashLoading ? <p className="text-gray-500 text-sm">Carregando...</p> : (() => {
+            const now = new Date()
+            const subs = dashRegistrations
+              .filter(r => (r.plan === 'semanal' || r.plan === 'mensal') && r.plan_expires_at)
+              .map(r => {
+                const expiresAt = new Date(r.plan_expires_at!)
+                const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / 86400000)
+                return { ...r, expiresAt, daysLeft, active: daysLeft > 0 }
+              })
+              .sort((a, b) => b.daysLeft - a.daysLeft)
+            const activeCount = subs.filter(s => s.active).length
+            const expiredCount = subs.length - activeCount
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
+                    <p className="text-gray-500 text-xs uppercase tracking-wide">Total</p>
+                    <p className="text-2xl font-black text-white mt-1">{subs.length}</p>
+                  </div>
+                  <div className="bg-[#12121A] border border-green-500/20 rounded-xl p-4">
+                    <p className="text-gray-500 text-xs uppercase tracking-wide">Ativas</p>
+                    <p className="text-2xl font-black text-green-400 mt-1">{activeCount}</p>
+                  </div>
+                  <div className="bg-[#12121A] border border-red-500/20 rounded-xl p-4">
+                    <p className="text-gray-500 text-xs uppercase tracking-wide">Vencidas</p>
+                    <p className="text-2xl font-black text-red-400 mt-1">{expiredCount}</p>
+                  </div>
+                </div>
+                <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[#2A2A3A]">
+                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Usuário</th>
+                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Plano</th>
+                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Status</th>
+                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Dias restantes</th>
+                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Vence em</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subs.length === 0 ? (
+                          <tr><td colSpan={5} className="text-center text-gray-600 py-6 px-4">Nenhuma assinatura ainda</td></tr>
+                        ) : subs.map((s, i) => (
+                          <tr key={s.id ?? i} className="border-b border-[#1A1A26] last:border-0">
+                            <td className="px-4 py-2.5">
+                              <p className="text-gray-200 font-medium">{s.name}</p>
+                              <p className="text-gray-500 text-xs">{s.email?.endsWith('@futzone.app') ? s.email.replace('@futzone.app','').replace(/^55/,'') : s.email}</p>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.plan === 'mensal' ? 'bg-orange-500/10 text-orange-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                                {s.plan === 'mensal' ? 'Mensal' : 'Semanal'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.active ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                {s.active ? 'Ativo' : 'Vencido'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              {s.active ? (
+                                <span className={`font-bold ${s.daysLeft <= 2 ? 'text-red-400' : s.daysLeft <= 5 ? 'text-yellow-400' : 'text-white'}`}>
+                                  {s.daysLeft} dia{s.daysLeft !== 1 ? 's' : ''}
+                                </span>
+                              ) : <span className="text-gray-600">—</span>}
+                            </td>
+                            <td className="px-4 py-2.5 text-gray-500 text-xs">
+                              {s.expiresAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -3573,6 +3601,40 @@ export default function AdminPage() {
               </div>
             )
           })()}
+
+          {/* Cadastros recentes */}
+          {dashRegistrations.length > 0 && (
+            <div className="space-y-3 pt-2 border-t border-[#2A2A3A]">
+              <p className="text-white font-bold text-sm">Cadastros recentes ({dashRegistrations.length})</p>
+              <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#2A2A3A]">
+                        <th className="text-left text-gray-500 font-medium px-4 py-2.5">Nome</th>
+                        <th className="text-left text-gray-500 font-medium px-4 py-2.5">Telefone/E-mail</th>
+                        <th className="text-left text-gray-500 font-medium px-4 py-2.5">Cadastrado em</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dashRegistrations.slice(0, regLimit).map((r, i) => (
+                        <tr key={r.id ?? i} className="border-b border-[#1A1A26] last:border-0">
+                          <td className="px-4 py-2.5 text-white font-medium">{r.name}</td>
+                          <td className="px-4 py-2.5 text-gray-400 font-mono text-xs">{r.phone || (r.email?.endsWith('@futzone.app') ? r.email.replace('@futzone.app','').replace(/^55/,'') : r.email)}</td>
+                          <td className="px-4 py-2.5 text-gray-500 text-xs">{r.created_at ? new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {dashRegistrations.length > regLimit && (
+                  <button onClick={() => setRegLimit(n => n + 20)} className="w-full py-2.5 text-orange-400 hover:text-orange-300 text-xs font-semibold border-t border-[#2A2A3A] transition-colors">
+                    Ver mais ({dashRegistrations.length - regLimit} restantes)
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
