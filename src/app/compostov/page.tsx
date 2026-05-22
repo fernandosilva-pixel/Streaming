@@ -106,6 +106,10 @@ export default function AdminPage() {
   const [editSoopChannels, setEditSoopChannels] = useState<Record<string, string>>({})
   const [editSoopBroadNos, setEditSoopBroadNos] = useState<Record<string, string>>({})
   const [editHlsUrls, setEditHlsUrls] = useState<Record<string, string>>({})
+  const [cdnBaseUrl, setCdnBaseUrl] = useState('https://futzonefallback.b-cdn.net')
+  const [cdnInput, setCdnInput] = useState('')
+  const [editingCdn, setEditingCdn] = useState(false)
+  const [savingCdn, setSavingCdn] = useState(false)
   const [editYoutubeUrls, setEditYoutubeUrls] = useState<Record<string, string>>({})
   const [editAmounts, setEditAmounts] = useState<Record<string, string>>({})
   const [chargeAmountModal, setChargeAmountModal] = useState<{ id: string } | null>(null)
@@ -490,6 +494,7 @@ export default function AdminPage() {
       loadAllBanners()
       loadCarouselBanners()
       loadLogo()
+      loadCdnSettings()
       loadStreams()
       loadFreeAccess()
       loadAdminUsers()
@@ -750,6 +755,31 @@ export default function AdminPage() {
     }
   }
 
+  async function loadCdnSettings() {
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'cdn_base_url').single()
+    if (data?.value) setCdnBaseUrl(data.value)
+  }
+
+  async function saveCdnSettings() {
+    const url = cdnInput.trim().replace(/\/$/, '')
+    if (!url) return
+    setSavingCdn(true)
+    await supabase.from('app_settings').upsert({ key: 'cdn_base_url', value: url })
+    setCdnBaseUrl(url)
+    setEditingCdn(false)
+    setSavingCdn(false)
+  }
+
+  function extractStreamKey(hlsUrl: string): string {
+    return hlsUrl.match(/\/hls\/(.+?)\.m3u8/)?.[1] ?? hlsUrl
+  }
+
+  function buildHlsUrl(key: string): string {
+    const k = key.trim()
+    if (k.startsWith('http')) return k
+    return `${cdnBaseUrl}/hls/${k}.m3u8`
+  }
+
   async function addStream() {
     if (!newTitle.trim()) return
     if (newSource === 'kick' && !newChannel.trim()) return
@@ -763,7 +793,7 @@ export default function AdminPage() {
       kick_channel: newSource === 'kick' ? newChannel.trim().replace(/\s/g, '') : null,
       soop_channel: newSource === 'soop' ? newSoopChannel.trim().replace(/\s/g, '') : null,
       soop_broad_no: newSource === 'soop' && newSoopBroadNo.trim() ? newSoopBroadNo.trim() : null,
-      hls_url: newSource === 'hls' ? newHlsUrl.trim() : null,
+      hls_url: newSource === 'hls' ? buildHlsUrl(newHlsUrl) : null,
       youtube_url: newSource === 'youtube' ? extractYoutubeId(newYoutubeUrl) : null,
     })
     if (error) { alert('Erro ao adicionar transmissão: ' + error.message); setAddingStream(false); return }
@@ -820,8 +850,9 @@ export default function AdminPage() {
       if (!soopChannel) { setSavingChannel(null); return }
       await supabase.from('streams').update({ ...baseUpdate, stream_source: 'soop', kick_channel: null, soop_channel: soopChannel, soop_broad_no: soopBroadNo, hls_url: null }).eq('id', id)
     } else if (source === 'hls') {
-      const hlsUrl = editHlsUrls[id]?.trim() || current?.hls_url || ''
-      if (!hlsUrl) { setSavingChannel(null); return }
+      const rawHls = editHlsUrls[id]?.trim() || extractStreamKey(current?.hls_url ?? '') || ''
+      if (!rawHls) { setSavingChannel(null); return }
+      const hlsUrl = buildHlsUrl(rawHls)
       await supabase.from('streams').update({ ...baseUpdate, stream_source: 'hls', kick_channel: null, soop_channel: null, soop_broad_no: null, hls_url: hlsUrl, youtube_url: null }).eq('id', id)
     } else {
       const youtubeId = extractYoutubeId(editYoutubeUrls[id] ?? current?.youtube_url ?? '')
@@ -1843,6 +1874,23 @@ export default function AdminPage() {
             {syncResult && (
               <p className="text-sm text-gray-300 bg-[#1A1A26] border border-[#2A2A3A] rounded-xl px-4 py-2.5">{syncResult}</p>
             )}
+            <div className="bg-[#1A1A26] border border-[#2A2A3A] rounded-xl px-4 py-3 flex items-center gap-3">
+              <span className="text-xs text-gray-500 shrink-0">CDN Base URL</span>
+              {editingCdn ? (
+                <>
+                  <input type="text" value={cdnInput} onChange={e => setCdnInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveCdnSettings()}
+                    placeholder="https://seu-cdn.b-cdn.net" autoFocus
+                    className="flex-1 bg-[#0B0B0F] border border-orange-500 text-white rounded-lg px-3 py-1.5 text-xs focus:outline-none" />
+                  <button onClick={saveCdnSettings} disabled={savingCdn} className="text-xs text-green-400 hover:text-green-300 font-bold shrink-0">{savingCdn ? '...' : 'Salvar'}</button>
+                  <button onClick={() => setEditingCdn(false)} className="text-xs text-gray-500 hover:text-gray-300 shrink-0">Cancelar</button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-xs text-orange-400 font-mono truncate">{cdnBaseUrl}</span>
+                  <button onClick={() => { setCdnInput(cdnBaseUrl); setEditingCdn(true) }} className="text-xs text-gray-500 hover:text-gray-300 shrink-0">Alterar</button>
+                </>
+              )}
+            </div>
             <div className="space-y-2">
               <input type="text" placeholder="Nome do jogo (ex: Flamengo x Corinthians)" value={newTitle} onChange={e => setNewTitle(e.target.value)}
                 className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
@@ -1866,8 +1914,11 @@ export default function AdminPage() {
                       className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
                   </div>
                 ) : newSource === 'hls' ? (
-                  <input type="text" placeholder="URL HLS (ex: http://ip/hls/chave.m3u8)" value={newHlsUrl} onChange={e => setNewHlsUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
-                    className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                  <div className="flex-1 flex flex-col gap-1">
+                    <input type="text" placeholder="Chave da stream OBS (ex: zika)" value={newHlsUrl} onChange={e => setNewHlsUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
+                      className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
+                    {newHlsUrl.trim() && <p className="text-xs text-gray-500 px-1 truncate">→ {buildHlsUrl(newHlsUrl)}</p>}
+                  </div>
                 ) : (
                   <input type="text" placeholder="URL do YouTube (ex: youtube.com/watch?v=...)" value={newYoutubeUrl} onChange={e => setNewYoutubeUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStream()}
                     className="flex-1 bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
@@ -2072,8 +2123,11 @@ export default function AdminPage() {
                                   </div>
                                 </div>
                               ) : currentSource === 'hls' ? (
-                                <input type="text" value={editHlsUrls[s.id] ?? s.hls_url ?? ''} onChange={e => setEditHlsUrls(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="URL HLS (ex: http://ip/hls/chave.m3u8)"
-                                  className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                                <div className="flex flex-col gap-1">
+                                  <input type="text" value={editHlsUrls[s.id] ?? extractStreamKey(s.hls_url ?? '')} onChange={e => setEditHlsUrls(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="Chave da stream OBS (ex: zika)"
+                                    className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
+                                  {(editHlsUrls[s.id] ?? extractStreamKey(s.hls_url ?? '')) && <p className="text-xs text-gray-600 truncate px-1">→ {buildHlsUrl(editHlsUrls[s.id] ?? extractStreamKey(s.hls_url ?? ''))}</p>}
+                                </div>
                               ) : (
                                 <input type="text" value={editYoutubeUrls[s.id] ?? s.youtube_url ?? ''} onChange={e => setEditYoutubeUrls(prev => ({ ...prev, [s.id]: e.target.value }))} placeholder="URL do YouTube (ex: youtube.com/watch?v=...)"
                                   className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" />
