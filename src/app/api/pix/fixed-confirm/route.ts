@@ -25,12 +25,7 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
 
-    const msg = [
-      '💰 <b>Nova venda confirmada — FutZone</b>',
-      '<b>Tipo: QR Code fixo</b>',
-      `<b>Usuário: ${user_phone}</b>`,
-      stream_title ? `<b>Jogo: ${stream_title}</b>` : null,
-    ].filter(Boolean).join('\n')
+    const msg = `Nova venda confirmada 💰`
     sendTelegram(msg).catch(() => {})
 
     return NextResponse.json({ ok: true })

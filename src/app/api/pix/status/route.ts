@@ -40,13 +40,8 @@ export async function GET(req: NextRequest) {
       if (payment?.status !== 'PAID') {
         await supabase.from('payments').update({ status: 'PAID' }).eq('transaction_id', transaction_id)
 
-        const msg = [
-          '💰 <b>Nova venda confirmada — FutZone</b>',
-          '<b>Tipo: PIX avulso</b>',
-          payment?.user_phone ? `<b>Usuário: ${payment.user_phone}</b>` : null,
-          payment?.stream_title ? `<b>Jogo: ${payment.stream_title}</b>` : null,
-          payment?.amount ? `<b>Valor: R$ ${Number(payment.amount).toFixed(2).replace('.', ',')}</b>` : null,
-        ].filter(Boolean).join('\n')
+        const valor = payment?.amount ? `R$ ${Number(payment.amount).toFixed(2).replace('.', ',')}` : ''
+        const msg = `Nova venda confirmada${valor ? ` - ${valor}` : ''} 💰`
         sendTelegram(msg).catch(() => {})
       } else {
         await supabase.from('payments').update({ status: 'PAID' }).eq('transaction_id', transaction_id)

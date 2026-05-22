@@ -26,13 +26,8 @@ export async function POST(req: NextRequest) {
       .update({ status: 'PAID' })
       .eq('transaction_id', String(txId))
 
-    const msg = [
-      '💰 <b>Nova venda confirmada — FutZone</b>',
-      `<b>Tipo: PIX avulso</b>`,
-      payment?.user_phone ? `<b>Usuário: ${payment.user_phone}</b>` : null,
-      payment?.stream_title ? `<b>Jogo: ${payment.stream_title}</b>` : null,
-      payment?.amount ? `<b>Valor: R$ ${Number(payment.amount).toFixed(2).replace('.', ',')}</b>` : null,
-    ].filter(Boolean).join('\n')
+    const valor = payment?.amount ? `R$ ${Number(payment.amount).toFixed(2).replace('.', ',')}` : ''
+    const msg = `Nova venda confirmada${valor ? ` - ${valor}` : ''} 💰`
 
     sendTelegram(msg).catch(() => {})
   }

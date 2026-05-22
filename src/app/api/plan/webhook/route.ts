@@ -40,12 +40,7 @@ export async function POST(req: NextRequest) {
     .update({ plan: payment.plan_type ?? 'mensal', plan_expires_at: expiresAt.toISOString() })
     .eq('email', payment.user_email)
 
-  const planLabel = payment.plan_type === 'semanal' ? 'Semanal (7 dias)' : 'Mensal (30 dias)'
-  const msg = [
-    '💰 <b>Nova venda confirmada — FutZone</b>',
-    `<b>Tipo: Assinatura ${planLabel}</b>`,
-    `<b>Usuário: ${payment.user_email}</b>`,
-  ].join('\n')
+  const msg = `Nova venda confirmada 💰`
   sendTelegram(msg).catch(() => {})
 
   return NextResponse.json({ ok: true })
