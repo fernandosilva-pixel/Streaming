@@ -1500,7 +1500,7 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <div className="p-6 space-y-6 max-w-5xl mx-auto">
+        <div className="px-3 py-6 sm:px-6 space-y-6 max-w-5xl mx-auto">
 
       {/* ── ABA: VISUAL ── */}
       {activeTab === 'visual' && (
@@ -1689,7 +1689,7 @@ export default function AdminPage() {
             {/* Card principal */}
             <div className="space-y-2">
               <p className="text-white text-sm font-semibold">Card Principal <span className="text-gray-500 font-normal">(coluna esquerda, maior)</span></p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Desktop */}
                 <div className="space-y-1">
                   <p className="text-xs text-gray-500">🖥 Desktop · <span className="text-orange-400">800 × 530px</span></p>
@@ -1763,7 +1763,7 @@ export default function AdminPage() {
               {[1, 2, 3, 4].map(slot => (
                 <div key={slot} className="space-y-2">
                   <p className="text-gray-400 text-xs font-semibold">Card {slot}</p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {/* Desktop */}
                     <div className="space-y-1">
                       <p className="text-[10px] text-gray-500">🖥 <span className="text-orange-400">1050 × 300px</span></p>
@@ -2714,7 +2714,7 @@ export default function AdminPage() {
                 <div className="space-y-6">
 
                   {/* Cards principais */}
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {[
                       { label: 'Receita Total', value: `R$ ${revenue.toFixed(2).replace('.', ',')}`, sub: `${paidCount} pagamento${paidCount !== 1 ? 's' : ''} confirmado${paidCount !== 1 ? 's' : ''}`, accent: true },
                       { label: 'Cadastros', value: filteredRegs.length.toLocaleString('pt-BR'), sub: `${waCount} no grupo WhatsApp` },
@@ -2728,7 +2728,7 @@ export default function AdminPage() {
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {[
                       { label: 'QR Gerados', value: qrCount, sub: 'Total de cobranças' },
                       { label: 'QR Pendentes', value: pendingCount, sub: 'Aguardando pagamento' },
@@ -2818,7 +2818,7 @@ export default function AdminPage() {
                   {/* QR Codes — cards */}
                   <div>
                     <p className="text-white font-bold text-sm mb-3">QR Codes Gerados & Pagamentos</p>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-5">
                         <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">PIX Gerados</p>
                         <p className="text-3xl font-black text-white mt-2">{qrCount.toLocaleString('pt-BR')}</p>
@@ -2881,7 +2881,7 @@ export default function AdminPage() {
                       <div className="space-y-4">
                         <p className="text-white font-bold text-sm">Cohorts — Recorrência de Pagadores</p>
                         <p className="text-gray-500 text-xs -mt-2">Considera avulso + planos. Limitado aos últimos 1.000 registros de cada tabela.</p>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                           {[
                             { label: 'Pagadores Únicos', value: uniquePayers.toLocaleString('pt-BR'), sub: 'Total histórico (avulso + planos)', color: 'text-white' },
                             { label: 'Recorrentes (2+)', value: recurring.length.toLocaleString('pt-BR'), sub: 'Pagaram mais de uma vez', color: 'text-orange-400' },
@@ -2976,7 +2976,7 @@ export default function AdminPage() {
             const expiredCount = subs.length - activeCount
             return (
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
                     <p className="text-gray-500 text-xs uppercase tracking-wide">Total</p>
                     <p className="text-2xl font-black text-white mt-1">{subs.length}</p>
@@ -3288,7 +3288,7 @@ export default function AdminPage() {
                       {editingGameId === g.id ? (
                         <div className="p-4 space-y-4">
                           <p className="text-orange-400 text-xs font-bold uppercase tracking-wide">Editando jogo</p>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <p className="text-gray-400 text-xs mb-1">Time da casa</p>
                               <input type="text" value={editingGame.team1} onChange={e => setEditingGame(p => ({ ...p, team1: e.target.value }))}
@@ -3300,7 +3300,7 @@ export default function AdminPage() {
                                 className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500" />
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <p className="text-gray-400 text-xs mb-1">Logo time da casa</p>
                               <div className="flex items-center gap-2">
@@ -3330,7 +3330,7 @@ export default function AdminPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <p className="text-gray-400 text-xs mb-1">Liga / Campeonato</p>
                               <input type="text" value={editingGame.league} onChange={e => setEditingGame(p => ({ ...p, league: e.target.value }))}
@@ -3539,7 +3539,7 @@ export default function AdminPage() {
             return (
               <div className="space-y-4">
                 {/* Cards de resumo */}
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {[
                     { label: 'Total Resgatados', value: cashbackUses.length.toLocaleString('pt-BR'), sub: 'Cashbacks concedidos', color: 'text-orange-400' },
                     { label: 'Usuários Únicos', value: sortedUsers.length.toLocaleString('pt-BR'), sub: 'Com cashback ativo', color: 'text-white' },
