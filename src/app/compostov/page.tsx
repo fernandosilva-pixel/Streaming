@@ -356,8 +356,9 @@ export default function AdminPage() {
 
   async function loadCashbackUses() {
     setCashbackLoading(true)
-    const { data } = await supabase.from('cashback_uses').select('*').order('created_at', { ascending: false }).limit(500)
-    setCashbackUses((data ?? []) as CashbackUse[])
+    const res = await fetch('/api/cashback/list')
+    const json = await res.json()
+    setCashbackUses((json.data ?? []) as CashbackUse[])
     setCashbackLoading(false)
   }
 
