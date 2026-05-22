@@ -46,12 +46,6 @@ export default function JogoPage({ params }: Props) {
   const [hasPaid, setHasPaid] = useState(false)
   const [checkingPayment, setCheckingPayment] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
-  const [cashbackEligible, setCashbackEligible] = useState(false)
-  const [cashbackGranted, setCashbackGranted] = useState(false)
-  const [cashbackPaidCount, setCashbackPaidCount] = useState(0)
-  const [showCashbackModal, setShowCashbackModal] = useState(false)
-  const cashbackCheckRef = useRef(false)
-  const cashbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isFreeAccess, setIsFreeAccess] = useState(false)
   const [hasCoupon, setHasCoupon] = useState(false)
   const [isTargetCharged, setIsTargetCharged] = useState(false)
@@ -274,54 +268,6 @@ export default function JogoPage({ params }: Props) {
       })
   }, [user?.email, id, stream?.charge_enabled])
 
-  // Cashback: verifica elegibilidade em background durante o preview
-  useEffect(() => {
-    if (!user || !stream || !(stream.charge_enabled || isTargetCharged)) return
-    if (isPlanActive(user) || hasPaid || isFreeAccess || hasCoupon) return
-    if (cashbackCheckRef.current) return
-    cashbackCheckRef.current = true
-
-    const email = user.email
-    const base = email.endsWith('@futzone.app') ? email.split('@')[0] : email
-    const withCountry = base.startsWith('55') ? base : '55' + base
-    const withoutCountry = base.startsWith('55') ? base.slice(2) : base
-    const variants = Array.from(new Set([email, base, withCountry, withoutCountry, `${withCountry}@futzone.app`, `${withoutCountry}@futzone.app`]))
-
-    Promise.all([
-      fetch('/api/cashback/settings').then(r => r.json()),
-      supabase.from('payments').select('id', { count: 'exact', head: true }).in('user_phone', variants).eq('status', 'PAID'),
-      supabase.from('plan_payments').select('id', { count: 'exact', head: true }).in('user_email', variants).eq('status', 'PAID'),
-      supabase.from('cashback_uses').select('id', { count: 'exact', head: true }).in('user_email', variants),
-    ]).then(([settings, { count: payCount }, { count: planCount }, { count: usesCount }]) => {
-      if (!settings?.enabled) return
-      const totalPaid = (payCount ?? 0) + (planCount ?? 0)
-      setCashbackPaidCount(totalPaid)
-      if (Math.floor(totalPaid / 5) > (usesCount ?? 0)) setCashbackEligible(true)
-    })
-  }, [user, stream, isTargetCharged, hasPaid, isFreeAccess, hasCoupon])
-
-  // Cashback: concede acesso quando o preview acaba e o usuário é elegível
-  useEffect(() => {
-    if (previewActive || !cashbackEligible || cashbackGranted) return
-    if (!user || !stream) return
-
-    setCashbackGranted(true)
-    setHasPaid(true)
-    setShowCashbackModal(true)
-
-    fetch('/api/cashback/grant', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_email: user.email, stream_id: stream.id, stream_title: stream.title }),
-    })
-  }, [previewActive, cashbackEligible, cashbackGranted, user, stream])
-
-  // Auto-fecha o modal de cashback após 10s
-  useEffect(() => {
-    if (!showCashbackModal) return
-    cashbackTimerRef.current = setTimeout(() => setShowCashbackModal(false), 10000)
-    return () => { if (cashbackTimerRef.current) clearTimeout(cashbackTimerRef.current) }
-  }, [showCashbackModal])
 
   // Poll for admin-triggered force refresh every 5s (stream-level)
   useEffect(() => {
@@ -695,86 +641,6 @@ export default function JogoPage({ params }: Props) {
         <NewsSection />
       </div>
 
-      {/* ── Modal de Cashback VIP ── */}
-      {showCashbackModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowCashbackModal(false)} />
-
-          {/* Particles de fundo */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {['⚽','🔥','⭐','✨','🏆','⭐','🔥','⚽','✨'].map((emoji, i) => (
-              <span
-                key={i}
-                className="absolute text-2xl opacity-20 animate-bounce"
-                style={{
-                  left: `${10 + i * 10}%`,
-                  top: `${15 + (i % 3) * 25}%`,
-                  animationDelay: `${i * 0.3}s`,
-                  animationDuration: `${1.5 + (i % 3) * 0.5}s`,
-                }}
-              >
-                {emoji}
-              </span>
-            ))}
-          </div>
-
-          {/* Card principal */}
-          <div
-            className="relative w-full max-w-sm rounded-3xl text-center overflow-hidden"
-            style={{ boxShadow: '0 0 80px rgba(255,106,0,0.5), 0 0 160px rgba(255,106,0,0.2)' }}
-          >
-            {/* Borda gradiente */}
-            <div className="absolute inset-0 rounded-3xl p-[2px]" style={{ background: 'linear-gradient(135deg,#FF6A00,#FFB347,#FF6A00)', zIndex: 0 }} />
-            <div className="relative z-10 bg-[#080810] rounded-[calc(1.5rem-2px)] m-[2px] p-8 space-y-5">
-
-              {/* Troféu */}
-              <div className="text-8xl animate-bounce" style={{ animationDuration: '1s' }}>🏆</div>
-
-              {/* Título */}
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-400">Recompensa desbloqueada</p>
-                <h2 className="text-white font-black text-2xl leading-tight">
-                  Acesso VIP<br />Conquistado!
-                </h2>
-              </div>
-
-              {/* Texto */}
-              <p className="text-gray-400 text-sm leading-relaxed px-2">
-                Você já acompanhou{' '}
-                <span className="text-orange-400 font-bold">{cashbackPaidCount} jogos</span>{' '}
-                com a FutZone e merece essa recompensa! Fãs leais são especiais pra gente —
-                então este jogo é completamente{' '}
-                <span className="text-white font-bold">por nossa conta</span>.
-                Curta a transmissão ao vivo! ⚽🔥
-              </p>
-
-              {/* Stats */}
-              <div className="flex items-center justify-center gap-6 py-1">
-                <div className="text-center">
-                  <p className="text-white font-black text-2xl">{cashbackPaidCount}</p>
-                  <p className="text-gray-600 text-[10px] uppercase tracking-wide">jogos pagos</p>
-                </div>
-                <div className="w-px h-10 bg-[#2A2A3A]" />
-                <div className="text-center">
-                  <p className="text-orange-400 font-black text-2xl">1</p>
-                  <p className="text-gray-600 text-[10px] uppercase tracking-wide">cashback VIP</p>
-                </div>
-              </div>
-
-              {/* Botão */}
-              <button
-                onClick={() => setShowCashbackModal(false)}
-                className="w-full py-3.5 rounded-2xl font-black text-white text-sm transition-all hover:opacity-90 active:scale-95"
-                style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)' }}
-              >
-                ⚽ Assistir agora — é grátis!
-              </button>
-
-              <p className="text-gray-700 text-[10px]">Acesso VIP ativado automaticamente · fecha em 10s</p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -146,7 +146,7 @@ export default function AdminPage() {
   const [addingAdmin, setAddingAdmin] = useState(false)
 
   // Aba ativa
-  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte' | 'usuarios' | 'assinaturas' | 'cashback'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'visual' | 'transmissao' | 'acesso' | 'notificar' | 'afiliados' | 'dashboard' | 'admins' | 'agenda' | 'suporte' | 'usuarios' | 'assinaturas'>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Permissões do admin logado (null = superadmin, array = abas permitidas)
@@ -349,38 +349,6 @@ export default function AdminPage() {
   const [waBatch, setWaBatch] = useState<{ running: boolean; total: number; done: number; skipped: number; errors: number } | null>(null)
   const waBatchStopRef = useRef(false)
 
-  // Cashback VIP
-  type CashbackUse = { id: string; user_email: string; stream_id: string; stream_title?: string | null; created_at: string }
-  const [cashbackUses, setCashbackUses] = useState<CashbackUse[]>([])
-  const [cashbackLoading, setCashbackLoading] = useState(false)
-  const [cashbackEnabled, setCashbackEnabled] = useState(true)
-  const [togglingCashback, setTogglingCashback] = useState(false)
-
-  async function loadCashbackUses() {
-    setCashbackLoading(true)
-    const [res, { data: setting }] = await Promise.all([
-      fetch('/api/cashback/list'),
-      supabase.from('app_settings').select('value').eq('key', 'cashback_enabled').single(),
-    ])
-    const json = await res.json()
-    setCashbackUses((json.data ?? []) as CashbackUse[])
-    setCashbackEnabled(setting?.value !== 'false')
-    setCashbackLoading(false)
-  }
-
-  async function toggleCashback() {
-    setTogglingCashback(true)
-    const newValue = !cashbackEnabled
-    await fetch('/api/cashback/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: newValue }),
-    })
-    setCashbackEnabled(newValue)
-    setTogglingCashback(false)
-  }
-
-  useEffect(() => { if (activeTab === 'cashback') loadCashbackUses() }, [activeTab])
 
   // Suporte — badge de tickets abertos
   const [supportOpenCount, setSupportOpenCount] = useState(0)
@@ -1448,7 +1416,6 @@ export default function AdminPage() {
                 { id: 'acesso', label: 'Acesso Gratuito', icon: <Users className="w-4 h-4" /> },
                 { id: 'usuarios', label: 'Usuários', icon: <Users className="w-4 h-4" /> },
                 { id: 'assinaturas', label: 'Assinaturas', icon: <UserCheck className="w-4 h-4" /> },
-                { id: 'cashback', label: 'Cashback VIP', icon: <span className="text-sm">🏆</span> },
                 { id: 'afiliados', label: 'Afiliados', icon: <UserCheck className="w-4 h-4" /> },
               ],
             },
@@ -3522,113 +3489,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ── ABA: CASHBACK VIP ── */}
-      {activeTab === 'cashback' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-white">Cashback VIP</h2>
-              <p className="text-gray-500 text-sm mt-0.5">Usuários que resgataram acesso gratuito após 5 pagamentos confirmados.</p>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <button
-                onClick={toggleCashback}
-                disabled={togglingCashback}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${cashbackEnabled ? 'bg-orange-500' : 'bg-[#2A2A3A]'}`}
-              >
-                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${cashbackEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-              <span className={`text-sm font-semibold ${cashbackEnabled ? 'text-orange-400' : 'text-gray-500'}`}>
-                {cashbackEnabled ? 'Ativo' : 'Inativo'}
-              </span>
-              <button onClick={loadCashbackUses} disabled={cashbackLoading} className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
-                <RefreshCw className={`w-4 h-4 ${cashbackLoading ? 'animate-spin' : ''}`} />
-                Atualizar
-              </button>
-            </div>
-          </div>
-
-          {cashbackLoading ? (
-            <p className="text-gray-500 text-sm">Carregando...</p>
-          ) : cashbackUses.length === 0 ? (
-            <div className="border border-dashed border-[#2A2A3A] rounded-xl py-12 text-center">
-              <p className="text-4xl mb-3">🏆</p>
-              <p className="text-gray-500 text-sm font-semibold">Nenhum cashback resgatado ainda</p>
-              <p className="text-gray-700 text-xs mt-1">Será exibido aqui quando um usuário completar 5 pagamentos e acessar um jogo grátis.</p>
-            </div>
-          ) : (() => {
-            // Agrupa por usuário para mostrar total de cashbacks por pessoa
-            const byUser: Record<string, CashbackUse[]> = {}
-            for (const c of cashbackUses) {
-              const key = normalizeId(c.user_email)
-              if (!byUser[key]) byUser[key] = []
-              byUser[key].push(c)
-            }
-            const sortedUsers = Object.entries(byUser).sort((a, b) => b[1].length - a[1].length)
-
-            return (
-              <div className="space-y-4">
-                {/* Cards de resumo */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {[
-                    { label: 'Total Resgatados', value: cashbackUses.length.toLocaleString('pt-BR'), sub: 'Cashbacks concedidos', color: 'text-orange-400' },
-                    { label: 'Usuários Únicos', value: sortedUsers.length.toLocaleString('pt-BR'), sub: 'Com cashback ativo', color: 'text-white' },
-                    { label: 'Mais Fiel', value: sortedUsers[0] ? `${sortedUsers[0][1].length}×` : '—', sub: sortedUsers[0] ? (dashRegistrations.find(r => normalizeId(r.phone ?? '') === sortedUsers[0][0] || normalizeId(r.email ?? '') === sortedUsers[0][0])?.name ?? sortedUsers[0][0]) : '', color: 'text-yellow-400' },
-                  ].map(c => (
-                    <div key={c.label} className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4">
-                      <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">{c.label}</p>
-                      <p className={`text-2xl font-black mt-2 ${c.color}`}>{c.value}</p>
-                      <p className="text-gray-600 text-xs mt-1 truncate">{c.sub}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Tabela */}
-                <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-[#2A2A3A]">
-                          <th className="text-left text-gray-500 font-medium px-4 py-3">Usuário</th>
-                          <th className="text-left text-gray-500 font-medium px-4 py-3">Jogo (transmissão)</th>
-                          <th className="text-left text-gray-500 font-medium px-4 py-3">Data do cashback</th>
-                          <th className="text-left text-gray-500 font-medium px-4 py-3">Usos</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {cashbackUses.map((c, i) => {
-                          const key = normalizeId(c.user_email)
-                          const reg = dashRegistrations.find(r => normalizeId(r.phone ?? '') === key || normalizeId(r.email ?? '') === key)
-                          const displayId = c.user_email.endsWith('@futzone.app')
-                            ? c.user_email.replace('@futzone.app', '').replace(/^55/, '')
-                            : c.user_email
-                          const gameTitle = c.stream_title || streams.find(s => s.id === c.stream_id)?.title || c.stream_id
-                          const totalUses = byUser[key]?.length ?? 1
-                          return (
-                            <tr key={c.id ?? i} className="border-b border-[#1A1A26] last:border-0 hover:bg-white/[0.02]">
-                              <td className="px-4 py-3">
-                                <p className="text-white font-semibold">{reg?.name ?? '—'}</p>
-                                <p className="text-gray-500 text-xs font-mono">{displayId}</p>
-                              </td>
-                              <td className="px-4 py-3 text-gray-300 text-sm">{gameTitle}</td>
-                              <td className="px-4 py-3 text-gray-400 text-xs">
-                                {c.created_at ? new Date(c.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className="text-orange-400 font-black text-sm">{totalUses}×</span>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
-        </div>
-      )}
 
       {/* ── ABA: USUÁRIOS ── */}
       {activeTab === 'usuarios' && (
