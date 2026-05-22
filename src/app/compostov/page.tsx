@@ -687,7 +687,7 @@ export default function AdminPage() {
       initialSources[s.id] = s.stream_source ?? 'kick'
       initialSoopChannels[s.id] = s.soop_channel ?? ''
       initialSoopBroadNos[s.id] = s.soop_broad_no ?? ''
-      initialHlsUrls[s.id] = s.hls_url ?? ''
+      initialHlsUrls[s.id] = s.hls_url ? (s.hls_url.match(/\/hls\/(.+?)\.m3u8/)?.[1] ?? s.hls_url) : ''
       initialYoutubeUrls[s.id] = s.youtube_url ?? ''
       initialAmounts[s.id] = String(s.charge_amount ?? '10.00')
     })
