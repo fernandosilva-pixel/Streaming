@@ -51,6 +51,11 @@ export default function HlsPlayer({ src, style, className }: HlsPlayerProps) {
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (data.fatal) {
           setErrorMsg(`${data.type}: ${data.details}`)
+          fetch('/api/cdn-error/report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ error_type: data.type, error_details: data.details, stream_url: proxied }),
+          }).catch(() => {})
         }
       })
 
