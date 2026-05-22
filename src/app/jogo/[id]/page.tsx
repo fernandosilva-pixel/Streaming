@@ -288,10 +288,12 @@ export default function JogoPage({ params }: Props) {
     const variants = Array.from(new Set([email, base, withCountry, withoutCountry, `${withCountry}@futzone.app`, `${withoutCountry}@futzone.app`]))
 
     Promise.all([
+      supabase.from('app_settings').select('value').eq('key', 'cashback_enabled').single(),
       supabase.from('payments').select('id', { count: 'exact', head: true }).in('user_phone', variants).eq('status', 'PAID'),
       supabase.from('plan_payments').select('id', { count: 'exact', head: true }).in('user_email', variants).eq('status', 'PAID'),
       supabase.from('cashback_uses').select('id', { count: 'exact', head: true }).in('user_email', variants),
-    ]).then(([{ count: payCount }, { count: planCount }, { count: usesCount }]) => {
+    ]).then(([{ data: setting }, { count: payCount }, { count: planCount }, { count: usesCount }]) => {
+      if (setting?.value === 'false') return
       const totalPaid = (payCount ?? 0) + (planCount ?? 0)
       setCashbackPaidCount(totalPaid)
       if (Math.floor(totalPaid / 5) > (usesCount ?? 0)) setCashbackEligible(true)

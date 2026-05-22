@@ -353,13 +353,27 @@ export default function AdminPage() {
   type CashbackUse = { id: string; user_email: string; stream_id: string; stream_title?: string | null; created_at: string }
   const [cashbackUses, setCashbackUses] = useState<CashbackUse[]>([])
   const [cashbackLoading, setCashbackLoading] = useState(false)
+  const [cashbackEnabled, setCashbackEnabled] = useState(true)
+  const [togglingCashback, setTogglingCashback] = useState(false)
 
   async function loadCashbackUses() {
     setCashbackLoading(true)
-    const res = await fetch('/api/cashback/list')
+    const [res, { data: setting }] = await Promise.all([
+      fetch('/api/cashback/list'),
+      supabase.from('app_settings').select('value').eq('key', 'cashback_enabled').single(),
+    ])
     const json = await res.json()
     setCashbackUses((json.data ?? []) as CashbackUse[])
+    setCashbackEnabled(setting?.value !== 'false')
     setCashbackLoading(false)
+  }
+
+  async function toggleCashback() {
+    setTogglingCashback(true)
+    const newValue = !cashbackEnabled
+    await supabase.from('app_settings').upsert({ key: 'cashback_enabled', value: String(newValue) })
+    setCashbackEnabled(newValue)
+    setTogglingCashback(false)
   }
 
   useEffect(() => { if (activeTab === 'cashback') loadCashbackUses() }, [activeTab])
@@ -3507,15 +3521,27 @@ export default function AdminPage() {
       {/* ── ABA: CASHBACK VIP ── */}
       {activeTab === 'cashback' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-bold text-white">Cashback VIP</h2>
               <p className="text-gray-500 text-sm mt-0.5">Usuários que resgataram acesso gratuito após 5 pagamentos confirmados.</p>
             </div>
-            <button onClick={loadCashbackUses} disabled={cashbackLoading} className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
-              <RefreshCw className={`w-4 h-4 ${cashbackLoading ? 'animate-spin' : ''}`} />
-              Atualizar
-            </button>
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                onClick={toggleCashback}
+                disabled={togglingCashback}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${cashbackEnabled ? 'bg-orange-500' : 'bg-[#2A2A3A]'}`}
+              >
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${cashbackEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+              <span className={`text-sm font-semibold ${cashbackEnabled ? 'text-orange-400' : 'text-gray-500'}`}>
+                {cashbackEnabled ? 'Ativo' : 'Inativo'}
+              </span>
+              <button onClick={loadCashbackUses} disabled={cashbackLoading} className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
+                <RefreshCw className={`w-4 h-4 ${cashbackLoading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </button>
+            </div>
           </div>
 
           {cashbackLoading ? (
