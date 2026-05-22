@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendTelegram } from '@/lib/telegram'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -23,6 +24,15 @@ export async function POST(req: NextRequest) {
     })
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+
+    const msg = [
+      '💰 <b>Nova venda confirmada — FutZone</b>',
+      '<b>Tipo: QR Code fixo</b>',
+      `<b>Usuário: ${user_phone}</b>`,
+      stream_title ? `<b>Jogo: ${stream_title}</b>` : null,
+    ].filter(Boolean).join('\n')
+    sendTelegram(msg).catch(() => {})
+
     return NextResponse.json({ ok: true })
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 })

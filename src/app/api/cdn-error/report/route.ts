@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendTelegram } from '@/lib/telegram'
 
 export const runtime = 'nodejs'
 
@@ -8,22 +9,11 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID!
 const COOLDOWN_MINUTES = 1
-
-async function sendTelegram(text: string) {
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: 'HTML' }),
-  })
-}
 
 export async function POST(req: NextRequest) {
   const { error_type, error_details, stream_url } = await req.json()
 
-  // Verifica se já foi notificado nos últimos 10 minutos
   const since = new Date(Date.now() - COOLDOWN_MINUTES * 60 * 1000).toISOString()
   const { count } = await supabase
     .from('cdn_error_log')
