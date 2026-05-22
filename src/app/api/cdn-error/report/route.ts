@@ -10,7 +10,7 @@ const supabase = createClient(
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID!
-const COOLDOWN_MINUTES = 10
+const COOLDOWN_MINUTES = 1
 
 async function sendTelegram(text: string) {
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
