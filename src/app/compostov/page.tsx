@@ -371,7 +371,11 @@ export default function AdminPage() {
   async function toggleCashback() {
     setTogglingCashback(true)
     const newValue = !cashbackEnabled
-    await supabase.from('app_settings').upsert({ key: 'cashback_enabled', value: String(newValue) })
+    await fetch('/api/cashback/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: newValue }),
+    })
     setCashbackEnabled(newValue)
     setTogglingCashback(false)
   }
