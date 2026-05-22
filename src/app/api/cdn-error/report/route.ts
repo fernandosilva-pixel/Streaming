@@ -37,12 +37,10 @@ export async function POST(req: NextRequest) {
   await supabase.from('cdn_error_log').insert({ error_type, error_details, stream_url: stream_url ?? null })
 
   const msg = [
-    '🚨 <b>Alerta FutZone — CDN com problema</b>',
-    '',
-    `<b>Erro:</b> <code>${error_type}: ${error_details}</code>`,
-    stream_url ? `<b>Stream:</b> <code>${stream_url}</code>` : null,
-    '',
-    'Verifique a conta da Bunny CDN e troque a URL base no painel se necessário.',
+    '🚨 <b>Alerta FutZone — CDN com problema 🚨</b>',
+    `<b>Erro: ${error_type}: ${error_details}</b>`,
+    stream_url ? `<b>Stream: ${stream_url}</b>` : null,
+    '<b>Conta do Bunny SUSPENSA troque a URL base no painel por uma conta ativa.</b>',
   ].filter(Boolean).join('\n')
 
   await sendTelegram(msg)
