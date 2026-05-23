@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { sendTelegram } from '@/lib/telegram'
 
 export const runtime = 'edge'
 
@@ -32,21 +31,7 @@ export async function GET(req: NextRequest) {
     const asapData = await asapRes.json()
     const status = asapData?.status
     if (status === 'PAID') {
-      const { data: payment } = await supabase.from('payments')
-        .select('user_phone, stream_title, amount, status')
-        .eq('transaction_id', transaction_id)
-        .maybeSingle()
-
-      if (payment?.status !== 'PAID') {
-        await supabase.from('payments').update({ status: 'PAID' }).eq('transaction_id', transaction_id)
-
-        const valor = payment?.amount ? `R$ ${Number(payment.amount).toFixed(2).replace('.', ',')}` : ''
-        const msg = `Nova venda confirmada${valor ? ` - ${valor}` : ''} 💰`
-        sendTelegram(msg).catch(() => {})
-      } else {
-        await supabase.from('payments').update({ status: 'PAID' }).eq('transaction_id', transaction_id)
-      }
-
+      await supabase.from('payments').update({ status: 'PAID' }).eq('transaction_id', transaction_id)
       return NextResponse.json({ status: 'PAID' })
     }
     return NextResponse.json({ status: status ?? 'PENDING' })
