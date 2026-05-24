@@ -2838,7 +2838,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between mb-5">
                       <div>
                         <p className="text-white font-bold text-sm flex items-center gap-2"><BarChart2 className="w-4 h-4 text-orange-400" /> Métricas — últimos 7 dias</p>
-                        <p className="text-gray-500 text-xs mt-0.5">Receita e pagamentos por dia{dashStreamFilter !== 'all' ? ` · ${streams.find(s => s.id === dashStreamFilter)?.title ?? ''}` : ''}</p>
+                        <p className="text-gray-500 text-xs mt-0.5">Receita e pagamentos por dia</p>
                       </div>
                     </div>
                     <ResponsiveContainer width="100%" height={200}>
