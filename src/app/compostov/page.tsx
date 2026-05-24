@@ -2677,11 +2677,13 @@ export default function AdminPage() {
               const qrCount = filteredPays.length
               const paidCount = filteredPays.filter(p => p.status === 'PAID').length
               const pendingCount = filteredPays.filter(p => p.status !== 'PAID').length
-              const revenue = filteredPays.filter(p => p.status === 'PAID').reduce((s, p) => s + (p.amount ?? 0), 0)
+              const pixRevenue = filteredPays.filter(p => p.status === 'PAID').reduce((s, p) => s + (p.amount ?? 0), 0)
+              const filteredPlanPays = dashPlanPayments.filter(p => p.status === 'PAID' && matchDate(p.created_at))
+              const planRevenue = filteredPlanPays.reduce((s, p) => s + (p.amount ?? 0), 0)
+              const revenue = pixRevenue + planRevenue
               const directPaid = filteredPays.filter(p => !p.referral_code && p.status === 'PAID').length
               const affiliatePaid = filteredPays.filter(p => p.referral_code && p.status === 'PAID').length
               const activeSubs = dashRegistrations.filter(r => (r.plan === 'semanal' || r.plan === 'mensal') && r.plan_expires_at && new Date(r.plan_expires_at) > now).length
-              const filteredPlanPays = dashPlanPayments.filter(p => p.status === 'PAID' && matchDate(p.created_at))
 
               // Chart: revenue per day — last 7 days
               const chartData = Array.from({ length: 7 }, (_, i) => {
@@ -2705,7 +2707,7 @@ export default function AdminPage() {
                     <div className="rounded-xl p-5 border bg-orange-500/10 border-orange-500/25">
                       <p className="text-gray-400 text-xs font-medium uppercase tracking-wide">Receita Total</p>
                       <p className="text-3xl font-black mt-2 text-orange-400">R$ {revenue.toFixed(2).replace('.', ',')}</p>
-                      <p className="text-gray-500 text-xs mt-1">{paidCount} pagamento{paidCount !== 1 ? 's' : ''} confirmado{paidCount !== 1 ? 's' : ''}</p>
+                      <p className="text-gray-500 text-xs mt-1">{paidCount} avulso{paidCount !== 1 ? 's' : ''} · {filteredPlanPays.length} assinatura{filteredPlanPays.length !== 1 ? 's' : ''}</p>
                     </div>
                     <div className="rounded-xl p-5 border bg-[#12121A] border-[#2A2A3A]">
                       <p className="text-gray-400 text-xs font-medium uppercase tracking-wide">Cadastros</p>
