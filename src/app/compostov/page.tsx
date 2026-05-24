@@ -347,13 +347,21 @@ export default function AdminPage() {
   type DashRegistration = { id?: string; name: string; phone: string; email?: string; plan?: string | null; plan_expires_at?: string | null; created_at?: string; whatsapp_added_at?: string | null }
   type DashPayment = { id: string; stream_id: string; stream_title?: string | null; user_phone: string; amount?: number; status: string; referral_code?: string | null; created_at?: string }
   type DashPlanPayment = { id: string; user_email: string; amount?: number; status: string; plan_type?: string | null; created_at?: string }
+  type DashMetrics = {
+    total_revenue: number; pix_revenue: number; pix_count: number
+    plan_revenue: number; plan_count: number
+    test_revenue: number; test_count: number
+    stream_breakdown: { title: string; vendas: number; receita: number }[]
+    plan_breakdown: { mensal: { vendas: number; receita: number }; semanal: { vendas: number; receita: number } }
+  }
   const [dashLoading, setDashLoading] = useState(false)
   const [dashRegistrations, setDashRegistrations] = useState<DashRegistration[]>([])
   const [dashPayments, setDashPayments] = useState<DashPayment[]>([])
   const [dashPlanPayments, setDashPlanPayments] = useState<DashPlanPayment[]>([])
-  const [dashStreamFilter, setDashStreamFilter] = useState<string>('all')
+  const [dashMetrics, setDashMetrics] = useState<DashMetrics | null>(null)
   const [dashDateFilter, setDashDateFilter] = useState<string>('all')
   const [showPlanSalesModal, setShowPlanSalesModal] = useState(false)
+  const [showMetricsPanel, setShowMetricsPanel] = useState(false)
   const [regLimit, setRegLimit] = useState(5)
   const [payLimit, setPayLimit] = useState(5)
   const [waBatch, setWaBatch] = useState<{ running: boolean; total: number; done: number; skipped: number; errors: number } | null>(null)
@@ -441,14 +449,16 @@ export default function AdminPage() {
 
   async function loadAdminDashboard() {
     setDashLoading(true)
-    const [regRes, payRes, planRes] = await Promise.all([
+    const [regRes, payRes, planRes, metricsRes] = await Promise.all([
       supabase.from('registrations').select('*').order('created_at', { ascending: false }).limit(500),
-      supabase.from('payments').select('*').order('created_at', { ascending: false }).limit(1000),
+      supabase.from('payments').select('*').order('created_at', { ascending: false }).limit(2000),
       supabase.from('plan_payments').select('id, user_email, amount, status, plan_type, created_at').order('created_at', { ascending: false }).limit(1000),
+      fetch('/api/dashboard/metrics').then(r => r.json()),
     ])
     setDashRegistrations(regRes.data ?? [])
     setDashPayments(payRes.data ?? [])
     setDashPlanPayments(planRes.data ?? [])
+    setDashMetrics(metricsRes)
     setDashLoading(false)
   }
 
@@ -2674,14 +2684,13 @@ export default function AdminPage() {
                 </button>
               ))}
             </div>
-            <select
-              value={dashStreamFilter}
-              onChange={e => setDashStreamFilter(e.target.value)}
-              className="bg-[#12121A] border border-[#2A2A3A] text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-orange-500"
+            <button
+              onClick={() => setShowMetricsPanel(v => !v)}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border border-[#2A2A3A] bg-[#12121A] text-gray-400 hover:text-white hover:border-orange-500/40 transition-all"
             >
-              <option value="all">Todas as lives</option>
-              {streams.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-            </select>
+              <BarChart2 className="w-3.5 h-3.5" />
+              {showMetricsPanel ? 'Ocultar varredura' : 'Varredura de métricas'}
+            </button>
           </div>
 
           {dashLoading ? (
@@ -2699,16 +2708,15 @@ export default function AdminPage() {
               }
               const filteredRegs = dashRegistrations.filter(r => matchDate(r.created_at))
               const waCount = dashRegistrations.filter(r => r.whatsapp_added_at && matchDate(r.whatsapp_added_at)).length
-              const filteredPays = dashPayments
-                .filter(p => dashStreamFilter === 'all' || p.stream_id === dashStreamFilter)
-                .filter(p => matchDate(p.created_at))
+              const filteredPays = dashPayments.filter(p => matchDate(p.created_at))
               const qrCount = filteredPays.length
               const paidCount = filteredPays.filter(p => p.status === 'PAID').length
               const pendingCount = filteredPays.filter(p => p.status !== 'PAID').length
-              const pixRevenue = filteredPays.filter(p => p.status === 'PAID').reduce((s, p) => s + (p.amount ?? 0), 0)
               const filteredPlanPays = dashPlanPayments.filter(p => p.status === 'PAID' && matchDate(p.created_at))
-              const planRevenue = filteredPlanPays.reduce((s, p) => s + (p.amount ?? 0), 0)
-              const revenue = pixRevenue + planRevenue
+              const revenue = dashDateFilter === 'all' && dashMetrics
+                ? dashMetrics.total_revenue
+                : filteredPays.filter(p => p.status === 'PAID').reduce((s, p) => s + (p.amount ?? 0), 0)
+                  + filteredPlanPays.reduce((s, p) => s + (p.amount ?? 0), 0)
               const directPaid = filteredPays.filter(p => !p.referral_code && p.status === 'PAID').length
               const affiliatePaid = filteredPays.filter(p => p.referral_code && p.status === 'PAID').length
               const activeSubs = dashRegistrations.filter(r => (r.plan === 'semanal' || r.plan === 'mensal') && r.plan_expires_at && new Date(r.plan_expires_at) > now).length
@@ -2717,13 +2725,12 @@ export default function AdminPage() {
               const chartData = Array.from({ length: 7 }, (_, i) => {
                 const d = new Date(); d.setDate(d.getDate() - (6 - i))
                 const dayStart = startOf(d); const dayEnd = new Date(dayStart.getTime() + 86400000)
-                const dayPays = dashPayments
-                  .filter(p => dashStreamFilter === 'all' || p.stream_id === dashStreamFilter)
-                  .filter(p => p.status === 'PAID' && p.created_at && new Date(p.created_at) >= dayStart && new Date(p.created_at) < dayEnd)
+                const dayPays = dashPayments.filter(p => p.status === 'PAID' && p.created_at && new Date(p.created_at) >= dayStart && new Date(p.created_at) < dayEnd)
+                const dayPlans = dashPlanPayments.filter(p => p.status === 'PAID' && p.created_at && new Date(p.created_at) >= dayStart && new Date(p.created_at) < dayEnd)
                 return {
                   dia: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-                  receita: parseFloat(dayPays.reduce((s, p) => s + (p.amount ?? 0), 0).toFixed(2)),
-                  pagamentos: dayPays.length,
+                  receita: parseFloat(([...dayPays, ...dayPlans].reduce((s, p) => s + (p.amount ?? 0), 0)).toFixed(2)),
+                  pagamentos: dayPays.length + dayPlans.length,
                 }
               })
 
@@ -2756,6 +2763,60 @@ export default function AdminPage() {
                       <p className="text-gray-500 text-xs mt-1">Clique para ver detalhes</p>
                     </button>
                   </div>
+
+                  {/* Painel de varredura de métricas */}
+                  {showMetricsPanel && dashMetrics && (
+                    <div className="bg-[#0B0B0F] border border-orange-500/20 rounded-xl p-4 space-y-4">
+                      <p className="text-orange-400 text-xs font-black uppercase tracking-widest">Varredura de métricas — dados diretos do banco</p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-3">
+                          <p className="text-gray-500 text-xs uppercase tracking-wide">Receita total verificada</p>
+                          <p className="text-white font-black text-xl mt-1">R$ {dashMetrics.total_revenue.toFixed(2).replace('.', ',')}</p>
+                          <p className="text-gray-600 text-xs mt-1">PIX R$ {dashMetrics.pix_revenue.toFixed(2).replace('.', ',')} · Planos R$ {dashMetrics.plan_revenue.toFixed(2).replace('.', ',')}</p>
+                        </div>
+                        <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-3">
+                          <p className="text-gray-500 text-xs uppercase tracking-wide">Vendas reais</p>
+                          <p className="text-white font-black text-xl mt-1">{dashMetrics.pix_count + dashMetrics.plan_count}</p>
+                          <p className="text-gray-600 text-xs mt-1">{dashMetrics.pix_count} PIX avulso · {dashMetrics.plan_count} assinatura{dashMetrics.plan_count !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div className="bg-[#12121A] border border-yellow-500/20 rounded-xl p-3">
+                          <p className="text-gray-500 text-xs uppercase tracking-wide">Pagamentos de teste</p>
+                          <p className="text-yellow-400 font-black text-xl mt-1">{dashMetrics.test_count}</p>
+                          <p className="text-gray-600 text-xs mt-1">R$ {dashMetrics.test_revenue.toFixed(2).replace('.', ',')} excluídos da receita</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-2">Receita por live</p>
+                        <div className="space-y-1.5">
+                          {dashMetrics.stream_breakdown.map((s, i) => (
+                            <div key={i} className="flex items-center justify-between bg-[#12121A] border border-[#2A2A3A] rounded-lg px-3 py-2">
+                              <span className="text-gray-300 text-sm truncate max-w-[60%]">{s.title}</span>
+                              <div className="text-right shrink-0 ml-2">
+                                <span className="text-white font-bold text-sm">R$ {s.receita.toFixed(2).replace('.', ',')}</span>
+                                <span className="text-gray-600 text-xs ml-2">{s.vendas} venda{s.vendas !== 1 ? 's' : ''}</span>
+                              </div>
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between bg-[#12121A] border border-orange-500/20 rounded-lg px-3 py-2">
+                            <span className="text-orange-400 text-sm font-semibold">Assinaturas (mensal)</span>
+                            <div className="text-right">
+                              <span className="text-white font-bold text-sm">R$ {dashMetrics.plan_breakdown.mensal.receita.toFixed(2).replace('.', ',')}</span>
+                              <span className="text-gray-600 text-xs ml-2">{dashMetrics.plan_breakdown.mensal.vendas} venda{dashMetrics.plan_breakdown.mensal.vendas !== 1 ? 's' : ''}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between bg-[#12121A] border border-orange-500/20 rounded-lg px-3 py-2">
+                            <span className="text-orange-400 text-sm font-semibold">Assinaturas (semanal)</span>
+                            <div className="text-right">
+                              <span className="text-white font-bold text-sm">R$ {dashMetrics.plan_breakdown.semanal.receita.toFixed(2).replace('.', ',')}</span>
+                              <span className="text-gray-600 text-xs ml-2">{dashMetrics.plan_breakdown.semanal.vendas} venda{dashMetrics.plan_breakdown.semanal.vendas !== 1 ? 's' : ''}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {[
