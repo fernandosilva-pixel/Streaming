@@ -344,6 +344,7 @@ export default function AdminPage() {
   const [dashPlanPayments, setDashPlanPayments] = useState<DashPlanPayment[]>([])
   const [dashStreamFilter, setDashStreamFilter] = useState<string>('all')
   const [dashDateFilter, setDashDateFilter] = useState<string>('all')
+  const [showPlanSalesModal, setShowPlanSalesModal] = useState(false)
   const [regLimit, setRegLimit] = useState(5)
   const [payLimit, setPayLimit] = useState(5)
   const [waBatch, setWaBatch] = useState<{ running: boolean; total: number; done: number; skipped: number; errors: number } | null>(null)
@@ -2680,6 +2681,7 @@ export default function AdminPage() {
               const directPaid = filteredPays.filter(p => !p.referral_code && p.status === 'PAID').length
               const affiliatePaid = filteredPays.filter(p => p.referral_code && p.status === 'PAID').length
               const activeSubs = dashRegistrations.filter(r => (r.plan === 'semanal' || r.plan === 'mensal') && r.plan_expires_at && new Date(r.plan_expires_at) > now).length
+              const filteredPlanPays = dashPlanPayments.filter(p => p.status === 'PAID' && matchDate(p.created_at))
 
               // Chart: revenue per day — last 7 days
               const chartData = Array.from({ length: 7 }, (_, i) => {
@@ -2699,18 +2701,30 @@ export default function AdminPage() {
                 <div className="space-y-6">
 
                   {/* Cards principais */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {[
-                      { label: 'Receita Total', value: `R$ ${revenue.toFixed(2).replace('.', ',')}`, sub: `${paidCount} pagamento${paidCount !== 1 ? 's' : ''} confirmado${paidCount !== 1 ? 's' : ''}`, accent: true },
-                      { label: 'Cadastros', value: filteredRegs.length.toLocaleString('pt-BR'), sub: `${waCount} no grupo WhatsApp` },
-                      { label: 'Assinaturas Ativas', value: activeSubs.toLocaleString('pt-BR'), sub: 'Semanal + Mensal' },
-                    ].map(({ label, value, sub, accent }) => (
-                      <div key={label} className={`rounded-xl p-5 border ${accent ? 'bg-orange-500/10 border-orange-500/25' : 'bg-[#12121A] border-[#2A2A3A]'}`}>
-                        <p className="text-gray-400 text-xs font-medium uppercase tracking-wide">{label}</p>
-                        <p className={`text-3xl font-black mt-2 ${accent ? 'text-orange-400' : 'text-white'}`}>{value}</p>
-                        <p className="text-gray-500 text-xs mt-1">{sub}</p>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="rounded-xl p-5 border bg-orange-500/10 border-orange-500/25">
+                      <p className="text-gray-400 text-xs font-medium uppercase tracking-wide">Receita Total</p>
+                      <p className="text-3xl font-black mt-2 text-orange-400">R$ {revenue.toFixed(2).replace('.', ',')}</p>
+                      <p className="text-gray-500 text-xs mt-1">{paidCount} pagamento{paidCount !== 1 ? 's' : ''} confirmado{paidCount !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div className="rounded-xl p-5 border bg-[#12121A] border-[#2A2A3A]">
+                      <p className="text-gray-400 text-xs font-medium uppercase tracking-wide">Cadastros</p>
+                      <p className="text-3xl font-black mt-2 text-white">{filteredRegs.length.toLocaleString('pt-BR')}</p>
+                      <p className="text-gray-500 text-xs mt-1">{waCount} no grupo WhatsApp</p>
+                    </div>
+                    <div className="rounded-xl p-5 border bg-[#12121A] border-[#2A2A3A]">
+                      <p className="text-gray-400 text-xs font-medium uppercase tracking-wide">Assinaturas Ativas</p>
+                      <p className="text-3xl font-black mt-2 text-white">{activeSubs.toLocaleString('pt-BR')}</p>
+                      <p className="text-gray-500 text-xs mt-1">Semanal + Mensal</p>
+                    </div>
+                    <button
+                      onClick={() => setShowPlanSalesModal(true)}
+                      className="rounded-xl p-5 border bg-[#12121A] border-[#2A2A3A] text-left hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group"
+                    >
+                      <p className="text-gray-400 text-xs font-medium uppercase tracking-wide">Assinaturas Vendidas</p>
+                      <p className="text-3xl font-black mt-2 text-white group-hover:text-orange-400 transition-colors">{filteredPlanPays.length.toLocaleString('pt-BR')}</p>
+                      <p className="text-gray-500 text-xs mt-1">Clique para ver detalhes</p>
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -3223,6 +3237,64 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Assinaturas Vendidas ── */}
+      {showPlanSalesModal && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center px-0 sm:px-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowPlanSalesModal(false)} />
+          <div className="relative w-full sm:max-w-lg bg-[#0D0D14] border border-[#2A2A3A] rounded-t-2xl sm:rounded-2xl overflow-hidden max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#1E1E2A] shrink-0">
+              <div>
+                <h3 className="text-white font-bold text-base">Assinaturas Vendidas</h3>
+                <p className="text-gray-500 text-xs mt-0.5">{dashDateFilter === 'today' ? 'Hoje' : dashDateFilter === 'yesterday' ? 'Ontem' : dashDateFilter === 'week' ? 'Últimos 7 dias' : 'Todos os períodos'}</p>
+              </div>
+              <button onClick={() => setShowPlanSalesModal(false)} className="text-gray-500 hover:text-white transition-colors p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              {(() => {
+                const planPays = dashPlanPayments.filter(p => {
+                  if (p.status !== 'PAID') return false
+                  const now = new Date()
+                  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+                  const d = new Date(p.created_at ?? '')
+                  if (dashDateFilter === 'today') return d >= startOf(now)
+                  if (dashDateFilter === 'yesterday') { const y = startOf(new Date(now.getTime() - 86400000)); return d >= y && d < startOf(now) }
+                  if (dashDateFilter === 'week') return d >= new Date(now.getTime() - 7 * 86400000)
+                  return true
+                })
+                if (planPays.length === 0) return (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500 text-sm">Nenhuma assinatura vendida neste período.</p>
+                  </div>
+                )
+                return (
+                  <ul className="divide-y divide-[#1E1E2A]">
+                    {planPays.map(p => {
+                      const reg = dashRegistrations.find(r => r.email === p.user_email || r.phone === p.user_email)
+                      const planLabel = p.plan_type === 'semanal' ? 'Semanal' : p.plan_type === 'mensal' ? 'Mensal' : p.plan_type ?? '—'
+                      return (
+                        <li key={p.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.02]">
+                          <div className="min-w-0">
+                            <p className="text-white text-sm font-semibold truncate">{reg?.name ?? p.user_email}</p>
+                            <p className="text-gray-500 text-xs font-mono truncate">{p.user_email}</p>
+                          </div>
+                          <div className="text-right shrink-0 ml-3">
+                            <span className="text-orange-400 text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/20">{planLabel}</span>
+                            {p.amount != null && <p className="text-gray-400 text-xs mt-1">R$ {Number(p.amount).toFixed(2).replace('.', ',')}</p>}
+                            <p className="text-gray-600 text-[10px] mt-0.5">{p.created_at ? new Date(p.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )
+              })()}
+            </div>
           </div>
         </div>
       )}
