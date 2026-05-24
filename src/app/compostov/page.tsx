@@ -90,6 +90,10 @@ export default function AdminPage() {
   const [newFreePhone, setNewFreePhone] = useState('')
   const [addingFreeUser, setAddingFreeUser] = useState(false)
 
+  // Confirmação de delete de stream
+  const [deleteStreamModal, setDeleteStreamModal] = useState<{ id: string; title: string } | null>(null)
+  const [deleteStreamInput, setDeleteStreamInput] = useState('')
+
   // Assinatura manual
   const [manualSubEmail, setManualSubEmail] = useState('')
   const [manualSubPlan, setManualSubPlan] = useState<'semanal' | 'mensal'>('mensal')
@@ -859,6 +863,8 @@ export default function AdminPage() {
   async function deleteStream(id: string) {
     await supabase.from('streams').delete().eq('id', id)
     setStreams(prev => prev.filter(s => s.id !== id))
+    setDeleteStreamModal(null)
+    setDeleteStreamInput('')
   }
 
 
@@ -2048,7 +2054,7 @@ export default function AdminPage() {
                             {isEditing ? <X className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
                             <span className="hidden sm:inline">{isEditing ? 'Fechar' : 'Editar'}</span>
                           </button>
-                          <button onClick={() => deleteStream(s.id)} className="text-gray-600 hover:text-red-500 transition-colors p-1.5">
+                          <button onClick={() => { setDeleteStreamModal({ id: s.id, title: s.title }); setDeleteStreamInput('') }} className="text-gray-600 hover:text-red-500 transition-colors p-1.5">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -3919,6 +3925,49 @@ export default function AdminPage() {
 
         </div>{/* end p-6 content */}
       </main>
+
+      {/* ── Modal: Confirmação de exclusão de stream ── */}
+      {deleteStreamModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => { setDeleteStreamModal(null); setDeleteStreamInput('') }} />
+          <div className="relative w-full max-w-sm bg-[#0D0D14] border border-red-500/30 rounded-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-base">Excluir transmissão</h3>
+                <p className="text-gray-500 text-xs mt-0.5 truncate max-w-[220px]">{deleteStreamModal.title}</p>
+              </div>
+            </div>
+            <p className="text-gray-400 text-sm">Esta ação é <span className="text-red-400 font-semibold">irreversível</span>. Usuários que pagaram perderão o acesso. Digite <span className="text-white font-mono font-bold">DELETAR</span> para confirmar.</p>
+            <input
+              type="text"
+              placeholder="Digite DELETAR"
+              value={deleteStreamInput}
+              onChange={e => setDeleteStreamInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && deleteStreamInput === 'DELETAR' && deleteStream(deleteStreamModal.id)}
+              className="w-full bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-500 placeholder-gray-600 font-mono"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setDeleteStreamModal(null); setDeleteStreamInput('') }}
+                className="flex-1 py-2.5 rounded-xl border border-[#2A2A3A] text-gray-400 hover:text-white text-sm font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => deleteStream(deleteStreamModal.id)}
+                disabled={deleteStreamInput !== 'DELETAR'}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors"
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toasts de novos cadastros */}
       <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
