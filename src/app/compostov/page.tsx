@@ -90,6 +90,11 @@ export default function AdminPage() {
   const [newFreePhone, setNewFreePhone] = useState('')
   const [addingFreeUser, setAddingFreeUser] = useState(false)
 
+  // Assinatura manual
+  const [manualSubEmail, setManualSubEmail] = useState('')
+  const [manualSubPlan, setManualSubPlan] = useState<'semanal' | 'mensal'>('mensal')
+  const [addingManualSub, setAddingManualSub] = useState(false)
+
   // Streams
   const [streams, setStreams] = useState<Stream[]>([])
   const [newTitle, setNewTitle] = useState('')
@@ -1139,6 +1144,23 @@ export default function AdminPage() {
   async function deleteFreeAccess(id: string) {
     await supabase.from('free_access').delete().eq('id', id)
     setFreeUsers(prev => prev.filter(u => u.id !== id))
+  }
+
+  async function addManualSubscription() {
+    const email = manualSubEmail.trim().toLowerCase()
+    if (!email) return
+    setAddingManualSub(true)
+    const days = manualSubPlan === 'semanal' ? 7 : 30
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + days)
+    const { error } = await supabase
+      .from('registrations')
+      .update({ plan: manualSubPlan, plan_expires_at: expiresAt.toISOString() })
+      .or(`email.eq.${email},phone.eq.${email}`)
+    if (error) { alert('Erro ao adicionar assinatura: ' + error.message); setAddingManualSub(false); return }
+    setManualSubEmail('')
+    await loadAdminDashboard()
+    setAddingManualSub(false)
   }
 
   async function loadAdminUsers() {
@@ -2962,6 +2984,39 @@ export default function AdminPage() {
               <RefreshCw className={`w-4 h-4 ${dashLoading ? 'animate-spin' : ''}`} />
               Atualizar
             </button>
+          </div>
+
+          {/* Adicionar assinatura manual */}
+          <div className="bg-[#12121A] border border-[#2A2A3A] rounded-xl p-4 space-y-3">
+            <p className="text-white text-sm font-semibold">Adicionar assinatura manualmente</p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                placeholder="E-mail ou telefone do usuário"
+                value={manualSubEmail}
+                onChange={e => setManualSubEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addManualSubscription()}
+                className="flex-1 bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500 placeholder-gray-600"
+              />
+              <div className="flex gap-2">
+                <select
+                  value={manualSubPlan}
+                  onChange={e => setManualSubPlan(e.target.value as 'semanal' | 'mensal')}
+                  className="bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+                >
+                  <option value="mensal">Mensal (30 dias)</option>
+                  <option value="semanal">Semanal (7 dias)</option>
+                </select>
+                <button
+                  onClick={addManualSubscription}
+                  disabled={addingManualSub || !manualSubEmail.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" />
+                  {addingManualSub ? 'Adicionando...' : 'Adicionar'}
+                </button>
+              </div>
+            </div>
           </div>
           {dashLoading ? <p className="text-gray-500 text-sm">Carregando...</p> : (() => {
             const now = new Date()
