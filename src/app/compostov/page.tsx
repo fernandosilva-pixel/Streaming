@@ -772,7 +772,8 @@ export default function AdminPage() {
   }
 
   async function loadCdnSettings() {
-    const { data } = await supabase.from('app_settings').select('value').eq('key', 'cdn_base_url').single()
+    const res = await fetch('/api/admin/cdn-settings')
+    const data = await res.json()
     if (data?.value) setCdnBaseUrl(data.value)
   }
 
@@ -780,24 +781,13 @@ export default function AdminPage() {
     const url = cdnInput.trim().replace(/\/$/, '')
     if (!url) return
     setSavingCdn(true)
-
-    // Salva nova URL base no settings
-    await supabase.from('app_settings').upsert({ key: 'cdn_base_url', value: url })
-
-    // Atualiza todas as streams HLS que usam a URL base antiga
-    const { data: hlsStreams } = await supabase
-      .from('streams')
-      .select('id, hls_url')
-      .not('hls_url', 'is', null)
-    const toUpdate = (hlsStreams ?? []).filter((s: { hls_url: string | null }) => s.hls_url?.startsWith(cdnBaseUrl))
-    await Promise.all(
-      toUpdate.map((s: { id: string; hls_url: string | null }) => {
-        const key = extractStreamKey(s.hls_url!)
-        return supabase.from('streams').update({ hls_url: `${url}/hls/${key}.m3u8` }).eq('id', s.id)
-      })
-    )
-
-    setCdnBaseUrl(url)
+    const res = await fetch('/api/admin/cdn-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    })
+    const data = await res.json()
+    if (data?.value) setCdnBaseUrl(data.value)
     setEditingCdn(false)
     setSavingCdn(false)
     loadStreams()
