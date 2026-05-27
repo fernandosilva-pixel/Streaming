@@ -576,13 +576,12 @@ export default function AdminPage() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  // Polling: CDN URL — sincroniza entre todos os admins a cada 15s
+  // visibilitychange: recarrega CDN URL ao voltar para a aba
   useEffect(() => {
     if (!authChecked) return
-    const interval = setInterval(loadCdnSettings, 15000)
     const onVisible = () => { if (document.visibilityState === 'visible') loadCdnSettings() }
     document.addEventListener('visibilitychange', onVisible)
-    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible) }
+    return () => { document.removeEventListener('visibilitychange', onVisible) }
   }, [authChecked])
 
   // Realtime: novos cadastros
