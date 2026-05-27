@@ -574,19 +574,13 @@ export default function AdminPage() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  // Realtime + visibilitychange: CDN URL — sincroniza entre todos os admins
+  // Polling: CDN URL — sincroniza entre todos os admins a cada 15s
   useEffect(() => {
     if (!authChecked) return
-    const channel = supabase
-      .channel('cdn-settings-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.cdn_base_url' }, payload => {
-        const row = (payload.new ?? {}) as { value?: string }
-        if (row.value) setCdnBaseUrl(row.value)
-      })
-      .subscribe()
+    const interval = setInterval(loadCdnSettings, 15000)
     const onVisible = () => { if (document.visibilityState === 'visible') loadCdnSettings() }
     document.addEventListener('visibilitychange', onVisible)
-    return () => { supabase.removeChannel(channel); document.removeEventListener('visibilitychange', onVisible) }
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible) }
   }, [authChecked])
 
   // Realtime: novos cadastros
