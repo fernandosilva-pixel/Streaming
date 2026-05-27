@@ -574,7 +574,7 @@ export default function AdminPage() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  // Realtime: CDN URL — sincroniza entre todos os admins
+  // Realtime + visibilitychange: CDN URL — sincroniza entre todos os admins
   useEffect(() => {
     if (!authChecked) return
     const channel = supabase
@@ -584,7 +584,9 @@ export default function AdminPage() {
         if (row.value) setCdnBaseUrl(row.value)
       })
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    const onVisible = () => { if (document.visibilityState === 'visible') loadCdnSettings() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { supabase.removeChannel(channel); document.removeEventListener('visibilitychange', onVisible) }
   }, [authChecked])
 
   // Realtime: novos cadastros
@@ -784,10 +786,27 @@ export default function AdminPage() {
     const url = cdnInput.trim().replace(/\/$/, '')
     if (!url) return
     setSavingCdn(true)
+
+    // Salva nova URL base no settings
     await supabase.from('app_settings').upsert({ key: 'cdn_base_url', value: url })
+
+    // Atualiza todas as streams HLS que usam a URL base antiga
+    const { data: hlsStreams } = await supabase
+      .from('streams')
+      .select('id, hls_url')
+      .not('hls_url', 'is', null)
+    const toUpdate = (hlsStreams ?? []).filter((s: { hls_url: string | null }) => s.hls_url?.startsWith(cdnBaseUrl))
+    await Promise.all(
+      toUpdate.map((s: { id: string; hls_url: string | null }) => {
+        const key = extractStreamKey(s.hls_url!)
+        return supabase.from('streams').update({ hls_url: `${url}/hls/${key}.m3u8` }).eq('id', s.id)
+      })
+    )
+
     setCdnBaseUrl(url)
     setEditingCdn(false)
     setSavingCdn(false)
+    loadStreams()
   }
 
   function extractStreamKey(hlsUrl: string): string {
