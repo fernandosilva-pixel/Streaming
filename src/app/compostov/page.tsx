@@ -1938,6 +1938,7 @@ export default function AdminPage() {
               ) : (
                 <>
                   <span className="flex-1 text-xs text-orange-400 font-mono truncate">{cdnBaseUrl}</span>
+                  <button onClick={loadCdnSettings} className="text-xs text-blue-400 hover:text-blue-300 shrink-0">↺ Buscar</button>
                   <button onClick={() => { setCdnInput(cdnBaseUrl); setEditingCdn(true) }} className="text-xs text-gray-500 hover:text-gray-300 shrink-0">Alterar</button>
                 </>
               )}
