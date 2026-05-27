@@ -119,6 +119,8 @@ export default function AdminPage() {
   const [cdnInput, setCdnInput] = useState('')
   const [editingCdn, setEditingCdn] = useState(false)
   const [savingCdn, setSavingCdn] = useState(false)
+  const [fetchingCdn, setFetchingCdn] = useState(false)
+  const [cdnFetchResult, setCdnFetchResult] = useState<string | null>(null)
   const [editYoutubeUrls, setEditYoutubeUrls] = useState<Record<string, string>>({})
   const [editAmounts, setEditAmounts] = useState<Record<string, string>>({})
   const [chargeAmountModal, setChargeAmountModal] = useState<{ id: string } | null>(null)
@@ -772,9 +774,21 @@ export default function AdminPage() {
   }
 
   async function loadCdnSettings() {
-    const res = await fetch('/api/admin/cdn-settings')
-    const data = await res.json()
-    if (data?.value) setCdnBaseUrl(data.value)
+    setFetchingCdn(true)
+    setCdnFetchResult(null)
+    try {
+      const res = await fetch('/api/admin/cdn-settings')
+      const data = await res.json()
+      if (data?.value) {
+        setCdnBaseUrl(data.value)
+        setCdnFetchResult(`✓ Banco: ${data.value}`)
+      } else {
+        setCdnFetchResult('⚠ Nenhum valor salvo no banco')
+      }
+    } catch {
+      setCdnFetchResult('✗ Erro ao buscar')
+    }
+    setFetchingCdn(false)
   }
 
   async function saveCdnSettings() {
@@ -1928,11 +1942,14 @@ export default function AdminPage() {
               ) : (
                 <>
                   <span className="flex-1 text-xs text-orange-400 font-mono truncate">{cdnBaseUrl}</span>
-                  <button onClick={loadCdnSettings} className="text-xs text-blue-400 hover:text-blue-300 shrink-0">↺ Buscar</button>
+                  <button onClick={loadCdnSettings} disabled={fetchingCdn} className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 shrink-0">{fetchingCdn ? '...' : '↺ Buscar'}</button>
                   <button onClick={() => { setCdnInput(cdnBaseUrl); setEditingCdn(true) }} className="text-xs text-gray-500 hover:text-gray-300 shrink-0">Alterar</button>
                 </>
               )}
             </div>
+            {cdnFetchResult && (
+              <p className="text-xs px-1" style={{ color: cdnFetchResult.startsWith('✓') ? '#4ade80' : cdnFetchResult.startsWith('⚠') ? '#facc15' : '#f87171' }}>{cdnFetchResult}</p>
+            )}
             <div className="space-y-2">
               <input type="text" placeholder="Nome do jogo (ex: Flamengo x Corinthians)" value={newTitle} onChange={e => setNewTitle(e.target.value)}
                 className="w-full bg-[#1A1A26] border border-[#2A2A3A] text-white rounded-xl px-4 py-2.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500" />
