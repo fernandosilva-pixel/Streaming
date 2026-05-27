@@ -574,6 +574,19 @@ export default function AdminPage() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
+  // Realtime: CDN URL — sincroniza entre todos os admins
+  useEffect(() => {
+    if (!authChecked) return
+    const channel = supabase
+      .channel('cdn-settings-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.cdn_base_url' }, payload => {
+        const row = (payload.new ?? {}) as { value?: string }
+        if (row.value) setCdnBaseUrl(row.value)
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [authChecked])
+
   // Realtime: novos cadastros
   useEffect(() => {
     if (!authChecked) return
