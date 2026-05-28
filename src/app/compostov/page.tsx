@@ -791,8 +791,9 @@ export default function AdminPage() {
   }
 
   async function saveCdnSettings() {
-    const url = cdnInput.trim().replace(/\/$/, '')
-    if (!url) return
+    const domain = cdnInput.trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
+    if (!domain) return
+    const url = `https://${domain}`
     setSavingCdn(true)
     const res = await fetch('/api/admin/cdn-settings', {
       method: 'POST',
@@ -1932,8 +1933,9 @@ export default function AdminPage() {
               <span className="text-xs text-gray-500 shrink-0">CDN Base URL</span>
               {editingCdn ? (
                 <>
-                  <input type="text" value={cdnInput} onChange={e => setCdnInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveCdnSettings()}
-                    placeholder="https://seu-cdn.b-cdn.net" autoFocus
+                  <span className="text-xs text-gray-400 font-mono shrink-0">https://</span>
+                  <input type="text" value={cdnInput} onChange={e => setCdnInput(e.target.value.replace(/^https?:\/\//, ''))} onKeyDown={e => e.key === 'Enter' && saveCdnSettings()}
+                    placeholder="nomedaconta.b-cdn.net" autoFocus
                     className="flex-1 bg-[#0B0B0F] border border-orange-500 text-white rounded-lg px-3 py-1.5 text-xs focus:outline-none" />
                   <button onClick={saveCdnSettings} disabled={savingCdn} className="text-xs text-green-400 hover:text-green-300 font-bold shrink-0">{savingCdn ? '...' : 'Salvar'}</button>
                   <button onClick={() => setEditingCdn(false)} className="text-xs text-gray-500 hover:text-gray-300 shrink-0">Cancelar</button>
@@ -1942,7 +1944,7 @@ export default function AdminPage() {
                 <>
                   <span className="flex-1 text-xs text-orange-400 font-mono truncate">{cdnBaseUrl}</span>
                   <button onClick={loadCdnSettings} disabled={fetchingCdn} className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 shrink-0">{fetchingCdn ? '...' : '↺ Buscar'}</button>
-                  <button onClick={() => { setCdnInput(cdnBaseUrl); setEditingCdn(true) }} className="text-xs text-gray-500 hover:text-gray-300 shrink-0">Alterar</button>
+                  <button onClick={() => { setCdnInput(cdnBaseUrl.replace(/^https?:\/\//, '')); setEditingCdn(true) }} className="text-xs text-gray-500 hover:text-gray-300 shrink-0">Alterar</button>
                 </>
               )}
             </div>
