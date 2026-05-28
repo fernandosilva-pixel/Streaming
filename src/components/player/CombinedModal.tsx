@@ -57,8 +57,8 @@ export default function CombinedModal({ streamId, streamTitle, amount, paymentMe
   const [couponLoading, setCouponLoading] = useState(false)
 
   // Plan selection state (easy to revert: remove these 3 lines + related JSX)
-  const [selectedOption, setSelectedOption] = useState<'avulso' | 'semanal' | 'mensal'>('avulso')
-  const [tooltipFor, setTooltipFor] = useState<'avulso' | 'semanal' | 'mensal' | null>(null)
+  const [selectedOption, setSelectedOption] = useState<'avulso' | 'semanal' | 'mensal' | 'vitalicio'>('avulso')
+  const [tooltipFor, setTooltipFor] = useState<'avulso' | 'semanal' | 'mensal' | 'vitalicio' | null>(null)
   const [isPlanPayment, setIsPlanPayment] = useState(false)
 
   useEffect(() => {
@@ -213,7 +213,7 @@ export default function CombinedModal({ streamId, streamTitle, amount, paymentMe
         })
         setIsPlanPayment(false)
       } else {
-        const planAmount = selectedOption === 'semanal' ? 7.90 : 15.90
+        const planAmount = selectedOption === 'semanal' ? 7.90 : selectedOption === 'vitalicio' ? 79.90 : 15.90
         res = await fetch('/api/plan/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -332,32 +332,37 @@ export default function CombinedModal({ streamId, streamTitle, amount, paymentMe
             {/* Plan cards */}
             <div className="space-y-2">
               {([
-                { id: 'avulso' as const, label: 'Ingresso Avulso', price: `R$ ${amount.toFixed(2).replace('.', ',')}`, desc: 'Apenas este jogo', popular: false, benefits: ['Acesso somente a este jogo', 'Válido por esta transmissão', 'Pague só o que assistir'] },
-                { id: 'semanal' as const, label: 'Acesso Semanal', price: 'R$ 7,90', desc: '7 dias ilimitado', popular: false, benefits: ['7 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Cancele quando quiser'] },
-                { id: 'mensal' as const, label: 'Acesso Mensal', price: 'R$ 15,90', desc: '30 dias ilimitado', popular: true, benefits: ['30 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Melhor custo-benefício'] },
-              ]).map(opt => (
+                { id: 'avulso' as const, label: 'Ingresso Avulso', price: `R$ ${amount.toFixed(2).replace('.', ',')}`, desc: 'Apenas este jogo', badge: null, benefits: ['Acesso somente a este jogo', 'Válido por esta transmissão', 'Pague só o que assistir'] },
+                { id: 'semanal' as const, label: 'Acesso Semanal', price: 'R$ 7,90', desc: '7 dias ilimitado', badge: null, benefits: ['7 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Cancele quando quiser'] },
+                { id: 'mensal' as const, label: 'Acesso Mensal', price: 'R$ 15,90', desc: '30 dias ilimitado', badge: 'POPULAR', benefits: ['30 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Melhor custo-benefício'] },
+                { id: 'vitalicio' as const, label: 'Acesso Vitalício', price: 'R$ 79,90', desc: 'Para sempre', badge: 'MELHOR CUSTO-BENEFÍCIO', benefits: ['Acesso vitalício completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Pague uma vez, nunca mais renove', 'Participe de sorteios e ganhe brindes exclusivos'] },
+              ]).map(opt => {
+                const isVitalicio = opt.id === 'vitalicio'
+                const isSelected = selectedOption === opt.id
+                return (
                 <div key={opt.id}>
                   <button
                     onClick={() => setSelectedOption(opt.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${selectedOption === opt.id ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#1A1A26] hover:border-[#3A3A4A]'}`}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${isVitalicio ? (isSelected ? 'bg-yellow-500/10' : 'bg-yellow-500/5 hover:bg-yellow-500/10') : (isSelected ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#1A1A26] hover:border-[#3A3A4A]')}`}
+                    style={isVitalicio ? { borderColor: isSelected ? '#EAB308' : 'rgba(234,179,8,0.5)', boxShadow: isSelected ? '0 0 12px rgba(234,179,8,0.2)' : undefined } : undefined}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className={`font-bold text-sm ${selectedOption === opt.id ? 'text-white' : 'text-gray-200'}`}>{opt.label}</span>
-                        {opt.popular && (
-                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full text-white" style={{ background: 'linear-gradient(135deg,#FF6A00,#FF8533)' }}>
-                            POPULAR
+                        <span className={`font-bold text-sm ${isSelected ? (isVitalicio ? 'text-yellow-300' : 'text-white') : 'text-gray-200'}`}>{opt.label}</span>
+                        {opt.badge && (
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full text-white" style={{ background: isVitalicio ? 'linear-gradient(135deg,#CA8A04,#EAB308)' : 'linear-gradient(135deg,#FF6A00,#FF8533)' }}>
+                            {opt.badge}
                           </span>
                         )}
                       </div>
                       <p className="text-gray-500 text-[11px] mt-0.5">{opt.desc}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <span className={`font-black text-sm ${selectedOption === opt.id ? 'text-orange-400' : 'text-gray-300'}`}>{opt.price}</span>
+                      <span className={`font-black text-sm ${isSelected ? (isVitalicio ? 'text-yellow-400' : 'text-orange-400') : 'text-gray-300'}`}>{opt.price}</span>
                       <button
                         type="button"
                         onClick={e => { e.stopPropagation(); setTooltipFor(tooltipFor === opt.id ? null : opt.id) }}
-                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${tooltipFor === opt.id ? 'text-orange-400 border-orange-400' : 'text-gray-500 border-gray-500 hover:text-orange-400 hover:border-orange-400'}`}
+                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${tooltipFor === opt.id ? 'text-yellow-400 border-yellow-400' : 'text-gray-500 border-gray-500 hover:text-yellow-400 hover:border-yellow-400'}`}
                         style={{ border: '1px solid currentColor' }}
                         title="Ver benefícios"
                       >
@@ -366,17 +371,18 @@ export default function CombinedModal({ streamId, streamTitle, amount, paymentMe
                     </div>
                   </button>
                   {tooltipFor === opt.id && (
-                    <div className="mt-1 mx-1 rounded-xl px-3 py-2.5 space-y-1" style={{ background: 'rgba(255,106,0,0.07)', border: '1px solid rgba(255,106,0,0.2)' }}>
+                    <div className="mt-1 mx-1 rounded-xl px-3 py-2.5 space-y-1" style={{ background: isVitalicio ? 'rgba(234,179,8,0.07)' : 'rgba(255,106,0,0.07)', border: `1px solid ${isVitalicio ? 'rgba(234,179,8,0.2)' : 'rgba(255,106,0,0.2)'}` }}>
                       {opt.benefits.map((b, i) => (
                         <div key={i} className="flex items-center gap-2 text-xs text-gray-300">
-                          <span className="text-orange-400 font-bold">✓</span>
+                          <span className={`font-bold ${isVitalicio ? 'text-yellow-400' : 'text-orange-400'}`}>✓</span>
                           <span>{b}</span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
 
             {generateError && <p className="text-red-500 text-xs text-center">{generateError}</p>}

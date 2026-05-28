@@ -8,7 +8,7 @@ export type ContentPreference = 'futebol' | 'basquete' | 'luta'
 export type SiteUser = {
   name: string
   email: string
-  plan: 'free' | 'semanal' | 'mensal'
+  plan: 'free' | 'semanal' | 'mensal' | 'vitalicio'
   plan_expires_at: string | null
   content_preference: ContentPreference
   avatar_url: string | null
@@ -33,7 +33,9 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 function isPlanActive(user: SiteUser | null): boolean {
-  if (!user || (user.plan !== 'mensal' && user.plan !== 'semanal')) return false
+  if (!user) return false
+  if (user.plan === 'vitalicio') return true
+  if (user.plan !== 'mensal' && user.plan !== 'semanal') return false
   if (!user.plan_expires_at) return false
   return new Date(user.plan_expires_at) > new Date()
 }

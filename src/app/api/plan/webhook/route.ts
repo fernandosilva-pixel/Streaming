@@ -31,13 +31,18 @@ export async function POST(req: NextRequest) {
     .update({ status: 'PAID' })
     .eq('transaction_id', transactionId)
 
-  const days = payment.plan_type === 'semanal' ? 7 : 30
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + days)
+  const planType = payment.plan_type ?? 'mensal'
+  let expiresAt: string | null = null
+  if (planType !== 'vitalicio') {
+    const days = planType === 'semanal' ? 7 : 30
+    const d = new Date()
+    d.setDate(d.getDate() + days)
+    expiresAt = d.toISOString()
+  }
 
   await supabase
     .from('registrations')
-    .update({ plan: payment.plan_type ?? 'mensal', plan_expires_at: expiresAt.toISOString() })
+    .update({ plan: planType, plan_expires_at: expiresAt })
     .eq('email', payment.user_email)
 
   const msg = `Nova venda confirmada 💰`

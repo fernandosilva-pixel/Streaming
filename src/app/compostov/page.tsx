@@ -96,7 +96,7 @@ export default function AdminPage() {
 
   // Assinatura manual
   const [manualSubEmail, setManualSubEmail] = useState('')
-  const [manualSubPlan, setManualSubPlan] = useState<'semanal' | 'mensal'>('mensal')
+  const [manualSubPlan, setManualSubPlan] = useState<'semanal' | 'mensal' | 'vitalicio'>('mensal')
   const [addingManualSub, setAddingManualSub] = useState(false)
 
   // Streams
@@ -1196,12 +1196,16 @@ export default function AdminPage() {
     const email = manualSubEmail.trim().toLowerCase()
     if (!email) return
     setAddingManualSub(true)
-    const days = manualSubPlan === 'semanal' ? 7 : 30
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + days)
+    let expiresAt: string | null = null
+    if (manualSubPlan !== 'vitalicio') {
+      const days = manualSubPlan === 'semanal' ? 7 : 30
+      const d = new Date()
+      d.setDate(d.getDate() + days)
+      expiresAt = d.toISOString()
+    }
     const { error } = await supabase
       .from('registrations')
-      .update({ plan: manualSubPlan, plan_expires_at: expiresAt.toISOString() })
+      .update({ plan: manualSubPlan, plan_expires_at: expiresAt })
       .or(`email.eq.${email},phone.eq.${email}`)
     if (error) { alert('Erro ao adicionar assinatura: ' + error.message); setAddingManualSub(false); return }
     setManualSubEmail('')
@@ -2754,7 +2758,7 @@ export default function AdminPage() {
                   + filteredPlanPays.reduce((s, p) => s + (p.amount ?? 0), 0)
               const directPaid = filteredPays.filter(p => !p.referral_code && p.status === 'PAID').length
               const affiliatePaid = filteredPays.filter(p => p.referral_code && p.status === 'PAID').length
-              const activeSubs = dashRegistrations.filter(r => (r.plan === 'semanal' || r.plan === 'mensal') && r.plan_expires_at && new Date(r.plan_expires_at) > now).length
+              const activeSubs = dashRegistrations.filter(r => r.plan === 'vitalicio' || ((r.plan === 'semanal' || r.plan === 'mensal') && r.plan_expires_at && new Date(r.plan_expires_at) > now)).length
 
               // Chart: revenue per day — last 7 days
               const chartData = Array.from({ length: 7 }, (_, i) => {
@@ -3103,11 +3107,12 @@ export default function AdminPage() {
               <div className="flex gap-2">
                 <select
                   value={manualSubPlan}
-                  onChange={e => setManualSubPlan(e.target.value as 'semanal' | 'mensal')}
+                  onChange={e => setManualSubPlan(e.target.value as 'semanal' | 'mensal' | 'vitalicio')}
                   className="bg-[#0B0B0F] border border-[#2A2A3A] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
                 >
                   <option value="mensal">Mensal (30 dias)</option>
                   <option value="semanal">Semanal (7 dias)</option>
+                  <option value="vitalicio">Vitalício</option>
                 </select>
                 <button
                   onClick={addManualSubscription}
@@ -3123,8 +3128,9 @@ export default function AdminPage() {
           {dashLoading ? <p className="text-gray-500 text-sm">Carregando...</p> : (() => {
             const now = new Date()
             const subs = dashRegistrations
-              .filter(r => (r.plan === 'semanal' || r.plan === 'mensal') && r.plan_expires_at)
+              .filter(r => r.plan === 'vitalicio' || ((r.plan === 'semanal' || r.plan === 'mensal') && r.plan_expires_at))
               .map(r => {
+                if (r.plan === 'vitalicio') return { ...r, expiresAt: null as unknown as Date, daysLeft: Infinity, active: true }
                 const expiresAt = new Date(r.plan_expires_at!)
                 const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / 86400000)
                 return { ...r, expiresAt, daysLeft, active: daysLeft > 0 }
@@ -3170,8 +3176,8 @@ export default function AdminPage() {
                               <p className="text-gray-500 text-xs">{s.email?.endsWith('@futzone.app') ? s.email.replace('@futzone.app','').replace(/^55/,'') : s.email}</p>
                             </td>
                             <td className="px-4 py-2.5">
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.plan === 'mensal' ? 'bg-orange-500/10 text-orange-400' : 'bg-blue-500/10 text-blue-400'}`}>
-                                {s.plan === 'mensal' ? 'Mensal' : 'Semanal'}
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.plan === 'vitalicio' ? 'bg-yellow-500/10 text-yellow-400' : s.plan === 'mensal' ? 'bg-orange-500/10 text-orange-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                                {s.plan === 'vitalicio' ? 'Vitalício' : s.plan === 'mensal' ? 'Mensal' : 'Semanal'}
                               </span>
                             </td>
                             <td className="px-4 py-2.5">
@@ -3180,14 +3186,16 @@ export default function AdminPage() {
                               </span>
                             </td>
                             <td className="px-4 py-2.5">
-                              {s.active ? (
+                              {s.plan === 'vitalicio' ? (
+                                <span className="font-bold text-yellow-400">∞</span>
+                              ) : s.active ? (
                                 <span className={`font-bold ${s.daysLeft <= 2 ? 'text-red-400' : s.daysLeft <= 5 ? 'text-yellow-400' : 'text-white'}`}>
                                   {s.daysLeft} dia{s.daysLeft !== 1 ? 's' : ''}
                                 </span>
                               ) : <span className="text-gray-600">—</span>}
                             </td>
                             <td className="px-4 py-2.5 text-gray-500 text-xs">
-                              {s.expiresAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                              {s.plan === 'vitalicio' ? '—' : s.expiresAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                             </td>
                           </tr>
                         ))}

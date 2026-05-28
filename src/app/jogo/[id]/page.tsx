@@ -175,10 +175,10 @@ export default function JogoPage({ params }: Props) {
       // Also detect plan activated while on page (user closed modal early)
       const { data: reg } = await supabase
         .from('registrations')
-        .select('plan_expires_at')
+        .select('plan, plan_expires_at')
         .eq('email', user!.email)
         .maybeSingle()
-      if (reg?.plan_expires_at && new Date(reg.plan_expires_at) > new Date()) {
+      if (reg?.plan === 'vitalicio' || (reg?.plan_expires_at && new Date(reg.plan_expires_at) > new Date())) {
         setHasPaid(true)
       }
     }

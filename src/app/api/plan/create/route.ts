@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   const idempotencyKey = crypto.randomUUID()
   const payerEmail = user_email.includes('@') ? user_email : `${user_email}@futzonejogos.site`
-  const description = plan_type === 'semanal' ? 'Plano Semanal FutZone' : 'Plano Mensal FutZone'
+  const description = plan_type === 'semanal' ? 'Plano Semanal FutZone' : plan_type === 'vitalicio' ? 'Plano Vitalício FutZone' : 'Plano Mensal FutZone'
 
   const res = await fetch('https://bank-api.asapcodes.com/payins', {
     method: 'POST',
