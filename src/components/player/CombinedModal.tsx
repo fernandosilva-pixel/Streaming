@@ -326,16 +326,16 @@ export default function CombinedModal({ streamId, streamTitle, amount, paymentMe
             <div className="text-center space-y-1">
               {logoUrl && <img src={logoUrl} alt="FutZone" className="h-9 object-contain mx-auto" />}
               <p className="text-white font-black text-lg">Escolha seu acesso</p>
-              <p className="text-gray-500 text-xs">Selecione um plano e gere seu QR Code PIX</p>
+              <p className="text-gray-500 text-xs">Selecione um plano</p>
             </div>
 
             {/* Plan cards */}
             <div className="space-y-2">
               {([
                 { id: 'avulso' as const, label: 'Ingresso Avulso', price: `R$ ${amount.toFixed(2).replace('.', ',')}`, desc: 'Apenas este jogo', badge: null, benefits: ['Acesso somente a este jogo', 'Válido por esta transmissão', 'Pague só o que assistir'] },
-                { id: 'semanal' as const, label: 'Acesso Semanal', price: 'R$ 7,90', desc: '7 dias ilimitado', badge: null, benefits: ['7 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Cancele quando quiser'] },
-                { id: 'mensal' as const, label: 'Acesso Mensal', price: 'R$ 15,90', desc: '30 dias ilimitado', badge: 'POPULAR', benefits: ['30 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Melhor custo-benefício'] },
-                { id: 'vitalicio' as const, label: 'Acesso Vitalício', price: 'R$ 79,90', desc: 'Para sempre', badge: null, benefits: ['Acesso vitalício completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Pague uma vez, nunca mais renove', 'Participe de sorteios e ganhe brindes exclusivos'] },
+                { id: 'semanal' as const, label: 'Ingresso Semanal', price: 'R$ 7,90', desc: '7 dias ilimitado', badge: null, benefits: ['7 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Cancele quando quiser'] },
+                { id: 'mensal' as const, label: 'Ingresso Mensal', price: 'R$ 15,90', desc: '30 dias ilimitado', badge: 'POPULAR', benefits: ['30 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Melhor custo-benefício'] },
+                { id: 'vitalicio' as const, label: 'Ingresso Vitalício', price: 'R$ 79,90', desc: 'Para sempre', badge: null, benefits: ['Acesso vitalício completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Pague uma vez, nunca mais renove', 'Participe de sorteios e ganhe brindes exclusivos'] },
               ]).map(opt => {
                 const isVitalicio = opt.id === 'vitalicio'
                 const isSelected = selectedOption === opt.id
@@ -392,7 +392,7 @@ export default function CombinedModal({ streamId, streamTitle, amount, paymentMe
               disabled={generating}
               className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-black rounded-xl py-3 transition-all"
             >
-              {generating ? 'Gerando...' : 'Gerar QR Code PIX'}
+              {generating ? 'Gerando...' : 'Pagar Ingresso'}
             </button>
 
             {couponEnabled && (
