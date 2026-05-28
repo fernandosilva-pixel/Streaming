@@ -335,16 +335,17 @@ export default function CombinedModal({ streamId, streamTitle, amount, paymentMe
                 { id: 'avulso' as const, label: 'Ingresso Avulso', price: `R$ ${amount.toFixed(2).replace('.', ',')}`, desc: 'Apenas este jogo', badge: null, benefits: ['Acesso somente a este jogo', 'Válido por esta transmissão', 'Pague só o que assistir'] },
                 { id: 'semanal' as const, label: 'Acesso Semanal', price: 'R$ 7,90', desc: '7 dias ilimitado', badge: null, benefits: ['7 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Cancele quando quiser'] },
                 { id: 'mensal' as const, label: 'Acesso Mensal', price: 'R$ 15,90', desc: '30 dias ilimitado', badge: 'POPULAR', benefits: ['30 dias de acesso completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Melhor custo-benefício'] },
-                { id: 'vitalicio' as const, label: 'Acesso Vitalício', price: 'R$ 79,90', desc: 'Para sempre', badge: 'MELHOR CUSTO-BENEFÍCIO', benefits: ['Acesso vitalício completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Pague uma vez, nunca mais renove', 'Participe de sorteios e ganhe brindes exclusivos'] },
+                { id: 'vitalicio' as const, label: 'Acesso Vitalício', price: 'R$ 79,90', desc: 'Para sempre', badge: null, benefits: ['Acesso vitalício completo', 'Assista todos os jogos', 'Qualquer esporte disponível', 'Pague uma vez, nunca mais renove', 'Participe de sorteios e ganhe brindes exclusivos'] },
               ]).map(opt => {
                 const isVitalicio = opt.id === 'vitalicio'
                 const isSelected = selectedOption === opt.id
                 return (
                 <div key={opt.id}>
+                  {isVitalicio && <style>{`@keyframes gold-pulse{0%,100%{box-shadow:0 0 6px rgba(234,179,8,0.25)}50%{box-shadow:0 0 14px rgba(234,179,8,0.5)}}`}</style>}
                   <button
                     onClick={() => setSelectedOption(opt.id)}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${isVitalicio ? (isSelected ? 'bg-yellow-500/10' : 'bg-yellow-500/5 hover:bg-yellow-500/10') : (isSelected ? 'border-orange-500 bg-orange-500/10' : 'border-[#2A2A3A] bg-[#1A1A26] hover:border-[#3A3A4A]')}`}
-                    style={isVitalicio ? { borderColor: isSelected ? '#EAB308' : 'rgba(234,179,8,0.5)', boxShadow: isSelected ? '0 0 12px rgba(234,179,8,0.2)' : undefined } : undefined}
+                    style={isVitalicio ? { borderColor: isSelected ? '#EAB308' : 'rgba(234,179,8,0.5)', animation: 'gold-pulse 2.5s ease-in-out infinite' } : undefined}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
