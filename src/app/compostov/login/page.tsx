@@ -21,7 +21,8 @@ export default function LoginPage() {
     })
 
     if (!res.ok) {
-      setError('Email ou senha incorretos.')
+      const body = await res.json().catch(() => ({}))
+      setError(body.error ?? 'Email ou senha incorretos.')
       setLoading(false)
       return
     }

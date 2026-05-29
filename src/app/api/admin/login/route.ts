@@ -14,12 +14,14 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error || !data.session) {
-    return NextResponse.json({ error: 'Email ou senha incorretos.' }, { status: 401 })
+    console.error('[admin/login] supabase error:', error?.message, error?.status)
+    return NextResponse.json({ error: error?.message ?? 'Email ou senha incorretos.' }, { status: 401 })
   }
 
   const secret = process.env.ADMIN_SECRET
   if (!secret) {
-    return NextResponse.json({ error: 'Configuração inválida.' }, { status: 500 })
+    console.error('[admin/login] ADMIN_SECRET not set')
+    return NextResponse.json({ error: 'Configuração inválida: ADMIN_SECRET ausente.' }, { status: 500 })
   }
 
   const res = NextResponse.json({
