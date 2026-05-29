@@ -26,7 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR">
       <body className="min-h-screen flex flex-col text-white antialiased">
         {/* Background fixo */}
-        <div className="fixed inset-0 -z-10" style={{ backgroundImage: "url('/bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
+        <div className="fixed inset-0 -z-10" style={{ background: '#0B1320' }} />
+        <div className="fixed inset-0 -z-10 pointer-events-none" style={{
+          background: 'radial-gradient(ellipse 90% 70% at 5% 35%, rgba(227,6,19,0.07) 0%, transparent 55%), radial-gradient(ellipse 50% 40% at 95% 75%, rgba(227,6,19,0.04) 0%, transparent 50%)',
+        }} />
         <LanguageProvider>
           <AuthProvider>
             <ScheduleProvider>
