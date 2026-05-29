@@ -2,12 +2,16 @@ import HeroBanner from '@/components/home/HeroBanner';
 import GameCarousel from '@/components/home/GameCarousel';
 import NewsSection from '@/components/home/NewsSection';
 import SupportWidget from '@/components/home/SupportWidget';
+import LanguageSwitcher from '@/components/common/LanguageSwitcher';
 
 export default function HomePage() {
   return (
     <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
-        <HeroBanner />
+        <div className="flex flex-col gap-3">
+          <LanguageSwitcher />
+          <HeroBanner />
+        </div>
         <GameCarousel />
         <NewsSection />
       </div>

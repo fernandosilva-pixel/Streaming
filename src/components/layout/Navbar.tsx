@@ -5,21 +5,14 @@ import Link from 'next/link';
 import { Zap, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth, isPlanActive } from '@/contexts/AuthContext';
-import { useLanguage, Lang } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import NotificationBell from '@/components/common/NotificationBell';
-
-const langLabels: Record<Lang, { flag: string; label: string }> = {
-  pt: { flag: '🇧🇷', label: 'PT' },
-  en: { flag: '🇺🇸', label: 'EN' },
-  es: { flag: '🇪🇸', label: 'ES' },
-}
 
 export default function Navbar() {
   const { user, showModal, logout } = useAuth();
   const planActive = isPlanActive(user);
-  const { lang, setLang, t } = useLanguage();
+  const { t } = useLanguage();
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [langOpen, setLangOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -33,13 +26,6 @@ export default function Navbar() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  useEffect(() => {
-    if (!langOpen) return;
-    const handler = () => setLangOpen(false);
-    window.addEventListener('click', handler);
-    return () => window.removeEventListener('click', handler);
-  }, [langOpen]);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-3">
@@ -99,48 +85,6 @@ export default function Navbar() {
 
             {/* Bell */}
             <NotificationBell homeTeam="" awayTeam="" matchTime="" />
-
-            {/* Language selector */}
-            <div className="relative" onClick={e => e.stopPropagation()}>
-              <button
-                onClick={() => setLangOpen(v => !v)}
-                className="flex items-center gap-1 text-white/60 hover:text-white text-xs font-bold px-1 py-1 rounded-lg hover:bg-white/5 transition-all"
-              >
-                <span
-                  className="flex items-center justify-center w-8 h-8 rounded-full text-lg shrink-0"
-                  style={{ border: '1px solid rgba(227,6,19,0.35)', background: 'rgba(227,6,19,0.05)' }}
-                >
-                  {langLabels[lang].flag}
-                </span>
-              </button>
-              {langOpen && (
-                <div
-                  className="absolute right-0 top-full mt-2 rounded-2xl overflow-hidden shadow-2xl z-50 min-w-[110px]"
-                  style={{
-                    background: 'rgba(8,15,28,0.95)',
-                    backdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                  }}
-                >
-                  {(Object.entries(langLabels) as [Lang, { flag: string; label: string }][]).map(([code, { flag, label }]) => (
-                    <button
-                      key={code}
-                      onClick={() => { setLang(code); setLangOpen(false); }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold transition-all"
-                      style={{
-                        color: lang === code ? '#E30613' : 'rgba(255,255,255,0.75)',
-                        background: lang === code ? 'rgba(227,6,19,0.06)' : 'transparent',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(227,6,19,0.08)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = lang === code ? 'rgba(227,6,19,0.06)' : 'transparent')}
-                    >
-                      <span>{flag}</span>
-                      <span>{label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Auth buttons */}
             {user ? (
