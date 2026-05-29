@@ -8,7 +8,7 @@ const translations = {
   pt: {
     // Navbar
     signIn: 'Entrar',
-    signUp: 'Criar conta',
+    signUp: 'Registrar',
     logout: 'Sair',
 
     // Auth modal — login

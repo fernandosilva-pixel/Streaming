@@ -47,7 +47,7 @@ export default function Navbar() {
         <nav
           style={{
             height: 60,
-            borderRadius: 14,
+            borderRadius: 9999,
             background: scrolled
               ? 'rgba(8, 15, 28, 0.82)'
               : 'rgba(8, 15, 28, 0.55)',
@@ -107,7 +107,7 @@ export default function Navbar() {
                 className="flex items-center gap-1 text-white/60 hover:text-white text-xs font-bold px-1 py-1 rounded-lg hover:bg-white/5 transition-all"
               >
                 <span
-                  className="flex items-center justify-center w-8 h-8 rounded-lg text-lg shrink-0"
+                  className="flex items-center justify-center w-8 h-8 rounded-full text-lg shrink-0"
                   style={{ border: '1px solid rgba(227,6,19,0.35)', background: 'rgba(227,6,19,0.05)' }}
                 >
                   {langLabels[lang].flag}
@@ -115,7 +115,7 @@ export default function Navbar() {
               </button>
               {langOpen && (
                 <div
-                  className="absolute right-0 top-full mt-2 rounded-xl overflow-hidden shadow-2xl z-50 min-w-[110px]"
+                  className="absolute right-0 top-full mt-2 rounded-2xl overflow-hidden shadow-2xl z-50 min-w-[110px]"
                   style={{
                     background: 'rgba(8,15,28,0.95)',
                     backdropFilter: 'blur(20px)',
@@ -211,7 +211,7 @@ function GlassButton({
   return (
     <button
       onClick={onClick}
-      className="text-xs sm:text-sm font-bold uppercase tracking-wide px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all duration-150 hover:brightness-110 active:scale-95"
+      className="text-xs sm:text-sm font-bold uppercase tracking-wide px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all duration-150 hover:brightness-110 active:scale-95"
       style={base}
     >
       {children}
